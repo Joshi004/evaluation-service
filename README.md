@@ -8,9 +8,10 @@ This repository currently contains **the basic application structure
 only** — no business logic yet. See the design docs for what's actually
 being built and why:
 
-- [`EVAL_SERVICE_PLAN.md`](EVAL_SERVICE_PLAN.md) — the build plan and tech stack
-- [`CLUSTER_VALIDATION.md`](CLUSTER_VALIDATION.md) — hands-on validation of the SLURM cluster
-- [`BENCHMARK_UNIFICATION_RESEARCH.md`](BENCHMARK_UNIFICATION_RESEARCH.md) — how the four teams evaluate today
+- [`docs/EVAL_SERVICE_PLAN.md`](docs/EVAL_SERVICE_PLAN.md) — the build plan and tech stack
+- [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) — the Postgres schema, what Redis holds, and how a run moves
+- [`docs/CLUSTER_VALIDATION.md`](docs/CLUSTER_VALIDATION.md) — hands-on validation of the SLURM cluster
+- [`docs/BENCHMARK_UNIFICATION_RESEARCH.md`](docs/BENCHMARK_UNIFICATION_RESEARCH.md) — how the four teams evaluate today
 
 ## Stack
 
@@ -75,6 +76,7 @@ docker compose exec backend alembic upgrade head
 ```
 docker-compose.yml
 .env.example
+docs/                 design docs — plan, data model, cluster validation, research
 standards/            version-controlled benchmark recipe YAML (empty so far)
 backend/              FastAPI control-plane API — see backend/README.md
 frontend/             React + Vite UI — see frontend/README.md
