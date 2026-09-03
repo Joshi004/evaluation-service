@@ -1,0 +1,9 @@
+This directory will hold version-controlled benchmark recipe YAML files,
+one per benchmark, per Section 5 of ../EVAL_SERVICE_PLAN.md ("The standard
+recipe — we decide it, not the teams").
+
+It is bind-mounted read-only into the backend container at /standards
+(see ../docker-compose.yml), and will eventually be loaded into the
+`recipe` table (Section 10) by backend/app/services/standards.
+
+Empty for now — no standards have been written yet.

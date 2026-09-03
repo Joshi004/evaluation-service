@@ -1,0 +1,85 @@
+# Evaluation Service — local development stack.
+#
+# Four services, mapped to the local filesystem, per the tech stack in
+# EVAL_SERVICE_PLAN.md (Section 16):
+#   - postgres   the source of truth (Section 10 — data model)
+#   - redis      ephemeral state only: queue, locks, live updates
+#   - backend    FastAPI control-plane API, source bind-mounted for reload
+#   - frontend   React + Vite UI, source bind-mounted for hot reload
+#
+# Quick start:
+#   cp .env.example .env
+#   docker compose up --build
+#
+# All ${VAR:-default} values below work even without a .env file — copying
+# the example is only needed if you want to change a default (e.g. a port
+# that's already taken on your machine).
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-eval_service}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-eval_service}
+      POSTGRES_DB: ${POSTGRES_DB:-eval_service}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-eval_service}:${POSTGRES_PASSWORD:-eval_service}@postgres:5432/${POSTGRES_DB:-eval_service}
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - ./backend:/app
+      - ./standards:/standards:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    environment:
+      VITE_BACKEND_URL: http://backend:8000
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
+  redisdata:
