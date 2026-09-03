@@ -91,7 +91,7 @@ Boring decisions, made once, so nobody has to relitigate them per table.
 
 **Naming:** singular table names (`eval_run`, not `eval_runs`), `snake_case`, foreign keys are `<table>_id`. This matches the plan's Section 10 and what's already written into `backend/app/models/base.py`.
 
-**Every table gets `created_at`; anything that changes gets `updated_at`.** Both `NOT NULL DEFAULT now()`.
+**Every table gets `created_at`; anything that changes gets `updated_at`.** Both `NOT NULL DEFAULT now()`. Because those three — `id`, `created_at`, `updated_at` — are on nearly every table and mean the same thing every time, I leave them out of the per-column tables in [Section 5](#5-the-schema-table-by-table) rather than repeating them nineteen times.
 
 **One operational rule that isn't about schema at all but belongs here:** never hold a database transaction open across an SSH call. The validation doc measured `sacct` at 47 seconds and `scontrol show job` at 27. A 47-second open transaction blocks autovacuum and piles up locks for no reason. The pattern is always: open a transaction, read what you need, commit; do the slow thing; open a new transaction and write the result. It sounds obvious and it is exactly the kind of obvious thing that ends up in the code anyway.
 
@@ -99,7 +99,9 @@ Boring decisions, made once, so nobody has to relitigate them per table.
 
 ## 5. The schema, table by table
 
-Eighteen tables in four groups. I'll give full DDL for the ones where the details carry real decisions, and column lists for the ones that are just bookkeeping.
+Nineteen tables in five groups. Each one gets the same treatment: a short note on why the table exists and what it's for, the DDL, a line on every column saying why we need it and what real data looks like in it, and then the design arguments where there are any.
+
+The example values are mostly real. Where I could pull them from the four team repos or from the cluster probe I did — checkpoint names, job IDs, node names, the `0.7412` IFEval score, the `generation_config.json` contents — I used the actual values rather than inventing plausible ones.
 
 ```mermaid
 erDiagram
@@ -126,6 +128,8 @@ erDiagram
 
 #### `cluster`
 
+This is the address book for the GPU cluster — how to reach it, where to put things, and how much of it we're allowed to take at once. There's exactly one row in it today. It's a table rather than a block of environment variables because the reconciler needs these values per job, the Cluster page needs to display them, and adding a second cluster later should be an insert rather than a refactor.
+
 ```sql
 CREATE TABLE cluster (
     id                 bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -149,11 +153,31 @@ CREATE TABLE cluster (
 );
 ```
 
-`default_walltime_s` is `NOT NULL` on purpose. `main` has `MaxTime=UNLIMITED` and `DefaultTime=NONE`, so there is genuinely nothing between us and a vLLM server that runs until somebody notices. Making the column non-nullable means the schema itself refuses to let us submit a job without a time limit. It's the cheapest possible enforcement of the one rule the plan calls non-negotiable.
+| Column | Why we need it | Example |
+|---|---|---|
+| `name` | A readable handle for logs and the UI, so nobody has to recognise an IP address. | `tether-portugal` |
+| `ssh_host` | Where the connector actually dials. | `login-6` |
+| `ssh_user` | The service account we submit as. Its jobs show up in other people's `squeue`, so it should be identifiable. | `eval-service` |
+| `proxy_jump` | The login node we hop through to reach a compute node directly. This is what makes tunnels to a vLLM server possible. | `login-6` |
+| `default_partition` | Which partition to submit to when nothing overrides it. `main` is the whole cluster. | `main` |
+| `model_root` | Where staged weights get written. | `/home/shared/eval-service/models` |
+| `log_root` | Where SLURM writes job stdout, so the tailer knows which file to follow. | `/home/shared/eval-service/logs` |
+| `rest_url` | `slurmrestd` base URL if it ever gets deployed. Null means "use SSH", which is today. | `null` |
+| `rest_api_version` | Each REST API version has a scheduled removal date, so it belongs in config rather than code. | `v0.0.44` |
+| `max_serve_jobs` | Our own cap on concurrent GPU jobs, so one runaway sweep can't quietly take forty nodes. | `4` |
+| `max_stage_jobs` | Same for staging syncs. They're CPU-only but they hammer a shared NFS mount. | `2` |
+| `default_walltime_s` | The `--time` we put on every job. `main` has `MaxTime=UNLIMITED`, so this is the only thing standing between us and a forgotten server. | `7200` |
+| `enabled` | Lets us take a cluster out of rotation without deleting its history. | `true` |
+| `reachable_at` | **Observed.** Last time an SSH command actually succeeded — drives the health dot on the Cluster page. | `2026-09-03 20:14:02+00` |
+| `last_error` | Why the last attempt failed, so the UI can explain rather than just say "unreachable". | `ssh: connect timed out after 30s` |
 
-`max_serve_jobs` and `max_stage_jobs` are our own admission control. We're queuing for the same 1200 GPUs the three teams use and nothing preempts anything, so a runaway sweep of ours is a very visible way to annoy people.
+The one column worth dwelling on is `default_walltime_s`, and specifically the fact that it's `NOT NULL`. `main` has both `MaxTime=UNLIMITED` and `DefaultTime=NONE`, so the cluster will never impose a limit for us. Making the column non-nullable means the schema itself refuses to let us build a job without one — which is the cheapest possible enforcement of the single rule the plan calls non-negotiable, and it costs nothing to add now versus arguing about it after eight H100s have sat idle over a weekend.
+
+The two `max_*_jobs` caps are worth noting for a related reason: `main` isn't a separate pool, it's all 150 nodes, the same hardware the three team partitions use. Nothing preempts anything at equal priority tiers, so we can't be pushed off — but we also can't be stopped from queuing forty jobs and making ourselves very visible in everyone else's `squeue`.
 
 #### `framework`
+
+A framework is one eval harness at one specific version — EvalScope at the commit tool-call pins, lm-evaluation-harness, VLMEvalKit. Each becomes its own container image, because they genuinely can't share a Python environment: tool-call maintains five separate virtualenvs and one-bit-models keeps two conda environments apart because `transformers` 4.x and 5.x can't coexist. We keep these as rows because a score only means something next to the version of the harness that produced it.
 
 ```sql
 CREATE TABLE framework (
@@ -170,9 +194,21 @@ CREATE TABLE framework (
 );
 ```
 
+| Column | Why we need it | Example |
+|---|---|---|
+| `name` | Which harness. Determines the whole output shape we have to parse. | `evalscope` |
+| `version` | The package version, so a number can be traced back to the code that made it. | `1.2.3` |
+| `git_commit` | tool-call pins a commit rather than a release, and so should we — releases lag and the differences matter. | `2ce95c3` |
+| `image` | The container we actually run. | `registry.local/evalscope:2ce95c3` |
+| `image_digest` | A tag can be repointed at new bytes; a digest can't. This is the value that feeds `recipe_hash`. | `sha256:9f2a1c...` |
+| `result_parser` | Names the adapter that reads this harness's output. It's the seam that keeps the rest of the schema framework-agnostic. | `evalscope_v3` |
+| `notes` | The awkward corners, which are what make a run fail at 2am. | `needs langdetect + nltk punkt` |
+
 `result_parser` is the seam that keeps the rest of the schema framework-agnostic. Each framework writes results in its own shape — EvalScope's `summary.json` at `schema_version: 3`, lm-eval's `results_*.json`, VLMEvalKit's `scores.csv` — and one small named adapter per framework turns any of them into `metric` rows and `run_artifact` rows. Adding a framework means writing a parser, not migrating a table.
 
 #### `benchmark`
+
+One row per test we can run. This is the column list on the leaderboard and the checklist for "what have we actually verified". It's deliberately separate from `recipe` because a benchmark is the *thing* — "IFEval" — while a recipe is a *version of how we run it* — "IFEval v1". The first is stable for years; the second changes whenever we fix an extraction bug or bump the harness.
 
 ```sql
 CREATE TABLE benchmark (
@@ -194,9 +230,25 @@ CREATE TABLE benchmark (
 );
 ```
 
+| Column | Why we need it | Example |
+|---|---|---|
+| `name` | The slug used in URLs, job names and config. | `ifeval`, `gsm8k` |
+| `display_name` | What a human reads as a column header. The slug is rarely the nicest label. | `IFEval` |
+| `framework_id` | Which harness owns it. When two harnesses can run the same benchmark, this is where we record which one is official. | → the EvalScope row |
+| `task_name` | What the harness calls it internally, which isn't always what we call it. | `ifeval` |
+| `modality` | Filters the board, and decides whether the benchmark can run on our own server at all. | `text`, `vision` |
+| `where_it_runs` | Text benchmarks run in a container on our server; vision ones move gigabytes of images and have to run on the cluster. Per-benchmark, so we never decide it globally. | `service` |
+| `family` | Groups benchmarks into tracks, which is what the per-track composite scores are built from. | `instruction_following`, `math` |
+| `question_count` | How many questions a full run covers. Feeds the confidence interval and the dry-run GPU estimate. | `541` for IFEval, `1319` for GSM8K |
+| `typical_gpu_hours` | What one run usually costs, so the submit page can warn you before you launch forty of them. | `0.06` |
+| `needs_judge` | Judge-scored benchmarks cost extra GPU time and add a versioned dependency. Worth knowing before submitting, not after. | `false` for IFEval, `true` for HealthBench |
+| `verified` | Has our number been matched against the owning team's number. Only a verified benchmark can produce published rows. | `false` until parity passes |
+
 `question_count` is a small column that earns its place twice: it's what the dry-run preview multiplies to estimate GPU-hours, and it's what the confidence interval is computed from when the harness doesn't tell us the sample count — which, as it turns out, is most of the time.
 
 #### `recipe` — Layer 1, the protocol
+
+This is the official, versioned definition of how one benchmark gets run — the thing that lets us claim two numbers are comparable instead of hoping they are. Every published score points at a row here. The rows are loaded from the reviewed YAML in `standards/`, which stays the source of truth; this table is just the loaded form so the rest of the system can join against it.
 
 ```sql
 CREATE TABLE recipe (
@@ -240,6 +292,33 @@ CREATE UNIQUE INDEX one_active_recipe_per_benchmark
     ON recipe (benchmark_id) WHERE status = 'active';
 ```
 
+| Column | Why we need it | Example |
+|---|---|---|
+| `benchmark_id` | Which benchmark this is a recipe for. | → the IFEval row |
+| `version` | The label a score carries forever. Old numbers keep their old version rather than being relabelled. | `v1` |
+| `status` | Only one recipe per benchmark is active. Drafts can be reviewed before going live; retired ones keep their history readable. | `active` |
+| `framework_id` | Pins the harness version, because a harness upgrade can change the number and therefore has to change the recipe. | → EvalScope `2ce95c3` |
+| `dataset_name` | Which dataset the questions come from. | `google/IFEval` |
+| `dataset_revision` | **Pinned, not just recorded.** Upstream datasets change quietly, and a January score against a June score would be two different exams. | `b1f2c3d` |
+| `split` | Which split we score on. Getting this wrong is a silent way to score on the wrong questions. | `train` (IFEval only has one) |
+| `subsets` | Which subsets are in scope, for benchmarks that have them. | `{default}`, or `{simple,java,live}` for BFCL |
+| `few_shot` | How many in-context examples. This is the GSM8K argument — 4 from the harness, 5–8 by convention — made explicit instead of implicit. | `0` for IFEval, `4` for GSM8K |
+| `exemplars` | The actual few-shot examples when they're fixed, so they can't drift between runs. | `null` for zero-shot |
+| `prompt_template` | The wrapper around each question. Empty for IFEval **on purpose** — a wrapper could itself violate the instruction being tested, like "respond in all lowercase". | `''` |
+| `extraction` | How we pull the answer out of the response. | `{"method":"boxed"}` for GSM8K |
+| `repeats` | Samples per question. 1 is fine for GSM8K; a 30-question benchmark needs 8+ or the score is mostly noise. | `1`, or `8` for AIME25 |
+| `judge_model` | The grader, where there is one. Versioned here, so a judge upgrade is a new recipe by construction rather than a silent change. | `null`, or `Qwen3.6-27B-FP8` |
+| `judge_prompt_version` | The judge's prompt is part of the measurement too, so it gets its own version. | `null` |
+| `default_sampling` | The "benchmark default" source from Section 5 of the plan. Every field present, no gaps — a gap is a value the checkpoint fills in for us. | `{"temperature":0.0,"top_p":1.0,"top_k":-1,...}` |
+| `default_max_tokens` | The default generation budget. Load-bearing for thinking models, not a minor field — one measured checkpoint spent all 512 tokens thinking and never answered. | `8192` |
+| `default_think_handling` | What happens to a `<think>` block before scoring. The default is what the leaderboard shows, so it matters more than the option. | `strip` |
+| `recipe_hash` | Lets a run prove it used the protocol it claims to have used, catching config drift. | `a3f9c1d0e2b47856` |
+| `source_yaml_sha256` | Makes the YAML loader idempotent and stops it silently overwriting an active recipe. | `4e1f8b...` (64 chars) |
+| `source_note` | Where each choice came from — the paper, the harness default, or a decision of ours. This is what makes disagreement a pull request instead of an argument. | `harness default; matches Zhou et al.` |
+| `changelog` | What changed from the previous version, and why. | `v2: pinned dataset revision after upstream edit` |
+| `verified_against_run_id` | The run whose number we matched to decide this recipe was trustworthy. | `1042` |
+| `effective_from` | When this version became the standard, so history reads correctly. | `2026-09-10 00:00+00` |
+
 Two things worth pointing at.
 
 That partial unique index means the database itself guarantees there's exactly one active recipe per benchmark. "Which version is current?" stops being a question you can answer wrongly. Activating `v2` means retiring `v1` in the same transaction, and if you forget, the insert fails instead of quietly producing two competing standards.
@@ -249,6 +328,8 @@ That partial unique index means the database itself guarantees there's exactly o
 `default_sampling` is JSONB, but the loader validates it against a Pydantic model requiring **every** field. No nulls, no partial dicts. This is the schema-level expression of the vLLM finding: any field we leave unset is a field the checkpoint's `generation_config.json` will quietly fill in for us.
 
 #### `recipe_metric`
+
+A benchmark reports more than one number — IFEval alone gives four — and each one needs labelling: what to call it, what scale it's on, whether bigger is better, and which one is the headline. Without this table the leaderboard can't sort a column correctly or decide which of four figures belongs in a cell.
 
 ```sql
 CREATE TABLE recipe_metric (
@@ -268,6 +349,16 @@ CREATE UNIQUE INDEX one_primary_metric_per_recipe
     ON recipe_metric (recipe_id) WHERE is_primary;
 ```
 
+| Column | Why we need it | Example |
+|---|---|---|
+| `recipe_id` | Metrics belong to a recipe version, not to a benchmark, because a new version can add, drop or rename one. | → IFEval `v1` |
+| `name` | The clean canonical name we store and display. | `prompt_level_strict` |
+| `display_name` | A readable column header. | `Prompt-level (strict)` |
+| `unit` | What scale the harness reports on. This is what reconciles tool-call's `0.7412` with VLMEvalKit's `64.83` for the same kind of quantity. | `fraction`, `percent` |
+| `higher_is_better` | **Cannot be derived from anything.** OmniDocBench's `overall_EN` is an edit distance, so lower is better, and getting this wrong flips an entire column without anyone noticing. | `true`, `false` for edit distance |
+| `is_primary` | Which of the four numbers goes in the leaderboard cell. | `true` for `prompt_level_strict` |
+| `harness_key` | How the parser locates the number in the harness's output, where the real names are ugly and framework-specific. | `prompt_level_strict_acc,none`, `acc:Overall` |
+
 This table isn't in the plan and I'd argue for adding it, for one concrete reason: **not every metric is better when it's bigger.** VLMEvalKit's OmniDocBench reports `overall_EN` as an edit distance, where lower is better. If the leaderboard sorts descending on everything, that column is upside down and nobody notices for a month. `higher_is_better` cannot be derived from anything; somebody has to write it down. Same for `unit`, which is what lets us reconcile tool-call reporting `0.7412` with VLMEvalKit reporting `64.83` for conceptually identical quantities.
 
 `harness_key` is the other half of the framework seam. lm-eval names a metric `exact_match,strict-match` — the filter is baked into the key — and VLMEvalKit uses `acc:Overall`. The parser uses `harness_key` to find the number and `name` to store it, so the ugly names stay at the boundary and never reach the UI.
@@ -285,7 +376,7 @@ The distinction that matters is **when the value is applied**:
 
 Once you see it that way, the consequence is immediate and worth real money. **Two runs with completely different sampling can share one model server.** The reuse key for an endpoint is `(checkpoint, cluster, serving_profile)` — sampling is not in it and must not be. The validation doc measured a cold start at 350 seconds of H100 time; if we accidentally key endpoint reuse on the full profile, we pay that again for every sampling variation, which is precisely the exploratory work the three-source design exists to enable.
 
-So:
+So — first, the serving side. This holds everything that goes on the vLLM command line and is therefore fixed for the life of one server. It's a table rather than fields on the checkpoint because it follows the model *architecture*: every Qwen3 checkpoint wants the same flags, so writing them once and pointing twenty checkpoints at them is both less typing and less drift. It's also the endpoint reuse key — two runs can share a server only if they'd have launched it identically.
 
 ```sql
 CREATE TABLE serving_profile (
@@ -306,7 +397,27 @@ CREATE TABLE serving_profile (
     created_at        timestamptz NOT NULL DEFAULT now(),
     updated_at        timestamptz NOT NULL DEFAULT now()
 );
+```
 
+| Column | Why we need it | Example |
+|---|---|---|
+| `name` | The family handle, matching tool-call's `families.yaml` keys. | `qwen3`, `lfm2` |
+| `engine` | Leaves room for something other than vLLM without a migration. | `vllm` |
+| `engine_version` | vLLM removes and renames flags between releases — a removed flag is what killed a server during validation — so the run has to record which version it ran against. | `0.19.0` |
+| `vllm_flags` | The extra argv tokens this family needs, one token per element so there's no shell quoting to get wrong. | `{--enable-auto-tool-choice,--tool-call-parser,hermes}` |
+| `chat_template` | An explicit template path, for when the checkpoint's own isn't what we want. | `null` |
+| `tool_parser` | How vLLM reads tool calls back out of the output. | `hermes`, `qwen3_xml` |
+| `reasoning_parser` | How vLLM separates a think block from the actual answer. | `qwen3` |
+| `reasoning_history` | Whether the think block comes back inside `content` as a tag or in its own field, which changes how the harness has to read it. | `reasoning_field` |
+| `tensor_parallel` | How many GPUs the weights are split across. | `1` for a 4B model |
+| `gpus` | What we ask SLURM for, which is what the job actually costs. | `1` |
+| `max_model_len` | The context window we serve. Submit-time check: the resolved `max_tokens` plus the prompt has to fit inside this. | `8192` |
+| `gpu_mem_util` | vLLM's KV-cache budget. At `0.85` a 4B model used 70.6 GB of the H100's 81.5 GB and got 50× max concurrency. | `0.85` |
+| `notes` | Anything odd about serving this family. | `--language-model-only for the VL variant` |
+
+And second, the sampling side — named generation settings, transcribed from tool-call's `sampling:` block. These ride in the HTTP request body, so they can be different on every call to one shared server, which is exactly why they're not in the serving profile. Naming them means `greedy` is one reviewed thing rather than a number retyped in fifteen configs.
+
+```sql
 CREATE TABLE sampling_profile (
     id                 bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name               text NOT NULL UNIQUE,    -- 'greedy', 'qwen3_think'
@@ -323,6 +434,19 @@ CREATE TABLE sampling_profile (
 );
 ```
 
+| Column | Why we need it | Example |
+|---|---|---|
+| `name` | The handle a user picks in the UI, and the one that appears in a run's provenance. | `greedy`, `qwen3_think` |
+| `temperature` | The main knob. `0.0` is greedy — which Qwen explicitly warn causes repetition and degeneration on their thinking models. | `0.0` for `greedy`, `0.6` for `qwen3_think` |
+| `top_p` | Nucleus sampling cutoff. | `1.0`, `0.95` |
+| `top_k` | Top-k cutoff. `-1` disables it. | `-1`, `20` |
+| `min_p` | Minimum probability floor. Rarely used, but it's a real vLLM parameter and leaving it unset means the checkpoint supplies it. | `0.0` |
+| `presence_penalty` | Discourages repetition. tool-call's `qwen3_5_think` profile sets this to `1.5`. | `0.0` |
+| `repetition_penalty` | Same idea, different formula. Their `lfm2_5_2_6b` profile uses `1.1`. | `1.0` |
+| `max_tokens` | The profile's own default budget, still overridable per run since it's an independently chosen Layer 2 setting. | `8192` for `greedy`, `16384` for `qwen3_think` |
+| `vendor_source_url` | Where the vendor published these numbers, so the choice is defensible rather than folklore somebody remembers. | `https://qwen.readthedocs.io/...` |
+| `notes` | Why this profile exists and when to reach for it, since the name alone doesn't say. | `Qwen's published setting for thinking mode` |
+
 Notice that every sampling column is `NOT NULL`. That's deliberate and it's the same point as before, said in SQL: a null here would become a value supplied by the checkpoint's `generation_config.json`, below the level our config can see. The schema simply doesn't allow us to be vague.
 
 `vllm_flags` as `text[]` with one argv token per element — `['--tool-call-parser', 'qwen3_xml']`, not `['--tool-call-parser qwen3_xml']` — copies tool-call's convention and avoids a whole family of shell-quoting bugs when we build the sbatch script.
@@ -332,6 +456,8 @@ Seeding these two tables is mostly transcription: tool-call's seven sampling pro
 ### 5.3 The registry — what exists and where
 
 #### `model` and `checkpoint`
+
+`model` is the family a checkpoint belongs to, so twenty checkpoints of one model group into one thing in the UI instead of twenty unrelated rows. It's thin on purpose — almost everything interesting lives on the checkpoint, and the only job this table has is grouping and ownership.
 
 ```sql
 CREATE TABLE model (
@@ -344,7 +470,19 @@ CREATE TABLE model (
     created_at   timestamptz NOT NULL DEFAULT now(),
     updated_at   timestamptz NOT NULL DEFAULT now()
 );
+```
 
+| Column | Why we need it | Example |
+|---|---|---|
+| `name` | The model family name people actually say out loud. | `Qwen3-4B` |
+| `owner_team` | Who to ask about it, and the basis for filtering the leaderboard by team. | `tool-call` |
+| `modality` | Decides which benchmarks even apply to it. | `text` |
+| `architecture` | What vLLM reports on startup, and what picks the serving profile. | `Qwen3ForCausalLM` |
+| `description` | Free text for anything worth knowing. | `base model for the ternary experiments` |
+
+`checkpoint` is one row per set of weights we can actually evaluate. This is the registry — what the S3 browser writes into, what the leaderboard's rows are built from, and where the lineage graph lives, since every row points at the checkpoint it came from. Everything else in the system refers to weights through this table rather than by path, which is what makes moving or re-staging them invisible to the rest of the code.
+
+```sql
 CREATE TABLE checkpoint (
     id                bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     model_id          bigint NOT NULL REFERENCES model(id),
@@ -387,6 +525,31 @@ CREATE INDEX checkpoint_parent   ON checkpoint (parent_checkpoint_id);
 CREATE INDEX checkpoint_by_model ON checkpoint (model_id);
 ```
 
+| Column | Why we need it | Example |
+|---|---|---|
+| `model_id` | Which model family these weights belong to. | → the `Qwen3-4B` row |
+| `name` | The handle everyone uses, matching tool-call's `model_tag`. | `Qwen3-4B-allternary-ep03` |
+| `source` | Where the weights come from, which is what decides whether staging is needed at all. | `cluster_path`, `s3` |
+| `s3_bucket` | Which bucket to sync from. | `tether-ai-dev` |
+| `s3_prefix` | Which prefix under it. | `checkpoints/qwen3-4b/ep03/` |
+| `local_path` | The path on the cluster when the weights are already there — which is the Milestone 1 case, no S3 involved. | `/home/shared/agentic_slm/models/Qwen3-4B-allternary-ep03` |
+| `hf_repo_id` | For a public baseline we pull from the hub instead. Compute nodes can reach `huggingface.co`, so this works. | `Qwen/Qwen3-4B` |
+| `param_count` | The leaderboard's size column, and a sanity check that we staged what we thought. | `4000000000` |
+| `quantization` | A real leaderboard dimension — ternary versus bf16 is the entire point of some of these checkpoints. | `ternary`, `null` |
+| `dtype` | What it loads as, which affects both memory and the number. | `bfloat16` |
+| `object_count` | How many files the checkpoint has, so a staging verify has something to compare against. | `1` |
+| `total_bytes` | Same, by size. Also what warns you before a 200 GB sync. | `8040000000` |
+| `inventory` | Per-object keys and ETags. This is what lets `ready` mean *verified* rather than "the sync job exited 0". | `[{"key":"model.safetensors","size":8040000000,"etag":"..."}]` |
+| `generation_config` | The checkpoint's own sampling defaults, read once at registration. **This is the "from the checkpoint" source** — caching it here turns resolving that source into a dict lookup instead of an SSH round trip. | `{"temperature":0.6,"top_k":20,"top_p":0.95,"max_tokens":32768}` |
+| `serving_profile_id` | Which family's serve flags these weights need. | → the `qwen3` row |
+| `default_sampling_profile_id` | The sensible sampling preset for this checkpoint, pre-selected in the UI. | → the `greedy` row |
+| `parent_checkpoint_id` | The lineage edge. The single most valuable field for the graph, and the one most likely to be left blank. | → the `…-sft-v2` row |
+| `lineage_op` | What operation produced this from its parent. | `quantize`, `sft`, `rl`, `merge` |
+| `lineage_params` | The key hyperparameters of that step, so clicking an edge in the graph shows a real diff. | `{"steps":600,"dataset":"40k tool traces"}` |
+| `training_run_url` | Link back to W&B or wherever the training actually lives. | `https://wandb.ai/...` |
+| `owner_team` | Who to ask when a number looks wrong. | `tool-call` |
+| `registered_by` | Who put it in, since the lineage they declared is a claim rather than a measurement. | `naresh` |
+
 `generation_config` stored as JSONB at registration time is a small thing that pays off constantly. It's the "from the checkpoint" source from Section 5 of the plan, and caching it here means resolving that source is a dictionary lookup rather than an SSH round trip on a filesystem where reading small files is slow. We read it once, when the checkpoint is registered, and we've already seen exactly what's in it: `{'temperature': 0.6, 'top_k': 20, 'top_p': 0.95, 'max_tokens': 32768}`.
 
 The two `CHECK` constraints stop a half-registered checkpoint existing. An `s3` checkpoint with no prefix is not a thing that should be representable.
@@ -398,6 +561,8 @@ The two `CHECK` constraints stop a half-registered checkpoint existing. An `s3` 
 The one case that breaks the rule is a model where thinking needs a different *serve* flag rather than a request argument. Then it belongs in the serving profile and it does fragment endpoints. I don't know of one in our fleet today, but it'll show up eventually.
 
 #### `artifact_location` — the thing that makes staging skippable
+
+This table answers exactly one question: are these weights already sitting on this cluster, verified, and safe to serve? Every run asks it before doing anything, and when the answer is yes it skips the entire S3 sync — which is the common case, not the exception, since most evaluation is repeated against a handful of checkpoints. It's separate from `checkpoint` because one checkpoint can be staged on several clusters, each at its own state of readiness.
 
 ```sql
 CREATE TABLE artifact_location (
@@ -418,6 +583,18 @@ CREATE TABLE artifact_location (
 );
 ```
 
+| Column | Why we need it | Example |
+|---|---|---|
+| `checkpoint_id` | Which weights. | → the `…-allternary-ep03` row |
+| `cluster_id` | Which cluster they're staged on. One checkpoint can be on several. | → `tether-portugal` |
+| `path` | The directory on the shared filesystem, which the serve job passes to vLLM. | `/home/shared/eval-service/models/42` |
+| `state` | The whole point of the table. Only `ready` lets a run skip staging; a cancelled sync leaves `syncing` or `failed` and can never be mistaken for complete. | `ready`, `syncing` |
+| `object_count` | What we actually found after syncing, compared against the checkpoint's registered inventory. | `1` |
+| `total_bytes` | Same, by size. Together these two are the verification. | `8040000000` |
+| `staged_by_job_id` | Which staging job produced this, so a bad sync can be traced to its log. | `285684` |
+| `verified_at` | When we last confirmed it matches. A `ready` with no `verified_at` is not actually ready. | `2026-09-03 11:20:00+00` |
+| `last_error` | Why the last sync failed, so the UI can explain instead of just showing red. | `aws s3 sync exited 1: connection reset` |
+
 That `UNIQUE (checkpoint_id, cluster_id)` is doing more work than it looks like. The plan says a Redis lock stops two runs racing into the same directory, and it does — but a Redis lock is an optimisation, not a guarantee. Redis can be flushed, a lock can expire mid-sync, the service can be running two replicas by accident. The unique constraint is what actually makes a double-sync impossible: the second inserter gets a constraint violation and backs off. **Redis saves the work; Postgres saves the data.** That pairing shows up again for endpoints and it's the general pattern for every lock in this system.
 
 `state = 'ready'` means verified — object count and total bytes checked against `checkpoint.inventory` — and never merely "the job exited zero". A cancelled sync leaves `syncing` or `failed`. There's also a `stale` state I've added that the plan doesn't have, for the case where somebody re-registers a checkpoint whose S3 inventory has changed: the staged copy is real but no longer matches, so it needs re-syncing rather than being trusted or deleted.
@@ -426,11 +603,39 @@ The Milestone 1 checkpoint lands here with no staging job at all. `Qwen3-4B-allt
 
 #### `s3_listing_cache`
 
-Straight bookkeeping, matching the plan: `bucket`, `prefix`, `object_count`, `total_bytes`, `last_modified`, `looks_like_checkpoint`, `refreshed_at`, unique on `(bucket, prefix)`. Refreshed on a timer so the browser page is fast and we're not hammering S3. Observed data, so `refreshed_at` is a real column the UI can display.
+A local copy of what's in the bucket, so the S3 browser page loads instantly instead of making a paginated API call every time somebody clicks into a folder. It's refreshed on a timer rather than on demand, which also means we're not hammering S3 when several people are browsing. This is pure observed data — it's a photograph of the bucket, and the UI should say how old the photograph is.
+
+```sql
+CREATE TABLE s3_listing_cache (
+    id                    bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    bucket                text    NOT NULL,
+    prefix                text    NOT NULL,
+    object_count          integer NOT NULL,
+    total_bytes           bigint  NOT NULL,
+    last_modified         timestamptz,
+    looks_like_checkpoint boolean NOT NULL DEFAULT false,
+    is_registered         boolean NOT NULL DEFAULT false,
+    refreshed_at          timestamptz NOT NULL DEFAULT now(),
+    UNIQUE (bucket, prefix)
+);
+```
+
+| Column | Why we need it | Example |
+|---|---|---|
+| `bucket` | Which bucket. | `tether-ai-dev` |
+| `prefix` | The folder. Listed with a delimiter so you browse folders rather than a hundred thousand individual keys. | `checkpoints/qwen3-4b/ep03/` |
+| `object_count` | How many files are under it, shown in the browser. | `1` |
+| `total_bytes` | How big, so the UI can warn you before you kick off a very large sync. | `8040000000` |
+| `last_modified` | The newest object under the prefix — this is how you spot a checkpoint that appeared this morning. | `2026-08-26 09:12:00+00` |
+| `looks_like_checkpoint` | Has a `config.json` plus at least one `*.safetensors`. Filters the noise so the browser shows candidates rather than everything. | `true` |
+| `is_registered` | Whether we already have a `checkpoint` row for this prefix, which is what decides between showing a Register button and a link. | `false` |
+| `refreshed_at` | **Observed.** How stale this listing is, displayed so nobody wonders why a new checkpoint isn't showing up. | `2026-09-03 20:00:00+00` |
 
 ### 5.4 Execution
 
 #### `run_group` — `config_id` deserves to be a table
+
+A named batch of runs, which in practice means a sweep. You submit fifteen cells at once and then want one page showing all fifteen, one progress bar, one cancel button and one total GPU-hour figure. This is tool-call's `config_id` promoted from a bare string to a row so all of that is a join rather than a `LIKE`.
 
 ```sql
 CREATE TABLE run_group (
@@ -445,9 +650,19 @@ CREATE TABLE run_group (
 );
 ```
 
+| Column | Why we need it | Example |
+|---|---|---|
+| `name` | The label you'll go looking for three weeks later. tool-call uses either a date or a descriptive name. | `full-ternary-04b`, `smoke`, `20260903` |
+| `description` | What you were actually trying to find out, which the name never quite captures. | `ternary vs bf16 across the core suite` |
+| `submitted_by` | Who launched the sweep. | `naresh` |
+| `team` | For filtering, and eventually for quotas. | `tool-call` |
+| `is_dry_run` | A previewed batch that hasn't been submitted. Both medpsy and tool-call default to dry-run for anything touching the cluster, and they're right to. | `true` |
+
 The plan has `config_id` as a bare text column on `eval_run`, borrowed from tool-call. It's worth promoting to a table because a sweep is a real thing people care about — you submit fifteen runs at once, you want one page showing all fifteen, one progress bar, one cancel button, and one total GPU-hour figure. All of that is trivial with a `run_group` and awkward with a string.
 
 #### `eval_run` — the centre of everything
+
+One row per attempt to evaluate one checkpoint on one benchmark with one profile. This is the middle of the whole schema — everything upstream feeds into it and everything downstream hangs off it. It carries three different stories at once, which is why it's the widest table here: what somebody asked for, what actually got sent to the model, and how far the run got.
 
 ```sql
 CREATE TABLE eval_run (
@@ -513,6 +728,80 @@ CREATE TABLE eval_run (
 );
 ```
 
+**What it's linked to.**
+
+| Column | Why we need it | Example |
+|---|---|---|
+| `run_group_id` | Which sweep it belongs to. Null for a one-off run. | → `full-ternary-04b` |
+| `checkpoint_id` | Which weights were evaluated. | → `…-allternary-ep03` |
+| `benchmark_id` | Which test was run. | → `ifeval` |
+| `recipe_id` | Which version of the protocol. Frozen here, so retiring the recipe later doesn't rewrite history. | → IFEval `v1` |
+| `cluster_id` | Where it ran. Null until it's actually scheduled somewhere. | → `tether-portugal` |
+| `endpoint_id` | Which model server answered its requests. This is how we can see reuse actually happening. | → endpoint `17` |
+| `serving_profile_id` | How that server was launched, recorded on the run in case the profile is edited afterwards. | → `qwen3` |
+
+**What was asked for.** These four are declared — they're the user's intent, and they're what the UI shows back to them.
+
+| Column | Why we need it | Example |
+|---|---|---|
+| `sampling_source` | Which of the three sources the user picked for sampling. | `benchmark_default` |
+| `think_source` | Same choice, made independently, for think handling. | `benchmark_default` |
+| `max_tokens_source` | Same again for the token budget — independently chosen because it's independently load-bearing. | `user` |
+| `requested_overrides` | The raw values typed into the UI, kept so we can distinguish "asked for 16k" from "got 16k". | `{"max_tokens":16384}` |
+
+**What actually happened.** Derived at submit time and then frozen. This is the half that decides comparability.
+
+| Column | Why we need it | Example |
+|---|---|---|
+| `resolved_profile` | The concrete values genuinely sent on every request. The thing `profile_hash` is computed over — not what was requested, so a resolution bug shows up as a hash mismatch rather than a wrong number with the right label. | `{"temperature":0.0,"top_p":1.0,"max_tokens":8192,...}` |
+| `thinking_mode` | Think on or off. The same weights with thinking both ways are two leaderboard rows, not one hidden setting. | `no_think` |
+| `recipe_hash` | Proves the protocol actually used matches the recipe claimed. | `a3f9c1d0e2b47856` |
+| `profile_hash` | **The grouping key.** Two runs may only share a ranking if they share this. Indexed, because the leaderboard filters on it every page load. | `7b21e4a90c3f5d68` |
+| `seed` | Recorded so a run is reproducible. Deliberately *not* hashed — two seeds of one config should pool, not split. | `42` |
+| `repeats` | Samples per question, copied from the recipe. | `1` |
+
+**How it's classified.**
+
+| Column | Why we need it | Example |
+|---|---|---|
+| `is_standard` | The leaderboard's main filter: all three sources were `benchmark_default`, no limit, not a smoke run. | `true` |
+| `is_smoke` | A deliberate wiring check. Visible in the UI, never a score. | `false` |
+| `sample_limit` | The harness `--limit`. `20` for a smoke test, null for a full 541-prompt run. | `null` |
+
+**Where it got to.**
+
+| Column | Why we need it | Example |
+|---|---|---|
+| `status` | Is this thing alive, and did it work. What a filter dropdown needs. | `running`, `completed` |
+| `phase` | Which of the five steps it's on. What the Runs page shows. | `inference` |
+| `result_status` | tool-call's third answer: it finished, we have numbers, but not all of them. Collapsing this into pass/fail throws away something people want. | `ok`, `partial` |
+| `attempt` | Retries reuse the row and bump this, so one run is one row with one history. | `1` |
+| `priority` | Lets an urgent run jump ahead without a separate queue. | `0` |
+| `cancel_requested_at` | The API writes *intent* here; the reconciler is what actually calls `scancel`. Two writers of cluster state is how runs get stuck. | `null` |
+| `inference_source_run_id` | Set on a re-score, pointing at the run whose predictions were reused. Null for a normal run. | `1042` |
+
+**Diagnostics.** None of these is a score; all of them catch a bad number before anyone acts on it.
+
+| Column | Why we need it | Example |
+|---|---|---|
+| `truncation_rate` | Fraction of responses that hit `max_tokens`. **Not hypothetical** — the Milestone 1 checkpoint measured 12 out of 12 in a trivial smoke test, meaning the score would have reflected our token budget and nothing else. | `0.0`, or `1.0` on that probe |
+| `error_rate` | Fraction of requests that failed or came back empty. EvalScope runs with `ignore_errors: True`, so without this, failures quietly become wrong answers. | `0.0` |
+| `prompt_count` | How many prompts were actually sent — the sanity check against `benchmark.question_count`. | `541` |
+| `gpu_seconds` | **Observed** from `sacct`: `ElapsedRaw` × the `gres/gpu` count. This is the GPU-hours column on the Cluster page. | `219` |
+| `error` | The message, for a human reading the run page. | `vLLM exited 2: unrecognized argument` |
+| `error_kind` | The machine-readable version, so retry logic doesn't have to grep prose to tell a bad config from a slow load. | `SERVER_DIED` |
+
+**Who and when.**
+
+| Column | Why we need it | Example |
+|---|---|---|
+| `submitted_by` | Attribution. We submit jobs to a shared cluster as a service account, so the human has to be recorded somewhere. | `naresh` |
+| `team` | Tenancy from day one, even unenforced. Retrofitting this later is a bad week. | `tool-call` |
+| `queued_at` | When it was submitted — with `started_at`, this is the queue wait. | `2026-09-03 10:18:00+00` |
+| `started_at` | When work actually began. | `2026-09-03 10:24:34+00` |
+| `finished_at` | When it ended. Also the tie-break for which run wins a leaderboard cell. | `2026-09-03 10:31:02+00` |
+| `observed_at` | **Observed.** When we last heard anything from the cluster about this run. | `2026-09-03 10:30:45+00` |
+
 A few of these need explaining.
 
 **`status` and `phase` are two different questions and both get asked.** `status` is what a filter dropdown needs: is this thing alive, did it work. `phase` is what the Runs page needs: which of the five steps is it on. Deriving one from the other is possible but fiddly and you end up with a giant CASE statement in three places.
@@ -530,6 +819,8 @@ A few of these need explaining.
 **Retries reuse the row.** A failed run that's retried increments `attempt` and gets a fresh `job` row; it does not become a second `eval_run`. One row, one history, one thing on the Runs page. Artifacts from a failed attempt are superseded — there's nothing in a failed attempt worth keeping past the log.
 
 #### `job` — every piece of SLURM work
+
+One row per thing we've asked SLURM to do: a staging sync, a model server, or a cluster-side eval. It's separate from `eval_run` because a single run can involve several jobs — stage, then serve, then evaluate — and because the reconciler's entire job is querying this table's unfinished rows and resolving them in one bulk call. This is also the table that makes a service restart survivable: the SLURM job ID is all we need to rebuild the picture.
 
 ```sql
 CREATE TABLE job (
@@ -573,6 +864,29 @@ CREATE INDEX job_unfinished ON job (cluster_id, state)
     WHERE state IN ('submitting','pending','running','unknown');
 ```
 
+| Column | Why we need it | Example |
+|---|---|---|
+| `kind` | Which of the three sorts of work this is. One table with a `kind` beats three near-identical tables. | `serve`, `stage`, `evaluate` |
+| `cluster_id` | Which cluster it went to. | → `tether-portugal` |
+| `slurm_job_id` | The handle we poll with. Also the *only* thing needed to re-observe everything after a restart, which is why nothing durable has to live on the cluster. | `285727` |
+| `eval_run_id` | Set when `kind = 'evaluate'`. Exactly one of these three owner columns is non-null. | → run `1042` |
+| `endpoint_id` | Set when `kind = 'serve'`. | → endpoint `17` |
+| `artifact_location_id` | Set when `kind = 'stage'` — the staging job's whole purpose is producing that row. | → location `8` |
+| `state` | Our normalized view of what SLURM is doing. | `running`, `completed` |
+| `raw_state` | What SLURM *literally* said. When somebody asks why a run failed, the answer should be a quote rather than our paraphrase. | `RUNNING`, `CANCELLED by 1010` |
+| `partition` | Which partition it landed in, which matters because `main` is the whole cluster. | `main` |
+| `node_list` | Which node(s) were allocated. | `health-35` |
+| `submit_line` | The `sbatch` command we issued. SLURM preserves this too, so the two can be compared. | `sbatch --parsable --time=00:25:00 ...` |
+| `script` | Our own copy of the script body — necessary because submitting from stdin makes `scontrol show job` report `Command=(null)`. | the full sbatch text |
+| `stdout_path` | Which file the tailer follows for live logs. | `/home/shared/eval-service/logs/qe-ifeval-285727.out` |
+| `submitted_at` | When we handed it to SLURM. | `2026-09-03 10:18:44+00` |
+| `started_at` | When SLURM actually started it. The gap is the queue wait. | `2026-09-03 10:18:44+00` (zero wait, measured) |
+| `finished_at` | When it ended. | `2026-09-03 10:27:34+00` |
+| `elapsed_seconds` | From `sacct`'s `ElapsedRaw`. Half of the GPU-hour calculation. | `530` |
+| `alloc_tres` | The other half — `gres/gpu` is parsed out of this string. | `billing=8,cpu=8,gres/gpu=1,mem=64G,node=1` |
+| `exit_code` | What the job returned, which distinguishes a crash from a cancellation. | `0`, `2` |
+| `observed_at` | **Observed.** When the last `squeue` or `sacct` told us this. | `2026-09-03 10:27:40+00` |
+
 Three nullable owner columns with a `CHECK` that exactly one is set. It's not beautiful, but the alternatives — a polymorphic `(owner_type, owner_id)` pair with no referential integrity, or three near-identical tables — are both worse. This way the foreign keys are real and cascades work.
 
 `script text` exists because of a specific validation finding: `sbatch` reads from stdin, which is great because nothing has to be written to the cluster first, but the consequence is that `scontrol show job` reports `Command=(null)`. If we want to know what we actually ran — and for a service that submits jobs on other people's behalf, we do — we have to keep our own copy.
@@ -582,6 +896,8 @@ Three nullable owner columns with a `CHECK` that exactly one is set. It's not be
 `job_unfinished` is a partial index and it's the hottest one in the schema — the reconciler runs that exact query every twenty seconds, forever.
 
 #### `endpoint`
+
+A running model server. It gets its own table rather than being a field on the run because the entire point of splitting inference from scoring is that one server can be reused by several runs — and a cold start was measured at 350 seconds of H100 time, so reuse is worth real money rather than being a tidiness argument. It's also the only place that knows how to actually reach a served model, which is a moving target.
 
 ```sql
 CREATE TABLE endpoint (
@@ -614,6 +930,25 @@ CREATE UNIQUE INDEX one_live_endpoint_per_target
     WHERE state IN ('requested','starting','ready');
 ```
 
+| Column | Why we need it | Example |
+|---|---|---|
+| `checkpoint_id` | Which weights are loaded. Part of the reuse key. | → `…-allternary-ep03` |
+| `cluster_id` | Which cluster it's running on. Part of the reuse key. | → `tether-portugal` |
+| `serving_profile_id` | How it was launched. **The third part of the reuse key** — a run can share this server only if all three match. | → `qwen3` |
+| `artifact_location_id` | Which staged copy it's actually serving, so a re-sync can't silently change what's loaded under a running server. | → location `8` |
+| `state` | Whether it's usable yet. Only `ready` can accept a run. | `ready`, `starting` |
+| `served_name` | The name vLLM answers to, which the readiness poll greps `/v1/models` for. | `Qwen3-4B-allternary-ep03` |
+| `base_url` | Where the harness sends requests. Everything above this layer is indifferent to how the route was built. | `http://localhost:19001/v1` |
+| `node` | **Observed, and a cache.** Refreshed from `squeue` every tick and never trusted — a stale hostname fails with a connection reset that looks exactly like a dead server. | `health-35` |
+| `port` | Derived from the job ID as `8000 + (job_id % 250) * 8`, which is tool-call's scheme for stopping two jobs colliding on one node. | `9816` |
+| `gpus` | How many GPUs it's holding. This is what makes an idle endpoint expensive rather than merely untidy. | `1` |
+| `node_observed_at` | The age of *the node name specifically*, which is what decides whether a tunnel is safe to open. The row's `updated_at` changes for too many other reasons. | `2026-09-03 20:15:00+00` |
+| `ready_at` | When `/v1/models` first answered. Also the cold-start measurement, which came out at 350s. | `2026-09-03 10:24:34+00` |
+| `last_used_at` | When a run last hit it. The basis for the deferred idle sweeper, and useful on the Endpoints page today. | `2026-09-03 10:31:02+00` |
+| `walltime_seconds` | The `--time` we asked SLURM for. Not nullable, because `main` won't impose one for us. | `1500` |
+| `expires_at` | `ready_at + walltime_seconds`, so the page can say "this dies in 41 minutes". One column instead of a reaper. | `2026-09-03 10:49:34+00` |
+| `failure_kind` | `SERVER_DIED` versus `READINESS_TIMEOUT` — a bad config to surface now versus a slow load that might be worth retrying. | `SERVER_DIED` |
+
 The partial unique index is the database's half of the endpoint lock — same belt-and-braces arrangement as `artifact_location`. Note again what's in the key: checkpoint, cluster, serving profile. **Not sampling, not think handling, not max tokens.** Those all ride in the request body, so one server happily serves a standard run and three exploratory runs with different temperatures at the same time. That's where the 350-seconds-per-load saving actually comes from.
 
 `node` carries its own `node_observed_at` rather than relying on the row's `updated_at`, because the row gets updated for lots of reasons and the age of *the node name specifically* is what determines whether it's safe to open a tunnel to it.
@@ -623,6 +958,8 @@ The partial unique index is the database's half of the endpoint lock — same be
 ### 5.5 Results
 
 #### `metric`
+
+One row per number a run produced. Rows rather than columns, because every benchmark reports something different — IFEval gives four numbers, BFCL gives around twenty-five once you count subsets — so adding a benchmark never needs a migration. This is also where the error bars come from, which is the part almost nobody does and the reason this table has more columns than you'd expect for storing a float.
 
 ```sql
 CREATE TABLE metric (
@@ -645,11 +982,27 @@ CREATE INDEX metric_primary_lookup
     ON metric (eval_run_id) WHERE is_primary;
 ```
 
+| Column | Why we need it | Example |
+|---|---|---|
+| `eval_run_id` | Which run produced this number. | → run `1042` |
+| `name` | The clean canonical name, matching a `recipe_metric` row. | `prompt_level_strict` |
+| `subset` | Which slice of the benchmark, or `all` for the whole thing. A sentinel string rather than null, so the unique index actually stops duplicates. | `all`, `simple`, `live` |
+| `value` | **Normalized** — a fraction is always 0–1. This is what the UI reads and sorts on, so every benchmark is on a consistent scale. | `0.7412` |
+| `value_raw` | Exactly what the harness printed, so we can always prove what it said rather than what we made of it. | `0.7412` from EvalScope, `64.83` from VLMEvalKit |
+| `unit` | What `value_raw` was in, which is how we knew what to divide by. | `fraction`, `percent` |
+| `higher_is_better` | Copied from the recipe so a sort doesn't need a join, and so an edit-distance column isn't silently upside down. | `true` |
+| `stderr` | The error bar. At n=541 and p≈0.74 this works out to about 0.019, which is ±3.7 points at 95% — enough to make a three-point gap meaningless. | `0.0188` |
+| `stderr_source` | Whether the harness vouched for this or we derived it. Today nobody vouches for it, so it's honest to say so. | `computed` |
+| `n_samples` | How many questions the number rests on. Without it there's no interval at all, and `0.65` at n=20 looks like a regression against `0.74` at n=541 when they're the same measurement. | `541` |
+| `is_primary` | Which of the several numbers goes in the leaderboard cell. | `true` |
+
 `subset` defaults to the string `'all'` rather than being nullable, and that's not fussiness. Postgres treats NULLs as distinct in unique indexes, so a nullable `subset` would let you insert the same `(run, metric)` pair as many times as you like. A sentinel string closes that hole and works on every Postgres version.
 
 Everything else in this table is [Section 7](#7-metrics-are-the-messy-part).
 
 #### `run_artifact`
+
+A pointer to a file the run produced. The files themselves — predictions, reviews, harness reports, logs — are far too big to sit in Postgres, so the row holds a URI and the bytes live on disk or in object storage. The `predictions` kind is the one that really matters: it's what makes re-scoring possible without touching a GPU, which is the difference between a scoring fix costing minutes and costing a GPU-week.
 
 ```sql
 CREATE TABLE run_artifact (
@@ -668,6 +1021,17 @@ CREATE TABLE run_artifact (
 );
 ```
 
+| Column | Why we need it | Example |
+|---|---|---|
+| `eval_run_id` | Which run wrote the file. | → run `1042` |
+| `kind` | What sort of file it is. `predictions` has to be findable without guessing at filenames, because re-scoring depends on locating it. | `predictions`, `log`, `summary` |
+| `uri` | Where the bytes are, with a scheme — because artifacts genuinely live in three different places depending on where the benchmark ran. | `file:///data/runs/1042/predictions.jsonl` |
+| `format` | How to read it. The four harnesses between them emit JSONL, JSON, CSV and xlsx. | `jsonl`, `xlsx` |
+| `size_bytes` | For the retention job, and for warning somebody before they download 30 MB of think blocks. | `32100000` |
+| `row_count` | The fallback source of `n_samples`, and a cheap completeness check against `prompt_count`. | `541` |
+| `sha256` | Proves the file hasn't changed underneath us between the original run and a later re-score. | `8c1f3e...` |
+| `expires_at` | Retention. Null for published standard runs, `+30 days` for exploratory ones. **A prediction we deleted is a re-score we can't do.** | `2026-10-03 00:00+00` |
+
 The `kind` enum matters more than it looks, because `predictions` is the one that makes re-scoring possible and it needs to be findable without guessing at filenames.
 
 The URI carries a scheme because artifacts genuinely live in three places. Text benchmarks run in a container on our own server, so predictions land on our disk as `file://`. Vision benchmarks run on the cluster, so theirs land on the NFS as `nfs://`. Long-term retention pushes both to `s3://`. One column, no special cases.
@@ -675,6 +1039,8 @@ The URI carries a scheme because artifacts genuinely live in three places. Text 
 `expires_at` implements the plan's retention policy directly: null for published standard runs, `now() + 30 days` for exploratory ones. A nightly job deletes expired blobs and nulls the URI, keeping the row so the history stays honest about what used to exist.
 
 #### `publication`
+
+The record of a number we've officially put on the board. Publishing is a deliberate act, kept separate from a run merely completing, because a completed run can still be wrong — 100% truncation, a bad error rate, a benchmark we haven't verified against the owning team yet. This table is also the audit trail of what we claimed and when, which matters the first time somebody asks why last month's figure was different.
 
 ```sql
 CREATE TABLE publication (
@@ -695,9 +1061,23 @@ CREATE UNIQUE INDEX one_live_publication
     WHERE superseded_by IS NULL;
 ```
 
+| Column | Why we need it | Example |
+|---|---|---|
+| `eval_run_id` | The run whose number is being published. | → run `1042` |
+| `checkpoint_id` | Copied from the run so the database can enforce one live number per cell as a real constraint. | → `…-allternary-ep03` |
+| `benchmark_id` | Same reason — part of what identifies a leaderboard cell. | → `ifeval` |
+| `thinking_mode` | Same again. Think-on and think-off are separate cells, so both can be published at once. | `no_think` |
+| `recipe_id` | Same again. A new recipe version gets its own publication rather than overwriting the old one. | → IFEval `v1` |
+| `published_by` | Who signed off. Publishing is a judgement, so it has an author. | `naresh` |
+| `published_at` | When we started claiming this. | `2026-09-11 09:00:00+00` |
+| `superseded_by` | Points at the publication that replaced this one. Nothing is ever deleted, so the history of our claims stays intact. | `null` for the live one |
+| `note` | Why, when it isn't obvious from the run. | `re-published after v2 fixed extraction` |
+
 Three columns here are copied from the run they point at, which is denormalization and normally I'd resist it. It's justified because it's the only way to express "there is at most one live published number per checkpoint, mode, benchmark and recipe version" as a database constraint rather than as application code somebody will eventually get wrong. Publishing a new number sets `superseded_by` on the old row in the same transaction. Nothing is ever deleted, so the history of what we claimed and when is fully intact.
 
 #### `audit_event`
+
+An append-only log of who did what. We hold an SSH key that submits jobs to a shared cluster under a service account, which means from the cluster's point of view every job we run looks like it came from us rather than from a person. "Which human caused this job" needs an answer that doesn't depend on someone still having the application logs.
 
 ```sql
 CREATE TABLE audit_event (
@@ -712,6 +1092,15 @@ CREATE TABLE audit_event (
 
 CREATE INDEX audit_recent ON audit_event (at DESC);
 ```
+
+| Column | Why we need it | Example |
+|---|---|---|
+| `at` | When it happened. Indexed descending, because every query on this table is "what happened recently". | `2026-09-03 20:31:00+00` |
+| `actor` | The human or system that did it. The reconciler acts on its own too, and that should be distinguishable from a person. | `naresh`, `reconciler` |
+| `action` | What they did, as a dotted verb so it's greppable and groupable. | `run.submit`, `endpoint.kill` |
+| `subject_type` | What kind of thing it was done to. | `eval_run`, `checkpoint` |
+| `subject_id` | Which one. Deliberately not a foreign key — the log should outlive the row it describes. | `1042` |
+| `detail` | The payload, for anything a later question might need that we didn't think to make a column. | `{"benchmark":"ifeval","profile_hash":"7b21..."}` |
 
 Challenge 6 in the plan asks for an audit log of every submission, on the grounds that we're holding an SSH key that submits jobs as a service account. One table, append-only, written from the controller layer. Cheap now, impossible to backfill later.
 
