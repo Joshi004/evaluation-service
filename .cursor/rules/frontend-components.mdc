@@ -1,6 +1,6 @@
 ---
-description: Frontend component structure and size guideline
-globs: frontend/src/**/*.tsx
+description: Frontend component structure, folder layout, and size guideline
+globs: frontend/src/**/*.{ts,tsx}
 alwaysApply: false
 ---
 
@@ -11,4 +11,26 @@ alwaysApply: false
 - Split by responsibility, not just to hit a line count:
   - Extract a subcomponent when a piece of JSX has its own clear purpose.
   - Extract a hook when logic (data fetching, derived state) is reusable, or is cluttering the component body.
-- Co-locate a component with the hooks/helpers only it uses. Promote something to `src/components/` (shared) or a shared hooks location only once a second component actually needs it.
+
+## Folder structure — `src/components/`
+
+Every shared component is a folder, named for the component, holding only the files it needs:
+
+```
+src/components/Button/
+  Button.tsx           # renders — JSX and DOM-facing logic only
+  Button.helper.ts      # non-DOM logic the component needs before it renders
+  Button.module.scss    # only if Tailwind's utility classes can't express the style
+  Button.test.tsx       # only once a test is actually written
+```
+
+- **`Button.tsx`** renders. Data should already be in the shape it needs by the time it reaches JSX.
+- **`Button.helper.ts`** holds logic that never touches the DOM — sorting, filtering, reshaping data, computing a derived value. If a function doesn't reference JSX or the DOM, it belongs here, not inline in the component.
+- **`Button.module.scss`** uses CSS Modules — Vite scopes its class names to this file automatically, so they can't collide with another component's styles (`sass` is already a dev dependency so this resolves out of the box). This is the exception, not the default: reach for it only when Tailwind's utilities genuinely can't express the style.
+- **`Button.test.tsx`** is co-located, not in a separate `__tests__/` tree.
+
+This convention is for `src/components/` specifically. `src/pages/` stays flat (`src/pages/LeaderboardPage.tsx`) — pages are route-level containers, not reusable components.
+
+## Shared utilities — `src/utils/`
+
+Logic used by only one component lives in that component's `*.helper.ts`. Once a second component needs the same logic, promote it to a flat file in `src/utils/` (e.g. `src/utils/formatDate.ts`) so both import it from one place instead of duplicating it.
