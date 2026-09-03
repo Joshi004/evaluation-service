@@ -5,7 +5,9 @@ idle time, and a manual kill button. See the `endpoint` table in
 EVAL_SERVICE_PLAN.md, Section 10 — note `node` is a cache refreshed from
 `squeue`, never trusted as-is — and the "Endpoints" page in Section 13.
 
-No routes yet.
+Once routes exist, each should validate via its Pydantic schema and
+delegate immediately to app.controllers.endpoints — see
+.cursor/rules/backend-layering.mdc. No routes yet.
 """
 
 from fastapi import APIRouter

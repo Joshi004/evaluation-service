@@ -1,0 +1,14 @@
+---
+description: Frontend component structure and size guideline
+globs: frontend/src/**/*.tsx
+alwaysApply: false
+---
+
+# Frontend Components
+
+- Keep components cleanly segregated — one component owns one concern (a page, or one self-contained piece of UI). Don't let unrelated logic accumulate in a component just because it's convenient to bolt on.
+- Target **~200 lines per component**. Going over is fine when a component genuinely needs it — treat 200 as the point where you ask "should this split?", not a hard limit to engineer around.
+- Split by responsibility, not just to hit a line count:
+  - Extract a subcomponent when a piece of JSX has its own clear purpose.
+  - Extract a hook when logic (data fetching, derived state) is reusable, or is cluttering the component body.
+- Co-locate a component with the hooks/helpers only it uses. Promote something to `src/components/` (shared) or a shared hooks location only once a second component actually needs it.

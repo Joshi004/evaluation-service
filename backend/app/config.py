@@ -15,9 +15,7 @@ class Settings(BaseSettings):
     app_name: str = "Evaluation Service"
     api_v1_prefix: str = "/api/v1"
 
-    database_url: str = (
-        "postgresql+asyncpg://eval_service:eval_service@postgres:5432/eval_service"
-    )
+    database_url: str = "postgresql+asyncpg://eval_service:eval_service@postgres:5432/eval_service"
     redis_url: str = "redis://redis:6379/0"
 
     cors_origins: list[str] = ["http://localhost:5173"]

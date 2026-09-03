@@ -16,3 +16,23 @@ dependencies = [
 
 [tool.uv]
 package = false
+
+[dependency-groups]
+dev = [
+    "ruff>=0.16.5",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# E/F = pyflakes+pycodestyle errors, I = import sorting, UP = modernize
+# syntax for the target version, B = flake8-bugbear (common bug patterns).
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's dependency injection relies on `Depends(...)` as an argument
+# default — that's the framework's documented pattern, not the mutable-
+# default-argument bug B008 exists to catch.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.params.Depends"]

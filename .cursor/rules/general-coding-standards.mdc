@@ -1,0 +1,19 @@
+---
+description: Core coding standards for this repo — readability, naming, comments, type safety
+alwaysApply: true
+---
+
+# Coding Standards
+
+- **Readability beats cleverness.** Prefer simple, explicit code over compressed or "smart" syntax. If a one-liner needs a comment to explain what it does, write it as a few plain lines instead — the plain version is the correct one.
+- **Names are self-explanatory.** A function or variable name should tell the reader what it is or does without needing to open the implementation.
+  - Bad: `resolve()`, `rc_path`, `data2`
+  - Good: `resolve_checkpoint_path()`, `raw_checkpoint_path`, `staged_checkpoints`
+- **Comments explain why, not what.** The code already says what it does; a comment should only exist for a reason the code can't express on its own — a trade-off, a workaround, a non-obvious constraint.
+  - Bad: `# loop over runs` above `for run in runs:`
+  - Good: `# retry once — the cluster's SSH connection is known to drop mid-session` above a retry block
+- **Use a design pattern where it earns its keep.** Adapter (per-engine harness wrappers), Repository (DB access), Strategy (pluggable scoring/profile sources) all fit this codebase. Don't reach for a pattern where a plain function is just as clear — a pattern should reduce complexity, not add ceremony.
+- **Type hints are required, everywhere:**
+  - Python: every function signature (parameters and return type) is typed. Avoid `Any` unless the value's type is genuinely dynamic.
+  - TypeScript: no `any` (enforced by oxlint's `typescript/no-explicit-any`). Use a real type, or `unknown` plus a narrowing check.
+- **Keep changes scoped to what was asked.** Don't add speculative features, config options, or abstractions for cases that don't exist yet.

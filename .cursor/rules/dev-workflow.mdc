@@ -1,0 +1,19 @@
+---
+description: Logging conventions and lint/format tooling for this repo
+alwaysApply: true
+---
+
+# Logging & Tooling
+
+- **No stray `print()` / `console.log()` in committed code.** They're fine while debugging locally, but remove them before the change is considered done.
+- **Backend logging** goes through Python's standard `logging` module with a named logger (`logging.getLogger(__name__)`), never `print`. Log *why* something failed (the exception, the relevant id), not just that it did.
+- **Frontend logging** stays minimal — surface errors in the UI (see the connectivity widget on the Leaderboard page for the pattern) rather than relying on the browser console.
+
+## Enforcement
+
+Both must pass before a change is done:
+
+- Backend, from `backend/`: `uv run ruff check .` and `uv run ruff format --check .`
+- Frontend, from `frontend/`: `npm run lint` (oxlint, includes `typescript/no-explicit-any`)
+
+If a rule genuinely doesn't fit a specific line, silence it at that line (e.g. `# noqa: <code>`) with a comment saying why — don't loosen the shared config to work around one case.

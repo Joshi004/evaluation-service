@@ -1,0 +1,19 @@
+---
+description: Backend layering — Router -> Controller -> Library
+globs: backend/app/**/*.py
+alwaysApply: false
+---
+
+# Backend Layering
+
+Every feature flows through three layers, each with exactly one job:
+
+1. **Router** (`app/api/v1/*.py`) — routing only. Declares the path, method, and request/response schema, then calls one controller function. No business logic, no direct DB/Redis/external calls.
+2. **Controller** (`app/controllers/*.py`) — the request handler. Validates anything beyond what the Pydantic schema already caught (e.g. "does this checkpoint exist"), orchestrates one or more calls into `app/services/*`, and shapes the response. No direct DB queries or external I/O here — that's the library's job.
+3. **Library** (`app/services/*.py`) — the actual logic: DB queries, SSH/S3/HTTP calls, business rules. Framework-agnostic — a library function shouldn't know it's being called from an HTTP request, which keeps it trivially reusable from a script or background job and easy to reason about in isolation.
+
+**The schema boundary:** routers and controllers pass validated Pydantic models between each other, never raw `dict`s. If a value crosses a layer boundary, it has a schema.
+
+**The one exception:** `app/api/v1/health.py` talks to the DB/Redis clients directly. It's a two-line infrastructure check, not a feature — adding a controller and library layer for it would be ceremony with no payoff.
+
+A router that queries the database directly, or a controller with a long business rule inline, is a sign the logic is in the wrong layer — move it down, don't leave it where it landed.
