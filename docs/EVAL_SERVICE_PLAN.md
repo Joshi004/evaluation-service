@@ -8,7 +8,7 @@ The research doc answered *"what do the four teams do today?"*. This one answers
 
 I've tried to keep the language plain. Where I'm unsure, or where something depends on a decision only a human can make, I say so rather than papering over it.
 
-> **What changed in this revision.** Everything about the cluster has now been verified by hand rather than assumed — I submitted real jobs, served a real model, and wrote the results up in [`CLUSTER_VALIDATION.md`](./CLUSTER_VALIDATION.md). Three things changed as a result.
+> **What changed in this revision.** Everything about the cluster has now been verified by hand rather than assumed — I submitted real jobs, served a real model, and wrote the results up in [`CLUSTER_VALIDATION.md`](./CLUSTER_VALIDATION.md). Three things changed as a result. 
 >
 > **First, the recipe is no longer a single fixed thing — it's a fixed protocol plus an explicitly chosen, explicitly recorded set of resolution policies.** Serving Qwen3-4B revealed that the checkpoint's own `generation_config.json` silently supplies sampling defaults, and that this model spends its entire token budget inside a `<think>` block and never answers. Neither is something a single global standard can paper over. So sampling, think-handling and `max_tokens` each become a three-way choice in the UI — benchmark default, user-provided, or from the checkpoint — and **every run stores the fully resolved values and a hash of them**, so comparisons are only ever made between runs that were actually produced the same way. Section 5 is rewritten around this and remains the most important section here.
 >

@@ -8,7 +8,7 @@ This is a research/notes document, not a build plan yet. Nothing here changes an
 
 > **Revision note:** The first version of this doc treated `qvac-research-medpsy` as an empty repo, because its `main` branch really is just a placeholder README. It turns out the real work lives on separate, not-yet-merged branches (`eval`, `sft`, `rl`, `synth_data_gen`) — a different setup from the other four repos, where `main` is where the action is. This version re-analyzes `medpsy` using its `eval` branch, which turns out to be a fourth, fully-built evaluation system — arguably the most feature-rich of the four. Every section below has been updated accordingly. This is also a useful lesson on its own: see [Section 7, risk #12](#7-risks-and-how-to-lower-them).
 
----
+--- 
 
 ## Table of contents
 
