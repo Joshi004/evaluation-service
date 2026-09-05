@@ -122,6 +122,8 @@ erDiagram
     artifact_location ||--o{ job : "slurm work"
     serving_profile  ||--o{ endpoint : "shapes"
     sampling_profile ||--o{ eval_run : "default for"
+    cluster    ||--o{ orphan_job_sighting : "unexplained activity on"
+    orphan_job_sighting ||--o| job : "resolved into, if ever"
 ```
 
 ### 5.1 Reference data — the stuff we curate
@@ -142,7 +144,7 @@ CREATE TABLE cluster (
     log_root           text        NOT NULL,
     rest_url           text,                             -- slurmrestd, if it ever appears
     rest_api_version   text,
-    max_serve_jobs     smallint    NOT NULL DEFAULT 4,
+    max_concurrent_gpus smallint   NOT NULL DEFAULT 32,
     max_stage_jobs     smallint    NOT NULL DEFAULT 2,
     default_walltime_s integer     NOT NULL DEFAULT 7200,
     enabled            boolean     NOT NULL DEFAULT true,
@@ -164,8 +166,8 @@ CREATE TABLE cluster (
 | `log_root` | Where SLURM writes job stdout, so the tailer knows which file to follow. | `/home/shared/eval-service/logs` |
 | `rest_url` | `slurmrestd` base URL if it ever gets deployed. Null means "use SSH", which is today. | `null` |
 | `rest_api_version` | Each REST API version has a scheduled removal date, so it belongs in config rather than code. | `v0.0.44` |
-| `max_serve_jobs` | Our own cap on concurrent GPU jobs, so one runaway sweep can't quietly take forty nodes. | `4` |
-| `max_stage_jobs` | Same for staging syncs. They're CPU-only but they hammer a shared NFS mount. | `2` |
+| `max_concurrent_gpus` | Our own cap on GPUs held at once — not jobs, GPUs. A cap on job *count* would treat a 1-GPU job and an 8-GPU job as identical, which they aren't. See the note on `job.gpus_requested` / `gpus_allocated` for how we know the running total. | `32` |
+| `max_stage_jobs` | A plain job-count cap for staging syncs. Staging is CPU-only, so GPUs never enter into it — this is purely about not hammering a shared NFS mount with too many syncs at once. | `2` |
 | `default_walltime_s` | The `--time` we put on every job. `main` has `MaxTime=UNLIMITED`, so this is the only thing standing between us and a forgotten server. | `7200` |
 | `enabled` | Lets us take a cluster out of rotation without deleting its history. | `true` |
 | `reachable_at` | **Observed.** Last time an SSH command actually succeeded — drives the health dot on the Cluster page. | `2026-09-03 20:14:02+00` |
@@ -173,7 +175,7 @@ CREATE TABLE cluster (
 
 The one column worth dwelling on is `default_walltime_s`, and specifically the fact that it's `NOT NULL`. `main` has both `MaxTime=UNLIMITED` and `DefaultTime=NONE`, so the cluster will never impose a limit for us. Making the column non-nullable means the schema itself refuses to let us build a job without one — which is the cheapest possible enforcement of the single rule the plan calls non-negotiable, and it costs nothing to add now versus arguing about it after eight H100s have sat idle over a weekend.
 
-The two `max_*_jobs` caps are worth noting for a related reason: `main` isn't a separate pool, it's all 150 nodes, the same hardware the three team partitions use. Nothing preempts anything at equal priority tiers, so we can't be pushed off — but we also can't be stopped from queuing forty jobs and making ourselves very visible in everyone else's `squeue`.
+The two caps are worth noting for a related reason: `main` isn't a separate pool, it's all 150 nodes, the same hardware the three team partitions use. Nothing preempts anything at equal priority tiers, so we can't be pushed off — but we also can't be stopped from quietly taking forty nodes and making ourselves very visible in everyone else's `squeue`. That's exactly why `max_concurrent_gpus` counts GPUs rather than jobs: four serve jobs could be four lightweight 1-GPU checkpoints, or it could be four 8-GPU tensor-parallel servers — the same job-count cap would let through eight times the actual hardware footprint in the second case, and a limit that can be off by 8× isn't really a limit. `max_stage_jobs` stays a job count because staging jobs don't touch a GPU at all — the resource they contend for is NFS bandwidth, not GPUs, so a job count is the right proxy there and always has been.
 
 #### `framework`
 
@@ -828,6 +830,8 @@ CREATE TABLE job (
     kind                 text NOT NULL CHECK (kind IN ('stage','serve','evaluate')),
     cluster_id           bigint NOT NULL REFERENCES cluster(id),
     slurm_job_id         integer,
+    slurm_job_name       text,          -- 'evalsvc-serve-42' -- see the naming convention below
+    gpus_requested       smallint NOT NULL DEFAULT 0,  -- what we asked for; 0 for staging
 
     eval_run_id          bigint REFERENCES eval_run(id) ON DELETE CASCADE,
     endpoint_id          bigint REFERENCES endpoint(id) ON DELETE CASCADE,
@@ -847,6 +851,7 @@ CREATE TABLE job (
     finished_at     timestamptz,
     elapsed_seconds integer,
     alloc_tres      text,          -- 'billing=8,cpu=8,gres/gpu=1,mem=64G,node=1'
+    gpus_allocated  smallint,      -- gres/gpu parsed out of alloc_tres, once SLURM confirms it
     exit_code       integer,
     observed_at     timestamptz,
     created_at      timestamptz NOT NULL DEFAULT now(),
@@ -869,6 +874,8 @@ CREATE INDEX job_unfinished ON job (cluster_id, state)
 | `kind` | Which of the three sorts of work this is. One table with a `kind` beats three near-identical tables. | `serve`, `stage`, `evaluate` |
 | `cluster_id` | Which cluster it went to. | → `tether-portugal` |
 | `slurm_job_id` | The handle we poll with. Also the *only* thing needed to re-observe everything after a restart, which is why nothing durable has to live on the cluster. | `285727` |
+| `slurm_job_name` | The `--job-name` we set at submission, following a convention that encodes what the job is for. This is what makes an unrecognised job on the cluster explainable instead of a mystery — see below. | `evalsvc-serve-42` |
+| `gpus_requested` | What we asked SLURM for at submit time, copied from `serving_profile.gpus` for a serve job, or `0` for a CPU-only staging job. **Declared** — a claim, not yet a confirmation. | `1` |
 | `eval_run_id` | Set when `kind = 'evaluate'`. Exactly one of these three owner columns is non-null. | → run `1042` |
 | `endpoint_id` | Set when `kind = 'serve'`. | → endpoint `17` |
 | `artifact_location_id` | Set when `kind = 'stage'` — the staging job's whole purpose is producing that row. | → location `8` |
@@ -883,7 +890,8 @@ CREATE INDEX job_unfinished ON job (cluster_id, state)
 | `started_at` | When SLURM actually started it. The gap is the queue wait. | `2026-09-03 10:18:44+00` (zero wait, measured) |
 | `finished_at` | When it ended. | `2026-09-03 10:27:34+00` |
 | `elapsed_seconds` | From `sacct`'s `ElapsedRaw`. Half of the GPU-hour calculation. | `530` |
-| `alloc_tres` | The other half — `gres/gpu` is parsed out of this string. | `billing=8,cpu=8,gres/gpu=1,mem=64G,node=1` |
+| `alloc_tres` | The other half of the GPU-hours calculation — `gres/gpu` is parsed out of this string. | `billing=8,cpu=8,gres/gpu=1,mem=64G,node=1` |
+| `gpus_allocated` | The same `gres/gpu` figure, pulled out the moment SLURM first shows this job as `RUNNING`. **Observed** — this is the number to trust once it exists, because it's SLURM's own confirmed allocation rather than our request. | `1` |
 | `exit_code` | What the job returned, which distinguishes a crash from a cancellation. | `0`, `2` |
 | `observed_at` | **Observed.** When the last `squeue` or `sacct` told us this. | `2026-09-03 10:27:40+00` |
 
@@ -894,6 +902,103 @@ Three nullable owner columns with a `CHECK` that exactly one is set. It's not be
 `raw_state` alongside `state` is the observed-data principle again. `state` is our normalisation, which is a guess about what SLURM meant. `raw_state` is the string SLURM actually said. When somebody asks why a run is marked failed, the answer should be a quote, not a paraphrase.
 
 `job_unfinished` is a partial index and it's the hottest one in the schema — the reconciler runs that exact query every twenty seconds, forever.
+
+**How we actually know how many GPUs are in use right now.** This is worth spelling out because it's the one place in the schema where "just add a column" isn't enough on its own — the column has to be filled from somewhere trustworthy, and there's exactly one place that qualifies.
+
+There are two numbers, and they answer two different questions, which is why there are two columns rather than one:
+
+- **`gpus_requested`** is what we asked for. We know it the instant we submit, because we chose it — it's `serving_profile.gpus` for a serve job, copied across at submit time. It's **declared**, in the vocabulary from [Section 2](#2-the-idea-that-organises-everything-declared-derived-observed): a statement of intent, not a confirmation that SLURM has actually handed over that many GPUs.
+- **`gpus_allocated`** is what SLURM actually gave us, and it's **observed** — the same category of fact as `job.state`, arriving over SSH rather than assumed. The reliable source for it is a field we're already using elsewhere in this table: `AllocTRES`, which the cluster validation confirmed carries `gres/gpu=<n>` and is exactly what `gpu_seconds` on `eval_run` is computed from today. The only thing that changes is *when* we read it. GPU-hours reads `AllocTRES` after a job finishes, off `sacct`. This reads the same field the moment a job first shows up as `RUNNING`, because that's the moment SLURM has actually decided how many GPUs it's holding — not before, and it doesn't need reading again afterwards, because an allocation doesn't change during a job's life on this cluster (the validation run found no preemption between equal-priority partitions, and no evidence of job migration).
+
+Mechanically, this rides on infrastructure that already exists rather than adding a new SSH round trip — with one change worth calling out on its own, next.
+
+**Ask the cluster who "ours" is, don't just ask about jobs we already know about.** The reconciler tick as first described polls `squeue` for a *list of job IDs we already believe are unfinished*. That's efficient, but it has a blind spot: it can only ever confirm or update what we already think we know. If our own bookkeeping ever loses track of a job — a crash between submitting to SLURM and writing the row, a bug that marks something terminal too early, anything — asking "what's the state of the IDs I have" can never notice, because the broken list is the thing doing the asking.
+
+The fix costs nothing extra, because `cluster.ssh_user` already gives us something stronger than a list of IDs: a dedicated service account. Every job under that account is ours, by definition, with no ambiguity. So the tick's `squeue` call is `squeue -u <ssh_user>` — filtered by *account*, not by a job-ID list — which returns everything currently pending or running under our name, cluster-wide. This one call does double duty: it's the fresh state for every job we're already tracking (the original purpose), *and* it's an independent, complete listing we can diff against our own `job` table to catch anything we've lost track of, in either direction. No second call, no separate "audit mode" — it was always going to be one bulk call per tick, and asking it the more complete question doesn't cost anything, since at the number of jobs we ourselves ever run at once (bounded by `max_concurrent_gpus` itself) the response is tiny either way.
+
+The `sacct` call (step 4) still does what it always did — pick up the terminal state and `AllocTRES` for anything that's vanished from that listing — plus one more thing: for any `slurm_job_id` in the fresh listing that doesn't match a `job` row we have for `(cluster_id, slurm_job_id)`, it's a job we don't recognise. That's where the naming convention earns its keep.
+
+**Naming jobs so an unrecognised one is explainable, not a mystery.** `slurm_job_name` follows a fixed shape: `evalsvc-{kind}-{id}`, where `{id}` is the primary key of the row that owns it — `evalsvc-serve-42` for the job backing `endpoint` 42, `evalsvc-stage-17` for the job backing `artifact_location` 17. We generate this name ourselves at submit time, before calling `sbatch`, so it's always exactly what we intended to submit, not a guess reconstructed afterwards.
+
+The reason this matters is what it makes possible when something doesn't add up. A bare `slurm_job_id` tells you nothing — not what checkpoint, not what benchmark, not which row it belongs to. A name like `evalsvc-serve-42` tells you exactly what to go check.
+
+**An unrecognised job splits into two genuinely different situations, and they get different treatment.**
+
+*The name parses, and it points at a row that's expecting it.* Say `endpoint` 42 exists, is sitting in `state = 'starting'`, and has no `job` row yet. That's not really a mystery — it's almost certainly us, caught between "SLURM accepted the job" and "we finished writing our own row" (those are two separate steps today, and nothing makes them atomic). This case is safe to repair automatically: nothing is being guessed, because the owning row already carries the real checkpoint, benchmark and profile — we're only attaching the `slurm_job_id` it was always going to get. The reconciler backfills a `job` row, links it to `endpoint` 42, and fills in `state` from the very listing that just found it.
+
+*The name doesn't parse, or it points at nothing real* — no matching row, or a row that's already `stopped`. Now we genuinely don't know what this is: a manual test run under the service account by mistake, a row that got deleted, something else. **This is where we stop and refuse to guess.** Fabricating a `job` row with an invented owner would let the run history claim a checkpoint or benchmark that never actually produced that job, which is worse than admitting we don't know. This case goes into a separate table — [`orphan_job_sighting`](#orphan_job_sighting), next — that exists specifically so an unexplained sighting has somewhere honest to live without ever touching `job`'s owner constraint.
+
+**The rule that holds regardless of which situation it is: counting and explaining are separate jobs, and counting comes first.** Whatever is running under our account is consuming a real GPU on a shared cluster whether or not we can explain it, so it always counts toward `gpus_in_use` immediately. Whether we can attribute it to a run is a slower question that can wait for a human. "We can't explain it" must never quietly become "so it doesn't count" — that's the undercounting direction, and it's the one that actually damages trust with the other three teams on this cluster, not just wastes a rejected request of our own.
+
+**The number admission control actually checks**, before submitting a new serve job, reflects that:
+
+```sql
+SELECT
+    COALESCE(SUM(COALESCE(j.gpus_allocated, j.gpus_requested)), 0)
+  + COALESCE((SELECT SUM(o.gpus_allocated) FROM orphan_job_sighting o
+              WHERE o.cluster_id = $1 AND o.status = 'unresolved'), 0)
+      AS gpus_in_use
+FROM   job j
+WHERE  j.cluster_id = $1
+  AND  j.kind IN ('serve', 'evaluate')
+  AND  j.state IN ('submitting', 'pending', 'running');
+```
+
+`COALESCE(gpus_allocated, gpus_requested)` per row is the same point as before: use the observed figure once SLURM has confirmed it, fall back to the declared one while it hasn't, so a burst of newly submitted jobs sitting in `pending` doesn't look like zero usage. The added subquery is the "count first" rule made concrete — an unresolved orphan's GPUs count exactly as much as one of our own recognised jobs, because on the cluster's own books, they're indistinguishable. `kind = 'stage'` stays excluded because staging never touches a GPU, which is still the other half of why `max_stage_jobs` gets to remain a simple job count.
+
+`job_unfinished` still covers the `job` half of this query at no extra cost. The orphan half gets its own small partial index, in [Section 13](#13-the-leaderboard-query-and-the-indexes-it-needs).
+
+**What happens to an unresolved orphan.** Nothing, automatically — it stays flagged and counted for as long as it exists. We don't auto-cancel something we can't explain, because the job might be a deliberate manual test someone is relying on, and killing a stranger's work because our bookkeeping doesn't recognise it would be a worse failure than tolerating it while it's investigated. The cost of that choice is honest and worth stating plainly: in the worst case, a genuinely orphaned job can sit there consuming GPU budget for its entire walltime before a human notices the flag and acts. That's a real trade-off, not a solved problem — the mitigation is that `first_seen_at` and a fresh count on the Cluster page make it impossible to miss for long, not that it can't happen at all.
+
+One assumption worth being honest about, unrelated to orphans: all of this presumes every GPU we hold is held by a `serve` job with a `gpus_requested`/`gpus_allocated` of its own. That's true for everything in Milestone 1 and 2. It might stop being true for wave 6 in the plan — a pooled multi-endpoint VLM setup could end up holding GPUs in a shape this table doesn't capture yet — and it's flagged again in [Section 16](#16-things-im-not-sure-about).
+
+#### `orphan_job_sighting`
+
+A holding pen for exactly one kind of thing: a job running under our service account that we cannot honestly attribute to anything in our own tables. It exists so that "we don't know what this is" never has to become either of the two bad alternatives — silently ignoring GPU usage we can't explain, or inventing a false owner just so the row fits into `job`'s constraint. Everything here is meant to be temporary; a healthy system has zero rows in this table most of the time.
+
+```sql
+CREATE TABLE orphan_job_sighting (
+    id               bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    cluster_id       bigint  NOT NULL REFERENCES cluster(id),
+    slurm_job_id     integer NOT NULL,
+    slurm_job_name   text,
+    parsed_kind      text CHECK (parsed_kind IN ('stage','serve','evaluate')),
+    parsed_owner_id  bigint,        -- best-effort parse of {id}; not a real FK -- see below
+    gpus_allocated   smallint NOT NULL DEFAULT 0,
+    status           text NOT NULL DEFAULT 'unresolved'
+                          CHECK (status IN ('unresolved','linked','ignored','gone')),
+    resolved_job_id  bigint REFERENCES job(id),
+    note             text,
+    first_seen_at    timestamptz NOT NULL DEFAULT now(),
+    last_seen_at     timestamptz NOT NULL DEFAULT now(),
+    resolved_at      timestamptz,
+    UNIQUE (cluster_id, slurm_job_id)
+);
+
+CREATE INDEX orphan_unresolved ON orphan_job_sighting (cluster_id)
+    WHERE status = 'unresolved';
+```
+
+| Column | Why we need it | Example |
+|---|---|---|
+| `cluster_id` | Which cluster it turned up on. | → `tether-portugal` |
+| `slurm_job_id` | The one solid fact we start with. | `285901` |
+| `slurm_job_name` | Whatever SLURM reports for it, parsed or not. Kept verbatim even if parsing fails, so a human has something to look at. | `evalsvc-serve-999`, or something unrelated entirely |
+| `parsed_kind` | Our best-effort read of the name, if it matches the convention at all. Null if it doesn't. | `serve`, or `null` |
+| `parsed_owner_id` | The numeric id we extracted, if any. **Deliberately not a foreign key** — we don't yet know which table it refers to, or whether it refers to anything real at all; that's the entire reason this row exists instead of a `job` row. | `999` |
+| `gpus_allocated` | Parsed from whatever the cluster reports for it, so it feeds `gpus_in_use` immediately — explainability and counting are separate, and counting doesn't wait. | `1` |
+| `status` | Where it stands. Only `unresolved` counts toward live GPU usage. | `unresolved` |
+| `resolved_job_id` | If it later *does* turn out to be explainable and gets backfilled into a proper `job` row, this connects the two, so the history doesn't just end at a shrug. | `null` until resolved |
+| `note` | What a human found out. | `confirmed manual test, safe to ignore` |
+| `first_seen_at` | When the audit first noticed it — the basis for "how long has this been sitting here unexplained." | `2026-09-03 20:40:00+00` |
+| `last_seen_at` | Updated every tick it's still there, so a stale row (still `unresolved` but not actually seen in months) is distinguishable from an actively live one. | `2026-09-03 21:00:00+00` |
+| `resolved_at` | When `status` left `unresolved`. | `null` |
+
+`UNIQUE (cluster_id, slurm_job_id)` matters as much as any column here. The audit runs every tick, so without this constraint a single unresolved orphan sitting around for an hour would produce roughly 180 duplicate rows — one per tick — instead of one row with `last_seen_at` climbing. Each tick's audit does an upsert: insert if this `(cluster_id, slurm_job_id)` hasn't been seen before, otherwise just bump `last_seen_at` and refresh `gpus_allocated`.
+
+`status = 'gone'` is what a row moves to if the job disappears from the cluster on its own before anyone ever explained it — not `linked` (we didn't attribute it to anything) and not quite `ignored` (nobody actively decided it was fine), just "it stopped mattering before anyone got to it." It's excluded from the live GPU sum like every non-`unresolved` status, but it stays in the table rather than being deleted, because a history of unexplained things that came and went on their own is worth being able to look back at.
+
+The alerting here is deliberately light rather than a new subsystem: the first time a sighting is inserted, write an `audit_event` row (`action = 'orphan_job.detected'`), and let the Cluster page show a plain count of rows where `status = 'unresolved'`. That reuses infrastructure this document already has rather than inventing paging or notifications, which is more machinery than a handful of expected-to-be-rare rows justifies.
 
 #### `endpoint`
 
@@ -1293,7 +1398,7 @@ The rule that matters: **publish after commit, never before.** If the reconciler
 
 ### Two things I'd keep out of Redis for now
 
-**The job queue.** The plan allows Postgres `SELECT … FOR UPDATE SKIP LOCKED` as the queue for a long while, and I'd go further: for the MVP there's no queue at all. The reconciler *is* the scheduler. "Queued" is a status column and admission control is a policy check against `cluster.max_serve_jobs` inside the tick. Adding ARQ or Dramatiq becomes worthwhile when we have work that isn't cluster-shaped — re-scoring fifty runs at once is the obvious candidate — and not before.
+**The job queue.** The plan allows Postgres `SELECT … FOR UPDATE SKIP LOCKED` as the queue for a long while, and I'd go further: for the MVP there's no queue at all. The reconciler *is* the scheduler. "Queued" is a status column and admission control is a policy check against `cluster.max_concurrent_gpus` inside the tick — a running sum of GPUs, not a count of jobs, for the reason covered in [Section 5.4](#54-execution). Adding ARQ or Dramatiq becomes worthwhile when we have work that isn't cluster-shaped — re-scoring fifty runs at once is the obvious candidate — and not before.
 
 **An SSH concurrency semaphore.** Limiting concurrent SSH commands is genuinely necessary, but while there's one reconciler process an in-process `asyncio.Semaphore` does it with no network round trip and no failure mode. It only needs to move to Redis if we ever run more than one.
 
@@ -1363,20 +1468,23 @@ Every twenty seconds. The whole runtime is this loop.
 
 1. **Acquire or renew `lock:reconciler`.** No lock, no tick.
 2. **Read all unfinished jobs** — that's the `job_unfinished` partial index — grouped by cluster. Short transaction, then commit before doing anything slow.
-3. **One `squeue`** per cluster, listing every unfinished job ID, with a 60-second timeout. If it times out, **log it and skip the tick.** Do not mark anything failed. A slow call is not a failed call — that's the single most important line in this section, and it comes directly from measuring `sacct` at 47 seconds.
-4. **One `sacct`** for job IDs that have vanished from `squeue`, to pick up the terminal state, `ElapsedRaw` and `AllocTRES`. GPU-seconds is elapsed × the `gres/gpu` count parsed out of `AllocTRES`.
-5. **Write observed state** in a fresh transaction: `job.state`, `job.raw_state`, `job.observed_at`, and for serve jobs `endpoint.node` and `endpoint.node_observed_at` refreshed from what `squeue` just said — never from what the row already held.
-6. **Advance phases.** For each unfinished run, apply the transition rules. This includes the orphan check: `phase = 'scoring'` with no `lease:scoring:{id}` means requeue.
-7. **Start newly unblocked work** — staging syncs, serve jobs, harness containers — each behind its lock, each respecting `max_serve_jobs` and `max_stage_jobs`.
-8. **Handle cancellations.** Any run with `cancel_requested_at` set and no terminal state gets `scancel`, its container killed, and `status='cancelled'`.
-9. **Write `cache:squeue:{cluster}`** so the UI reads fresh data without an SSH call.
-10. **Publish events** for everything that changed, after the commit.
+3. **One `squeue -u <ssh_user>`** per cluster, with a 60-second timeout — by *account*, not by a list of job IDs we already track. This does two jobs in one call: it's the fresh state for everything we're already tracking, and it's a complete, independent listing of everything actually running under our name, which is what lets the next two steps catch drift our own bookkeeping can't see by itself. If it times out, **log it and skip the tick.** Do not mark anything failed. A slow call is not a failed call — that's the single most important line in this section, and it comes directly from measuring `sacct` at 47 seconds.
+4. **One `sacct`** for job IDs that have vanished from that listing, to pick up the terminal state, `ElapsedRaw` and `AllocTRES` — GPU-seconds is elapsed × the `gres/gpu` count parsed out of it, and `gpus_allocated` ([Section 5.4](#54-execution)) comes from that same field the moment a job first appears as `RUNNING`.
+5. **Resolve anything in that listing we don't recognise.** For each `slurm_job_id` with no matching `job` row: parse `slurm_job_name`. If it points at a real row that's waiting for it, create and link the `job` row — nothing is guessed, since the owner row already has the real checkpoint, benchmark and profile on it. Otherwise, upsert an `orphan_job_sighting` ([Section 5.4](#54-execution)) so it's still counted and still visible on the Cluster page, without inventing a provenance we don't actually have.
+6. **Write observed state** in a fresh transaction: `job.state`, `job.raw_state`, `job.observed_at`, and for serve jobs `endpoint.node` and `endpoint.node_observed_at` refreshed from what `squeue` just said — never from what the row already held.
+7. **Advance phases.** For each unfinished run, apply the transition rules. This includes the orphan check: `phase = 'scoring'` with no `lease:scoring:{id}` means requeue.
+8. **Start newly unblocked work** — staging syncs, serve jobs, harness containers — each behind its lock. Staging checks a job count against `max_stage_jobs`. Serve jobs check a GPU count against `max_concurrent_gpus`, summing `job.gpus_allocated` / `gpus_requested` together with any still-`unresolved` `orphan_job_sighting` rows (the query in [Section 5.4](#54-execution)) — a new serve job only goes out if `gpus_in_use + serving_profile.gpus` stays under the cap.
+9. **Handle cancellations.** Any run with `cancel_requested_at` set and no terminal state gets `scancel`, its container killed, and `status='cancelled'`.
+10. **Write `cache:squeue:{cluster}`** so the UI reads fresh data without an SSH call.
+11. **Publish events** for everything that changed, after the commit.
 
-Two properties make this safe, and they're worth stating as properties rather than leaving implicit.
+Three properties make this safe, and they're worth stating as properties rather than leaving implicit.
 
 **The tick is idempotent.** Running it twice in a row changes nothing the second time. Every decision is derived from database state plus a fresh observation, never from anything held in memory between ticks.
 
-**The tick holds no state.** If it dies at step 6, the next one starts from step 1 and reaches the same conclusions. This is why deploys are boring: the SSH connection drops, the login node pod restarts, we reconnect, nothing is lost. And it's why nothing durable lives on the cluster — everything we need to rebuild the picture is a SLURM job ID we wrote down at submit.
+**The tick holds no state.** If it dies at step 7, the next one starts from step 1 and reaches the same conclusions. This is why deploys are boring: the SSH connection drops, the login node pod restarts, we reconnect, nothing is lost. And it's why nothing durable lives on the cluster — everything we need to rebuild the picture is a SLURM job ID we wrote down at submit.
+
+**Every step reads what the previous one just committed.** Step 8's admission check has to see step 6's write from the *same* tick, not a snapshot fetched back in step 2 and carried through the rest of the tick in memory. Get this wrong and a job that finished mid-tick would still be counted as running when the very next step decides whether there's room for a new one — the precise stale-accounting problem this whole design exists to avoid, reintroduced by a shortcut. The fix isn't clever, it's just discipline: each step is a fresh read, never a cached one.
 
 ---
 
@@ -1470,6 +1578,10 @@ CREATE INDEX metric_by_name    ON metric (name, value);
                                                     -- cross-benchmark analysis
 ```
 
+The `job` half of the "how many GPUs are we using right now" sum from [Section 5.4](#54-execution) deliberately gets **no** new index — it filters on `(cluster_id, state)`, which `job_unfinished` already covers, and at the row counts involved (our own jobs currently in flight, a number the cap itself keeps small) scanning those few rows and filtering by `kind` in memory isn't worth a write penalty on every job insert to speed up.
+
+The `orphan_job_sighting` half of that same query *does* get one, because it's a different table with its own access pattern: `orphan_unresolved` (partial, `WHERE status = 'unresolved'`) is what both the admission check and the Cluster page's unresolved count read from, and `UNIQUE (cluster_id, slurm_job_id)` is what keeps the audit's per-tick upsert from producing a duplicate row for every tick an orphan happens to still be there.
+
 **No materialized view.** At the sizes in the next section a plain query with these indexes is a few milliseconds, and a materialized view brings a refresh strategy, a staleness window and a class of "why is the board wrong" bug we don't need. If the board ever does get slow, a 60-second Redis cache is the next step and it's a much smaller commitment.
 
 ---
@@ -1503,8 +1615,10 @@ No Redis needed at all. The importer reads existing `summary.json` files from th
 One warning from the validation doc: don't write that importer as a naive recursive scan. `find -maxdepth 4` took 47 seconds and a recursive `grep` never returned. The results tree has a known shape — `<bench>/<model_tag>/<config_id>/latest/summary.json` — so glob that exact pattern with a bounded depth and a hard timeout.
 
 **Milestone 1 — one benchmark, end to end.**
-Add `serving_profile`, `sampling_profile`, `artifact_location`, `endpoint`, `job`, `run_artifact`, `run_group`.
+Add `serving_profile`, `sampling_profile`, `artifact_location`, `endpoint`, `job`, `orphan_job_sighting`, `run_artifact`, `run_group`.
 Redis arrives here: `lock:reconciler`, `lock:endpoint:*`, `lease:scoring:*`, `cache:squeue:*`, `logtail:*` and the three pub/sub channels. This is the full loop for `Qwen3-4B-allternary-ep03` on IFEval.
+
+`orphan_job_sighting` earns its place this early rather than being deferred, even though a healthy system should rarely populate it: `max_concurrent_gpus` is meaningless as a safety cap if the count behind it can silently drift, and the account-scoped audit that keeps it honest is one query, not a separate subsystem — cheaper to build alongside `job` from the start than to retrofit once something's already gone missing.
 
 **Milestone 2 — S3, a second benchmark, publishing.**
 Add `s3_listing_cache`, `publication`, `audit_event`, and `lock:stage:*`. Nothing structural changes; these slot into the existing shape.
@@ -1529,6 +1643,14 @@ Listing these honestly rather than burying them, in roughly the order I'd want t
 **The framework image digest in `recipe_hash` is correct and might be too strict in practice.** Every image rebuild forces a new recipe version. That's what "a framework upgrade is inference-affecting" means, so it's the honest behaviour — but if we rebuild images often for unrelated reasons, like a base-image security patch, we'll be minting recipe versions that change nothing about the evaluation. A possible refinement is hashing only the harness's own pinned commit rather than the whole image, and accepting that the surrounding environment isn't captured. I don't have a strong view; it depends how we end up building images.
 
 **Retention numbers are guesses.** Thirty days for exploratory predictions is a plausible-sounding number I made up. The real answer depends on how often people actually go back to an exploratory run, which we won't know until the thing has been in use for a few months.
+
+**`max_concurrent_gpus`'s default of 32 is the same kind of guess `max_serve_jobs`'s 4 was, just in a more meaningful unit.** Counting GPUs instead of jobs is a real improvement — it's the actual scarce, shared resource — but I picked 32 the same way the original picked 4: it sounds reasonable next to a 1200-GPU cluster shared with three other teams, and it should move once somebody's actually watched the Cluster page for a week.
+
+**The GPU-tracking design assumes every GPU we hold is held by a `serve` job.** That's true everywhere in Milestone 1 and 2 — the only GPU-consuming work is a served model, and every served model has exactly one `job(kind='serve')` row. It might not stay true for wave 6's pooled multi-endpoint VLM setups, where a single orchestration could stand up several servers across several nodes at once; if that ends up needing its own job shape rather than N ordinary serve jobs, `gpus_requested`/`gpus_allocated` will need to follow it there too, or the running total will quietly undercount. Worth re-checking when that wave actually gets designed, not before.
+
+**The exact SLURM command that yields live `AllocTRES` for a *running* (not yet completed) job is unverified.** The validation run confirmed `sacct` returns `AllocTRES` for a completed job (`270184`, referenced throughout this doc), but I haven't confirmed — because nobody's tried it against this specific SLURM build — that a `sacct` call against a job still in the `RUNNING` state returns a populated `AllocTRES` rather than an empty one. SLURM's accounting is generally understood to record the allocation at job start rather than only at completion, which is what the design in [Section 5.4](#54-execution) relies on, but "generally understood" isn't the same standard of evidence as everything else in this document, which was checked by hand. This is worth a five-minute test against a live job before anyone builds against it — submit a serve job, run `sacct -j <id> --format=AllocTRES` while it's still `RUNNING`, and confirm the field isn't blank. The same caveat now extends to `squeue -u <ssh_user>` itself — I haven't confirmed its exact output format against SLURM 25.11.3, only that user-filtered `squeue` is a completely standard, long-supported capability. Both are worth the same five minutes before Milestone 1.
+
+**The orphan-detection design in [Section 5.4](#54-execution) assumes the service account is used for nothing except this service.** That's the whole reason a job under `ssh_user` can be treated as unambiguously ours with no further check. If that account is ever shared — someone runs an unrelated one-off job under it "just this once" — every one of those becomes an `orphan_job_sighting` the moment the audit runs, not because anything is wrong, but because the entire design rests on the account being exclusive to us. Worth stating as a requirement of the design, not just an implementation detail: this needs its own dedicated account, and that should be true from day one rather than tightened later once something has already been sharing it.
 
 **Two questions genuinely need a human, and neither is technical.** Question 3 in the plan's Section 18 — what the default think handling is — determines what `recipe.default_think_handling` gets seeded with for every benchmark, and there's no defensible default until somebody decides. And the plan's Section 18 question about who signs off on a standard determines whether `recipe.status = 'active'` is something one person can set or something a review process produces. The schema supports either; the process doesn't exist yet.
 
