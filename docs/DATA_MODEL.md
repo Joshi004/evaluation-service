@@ -45,7 +45,7 @@ If you take one thing from this document, take this. Every column in the schema 
 
 **Declared** — somebody told us. A checkpoint's name and parent, a recipe's few-shot count, which team owns a model. This is real truth. It only changes when a human changes it, and it's what we'd cry about losing.
 
-**Derived** — we computed it from declared data. The two hashes, `is_standard`, a confidence interval, a normalized metric value. If we lost it we could recompute it. It's stored because recomputing on every page load is silly, not because it's precious.
+**Derived** — we computed it from declared data. The two hashes, a recipe's standard profile hash, a confidence interval, a normalized metric value. If we lost it we could recompute it. It's stored because recomputing on every page load is silly, not because it's precious.
 
 **Observed** — the cluster told us, through SSH, at some moment in the past. A job's state, which node an endpoint is on, how many GPU-seconds a run burned. **This is never truth. It's a photograph.** By the time you read it the job may have finished, the node may have been reallocated, and the login node pod may have restarted twice.
 
@@ -121,7 +121,7 @@ erDiagram
     endpoint   ||--o{ job : "slurm work"
     artifact_location ||--o{ job : "slurm work"
     serving_profile  ||--o{ endpoint : "shapes"
-    sampling_profile ||--o{ eval_run : "default for"
+    sampling_profile ||--o{ checkpoint : "preset for"
     cluster    ||--o{ orphan_job_sighting : "unexplained activity on"
     orphan_job_sighting ||--o| job : "resolved into, if ever"
 ```
@@ -274,13 +274,15 @@ CREATE TABLE recipe (
     judge_prompt_version    text,
 
     -- layer 2 defaults: the "benchmark default" source from Section 5 of the plan
-    default_sampling        jsonb   NOT NULL,         -- every field present; no nulls allowed
+    default_sampling        jsonb   NOT NULL,         -- expanded from a named sampling_profile
+                                                      -- at load time; every field present
     default_max_tokens      integer NOT NULL,
     default_think_handling  text    NOT NULL
                                     CHECK (default_think_handling IN ('strip','as_is','disallow')),
 
     -- provenance
     recipe_hash             char(16) NOT NULL,
+    standard_profile_hash   char(16) NOT NULL,        -- what a standard run's profile_hash equals
     source_yaml_sha256      char(64) NOT NULL,        -- makes the YAML loader idempotent
     source_note             text,
     changelog               text,
@@ -311,10 +313,11 @@ CREATE UNIQUE INDEX one_active_recipe_per_benchmark
 | `repeats` | Samples per question. 1 is fine for GSM8K; a 30-question benchmark needs 8+ or the score is mostly noise. | `1`, or `8` for AIME25 |
 | `judge_model` | The grader, where there is one. Versioned here, so a judge upgrade is a new recipe by construction rather than a silent change. | `null`, or `Qwen3.6-27B-FP8` |
 | `judge_prompt_version` | The judge's prompt is part of the measurement too, so it gets its own version. | `null` |
-| `default_sampling` | The "benchmark default" source from Section 5 of the plan. Every field present, no gaps — a gap is a value the checkpoint fills in for us. | `{"temperature":0.0,"top_p":1.0,"top_k":-1,...}` |
+| `default_sampling` | The "benchmark default" source from Section 5 of the plan. The YAML names a `sampling_profile` and the loader expands it to full values here. Every field present, no gaps — a gap is a value the checkpoint fills in for us. | `{"profile":"greedy","temperature":0.0,"top_p":1.0,"top_k":-1,...}` |
 | `default_max_tokens` | The default generation budget. Load-bearing for thinking models, not a minor field — one measured checkpoint spent all 512 tokens thinking and never answered. | `8192` |
 | `default_think_handling` | What happens to a `<think>` block before scoring. The default is what the leaderboard shows, so it matters more than the option. | `strip` |
 | `recipe_hash` | Lets a run prove it used the protocol it claims to have used, catching config drift. | `a3f9c1d0e2b47856` |
+| `standard_profile_hash` | The `profile_hash` a run gets when it takes this recipe's Layer 2 defaults. Computed once at load time; this is what the leaderboard compares a run against instead of a stored `is_standard` flag. | `7b21e4a90c3f5d68` |
 | `source_yaml_sha256` | Makes the YAML loader idempotent and stops it silently overwriting an active recipe. | `4e1f8b...` (64 chars) |
 | `source_note` | Where each choice came from — the paper, the harness default, or a decision of ours. This is what makes disagreement a pull request instead of an argument. | `harness default; matches Zhou et al.` |
 | `changelog` | What changed from the previous version, and why. | `v2: pinned dataset revision after upstream edit` |
@@ -328,6 +331,10 @@ That partial unique index means the database itself guarantees there's exactly o
 `source_yaml_sha256` is what makes loading the standards idempotent. The YAML in `standards/` is the source of truth — the plan is clear about that and it's right, because review should happen in pull requests. On startup the loader reads each file, hashes it, and skips anything whose hash already matches a row. Change a byte, get a new hash, and the loader refuses to silently overwrite an `active` recipe — it makes you create a new version. That's the "we never silently relabel a number" rule, enforced by a checksum rather than by discipline.
 
 `default_sampling` is JSONB, but the loader validates it against a Pydantic model requiring **every** field. No nulls, no partial dicts. This is the schema-level expression of the vLLM finding: any field we leave unset is a field the checkpoint's `generation_config.json` will quietly fill in for us.
+
+**The YAML names a profile; the loader expands it.** `standards/ifeval.yaml` says `default_sampling: greedy` rather than restating seven numbers, and the loader looks that name up in [`sampling_profile`](#52-the-two-profile-tables-and-why-i-split-model_profile-in-two), copies the full set of values into this column, and keeps the name under a `profile` key so the UI can still say where they came from. Two things fall out of that. Nobody retypes `top_p: 1.0` into twenty recipe files, so the defaults can't quietly drift benchmark to benchmark. And because the values are *copied* rather than referenced, a later edit to the `greedy` row can't reach back and change what an existing recipe means — the protection `source_yaml_sha256` already gives the rest of this table extends to sampling for free.
+
+`standard_profile_hash` is computed in the same pass, immediately after `default_sampling` is expanded: it's the `profile_hash` a run would get if it took every Layer 2 default from this recipe, using the payload in [Section 6](#profile_hash--may-these-two-numbers-sit-in-the-same-ranking). Storing it here is what lets "is this a standard run?" be a comparison against the recipe rather than a flag written on the run at submit time — see the note on `is_standard` in [Section 5.4](#54-execution) for why that distinction matters.
 
 #### `recipe_metric`
 
@@ -451,9 +458,15 @@ CREATE TABLE sampling_profile (
 
 Notice that every sampling column is `NOT NULL`. That's deliberate and it's the same point as before, said in SQL: a null here would become a value supplied by the checkpoint's `generation_config.json`, below the level our config can see. The schema simply doesn't allow us to be vague.
 
+**When this table is read, and when it isn't.** This is a vocabulary, not a runtime dependency, and the distinction is worth stating because the table looks like something a run would join to and it never is. It's read in exactly two places: when the standards loader expands a recipe's `default_sampling: greedy` into concrete values, and when the submit page fills in a dropdown. By the time an `eval_run` row exists, the values it needed have already been copied onto it, so nothing in the run path — resolution, submission, scoring, the leaderboard — ever looks here again.
+
+That's what keeps this table cheap to own. Because nothing depends on it at run time, it needs no version column, no `status`, no partial unique index for "the active `greedy`" — the machinery `recipe` needs precisely because runs *do* depend on it. Editing a row here changes what the name means for recipes loaded and runs submitted afterwards, and reaches nothing that already happened. It's also why the table has no `updated_at` while `serving_profile` does: there's no observed or changing data in it, just a list of numbers somebody argued over once.
+
+One consequence to be honest about. tool-call's profiles are *partial* — their `greedy` sets only `temperature` and `max_tokens` — while every column here is `NOT NULL`, so seeding is not pure transcription after all. Somebody has to decide what `greedy`'s `top_p`, `top_k`, `min_p` and two penalties are, and the answer is the neutral value for each (`1.0`, `-1`, `0.0`, `0.0`, `1.0`) — sampling switched off rather than sampling tuned. Those are vLLM's own defaults written down explicitly instead of left to be applied invisibly, which is the entire point, but `notes` should say so rather than implying a vendor chose them.
+
 `vllm_flags` as `text[]` with one argv token per element — `['--tool-call-parser', 'qwen3_xml']`, not `['--tool-call-parser qwen3_xml']` — copies tool-call's convention and avoids a whole family of shell-quoting bugs when we build the sbatch script.
 
-Seeding these two tables is mostly transcription: tool-call's seven sampling profiles and five families are already written down, already in production use, and already argued over by people who know those models.
+Seeding these two tables is transcription plus the gap-filling above: tool-call's seven sampling profiles and five families are already written down, already in production use, and already argued over by people who know those models — we're copying their judgement and making explicit the fields they left implicit.
 
 ### 5.3 The registry — what exists and where
 
@@ -557,6 +570,8 @@ CREATE INDEX checkpoint_by_model ON checkpoint (model_id);
 The two `CHECK` constraints stop a half-registered checkpoint existing. An `s3` checkpoint with no prefix is not a thing that should be representable.
 
 `parent_checkpoint_id` is self-referential and nothing in the database stops you creating a cycle. I'd enforce acyclicity in the application at write time — walk up the parents with a depth cap before allowing the insert. A recursive CTE trigger would work too, but for a graph this size the application check is simpler and easier to give a good error message from.
+
+**A checkpoint registered with a parent inherits that parent's `serving_profile_id` and `default_sampling_profile_id` unless it overrides them.** One lookup at registration, no schema change — but it's worth doing deliberately rather than leaving to whoever fills the form. The comparison researchers actually act on is not "Qwen3 versus LFM2", it's "did this fine-tune beat the checkpoint it came from", and that comparison only means anything if both were measured the same way. tool-call built exactly this as the `like:` key in `models.yaml`, and their reasoning is the whole argument: it keeps a checkpoint measured under the same conditions as the baseline it's compared against, and a later correction reaches every checkpoint derived from it. Inheritance is a default, not a constraint — a quantized child that genuinely needs different serve flags just sets its own.
 
 **Where does "thinking mode" live?** Not here, and this took me a while to settle on. For Qwen3, thinking is toggled by a chat template argument passed per request, and the same weights legitimately produce both a thinking and a non-thinking leaderboard row. tool-call models this as two `tag` entries pointing at one directory; one-bit-models has `mode: enable_thinking_false` as a run dimension. If we made it a checkpoint property we'd duplicate the inventory, the staging state and the lineage edges for what is one set of weights. So thinking mode is a **property of the run**, stored on `eval_run` and folded into `profile_hash`. The leaderboard's rows are `(checkpoint, thinking_mode)` pairs, exactly as the plan says, but only one of those two comes from the registry.
 
@@ -685,6 +700,7 @@ CREATE TABLE eval_run (
     max_tokens_source   text NOT NULL
         CHECK (max_tokens_source IN ('benchmark_default','user','checkpoint')),
     requested_overrides jsonb,
+    sampling_profile_name text,           -- frozen label, not an FK; null if no preset was picked
 
     -- what actually happened (derived at submit, then frozen)
     resolved_profile jsonb    NOT NULL,   -- the values genuinely sent to the model server
@@ -694,7 +710,6 @@ CREATE TABLE eval_run (
     seed             integer  NOT NULL DEFAULT 42,
     repeats          smallint NOT NULL DEFAULT 1,
 
-    is_standard  boolean NOT NULL,
     is_smoke     boolean NOT NULL DEFAULT false,
     sample_limit integer,                 -- the harness --limit; null means full run
 
@@ -750,6 +765,7 @@ CREATE TABLE eval_run (
 | `think_source` | Same choice, made independently, for think handling. | `benchmark_default` |
 | `max_tokens_source` | Same again for the token budget — independently chosen because it's independently load-bearing. | `user` |
 | `requested_overrides` | The raw values typed into the UI, kept so we can distinguish "asked for 16k" from "got 16k". | `{"max_tokens":16384}` |
+| `sampling_profile_name` | Which named preset was picked, if one was. Plain text rather than a foreign key, deliberately — see below. | `qwen3_think`, `null` |
 
 **What actually happened.** Derived at submit time and then frozen. This is the half that decides comparability.
 
@@ -766,7 +782,6 @@ CREATE TABLE eval_run (
 
 | Column | Why we need it | Example |
 |---|---|---|
-| `is_standard` | The leaderboard's main filter: all three sources were `benchmark_default`, no limit, not a smoke run. | `true` |
 | `is_smoke` | A deliberate wiring check. Visible in the UI, never a score. | `false` |
 | `sample_limit` | The harness `--limit`. `20` for a smoke test, null for a full 541-prompt run. | `null` |
 
@@ -812,7 +827,15 @@ A few of these need explaining.
 
 **`error_kind` exists because of one specific finding.** The validation doc is emphatic that `SERVER_DIED` and `READINESS_TIMEOUT` mean different things — the first is a bad config to surface immediately, the second might be worth an automatic retry. If they're both just `error` with a message string, the retry logic has to grep prose. A small enum column lets the reconciler decide.
 
-**`is_standard` is narrower than the plan defines it.** The plan says a standard run uses the active recipe *and* the benchmark-default source for all three Layer 2 settings. I'd take "the active recipe" out of the stored flag and leave only the parts that can't change after the fact: all three sources are `benchmark_default`, no `sample_limit`, not a smoke run. Whether the recipe is currently active is a join, not a stored value — because recipes get retired, and a stored flag would silently become a lie the moment `v2` goes active. Same outcome on the leaderboard, one less way to be wrong.
+**There is no `is_standard` column, and that's a change to the plan.** The plan defines a standard run as one using the active recipe *and* the benchmark-default source for all three Layer 2 settings, and Section 10 stores that as a boolean. I'd not store it at all. A standard run is one whose `profile_hash` equals the active recipe's `standard_profile_hash`, with no `sample_limit` and `is_smoke` false — a comparison at read time, against two columns that already exist and one added to `recipe` above.
+
+The reason is the same principle the rest of this design already runs on: judge what happened, not what was requested. A stored flag records which buttons somebody pressed. Three things go wrong with that, and all three disappear under a comparison.
+
+A researcher who types the benchmark defaults by hand has produced a scientifically identical run — same values, same `profile_hash` — but their `sampling_source` says `user`, so the flag says not standard and a perfectly good number never reaches the board. Second, if resolution has a bug and a supposedly-standard run is sampled with something else, the flag still says standard and the wrong number sits on the front page wearing the right label; under a comparison the hashes disagree and it drops off by itself. Third, the flag goes stale. Recipes get retired and standards move, and a boolean written in January still claims to be standard in June — the same objection the plan's own version of this flag already has against baking "the active recipe" into it, just applied to the rest of the definition too.
+
+The three `*_source` columns stay, and they're still worth having. They record the researcher's *intent*, which is a real question and a different one — "what did you mean to do" rather than "what did you actually do". They just stop being what gates the leaderboard.
+
+**`sampling_profile_name` is text and not a foreign key, on purpose.** It records which preset was picked at the moment it was picked. A foreign key would keep pointing at a row that can be edited afterwards, so a run would claim to have used `greedy` while linking to a `greedy` that now means something different — the number right, the story wrong. Frozen text can't do that, it survives the row being deleted, and it still answers "show me every run that used `qwen3_think`" with an ordinary index. The values themselves are already safe in `resolved_profile`; this column only has to carry the label honestly.
 
 **`inference_source_run_id`** is how re-scoring works, covered in [Section 11](#11-re-scoring-without-touching-a-gpu).
 
@@ -1260,6 +1283,14 @@ The framework's **image digest** is in there, not its tag. A tag can be repointe
 
 Computed over **resolved** values — what actually went into the request bodies — never over what the user asked for. That's the whole design: a bug in resolution shows up as a hash mismatch rather than as a wrong number wearing the right label. `max_tokens` is lifted out of the sampling dict and given its own key because it's a Layer 2 setting with its own independently chosen source.
 
+### How a partial source becomes a complete profile
+
+The hash is only worth anything if `resolved_profile` is complete, and none of the three sources can fill it on its own. The checkpoint's `generation_config.json` has four keys — we've read a real one, it's `{temperature, top_k, top_p, max_tokens}`. A user typing into the submit form supplies one or two. Only the recipe's `default_sampling` is guaranteed complete, because [Section 5.1](#recipe--layer-1-the-protocol) forces it to be.
+
+So the rule, and it needs to be one sentence somebody can hold in their head: **start from the recipe's `default_sampling`, then overlay the chosen source field by field.** Completeness is guaranteed by construction rather than by remembering, and "sampling from the checkpoint" means what a reader would expect — the checkpoint's four values, with the benchmark's settled choices underneath for the three it doesn't mention. Anything left for vLLM to fill in is a field that comes from the checkpoint invisibly, which is the failure this whole section exists to prevent.
+
+Two things this rule does *not* do, both deliberate. It doesn't merge across sources — picking `checkpoint` for sampling and `user` for `max_tokens` resolves each independently, because they're independently chosen settings. And it doesn't rank the sources against each other: there's no rule that a model's token budget beats a benchmark's or the reverse. `max_tokens_source` already answers that per run, it defaults to the benchmark, and a researcher changes it at submit time when they need to. What the submit page owes them is a **warning, not a veto**: when the resolved `max_tokens` is below what the checkpoint's own `generation_config.json` asks for and thinking is on, say so before the job is submitted. `truncation_rate` on the finished run is the backstop that catches whatever gets through — and it is not hypothetical, the Milestone 1 probe measured 12 truncations out of 12.
+
 ### What's deliberately excluded, and why
 
 | Excluded | Reason |
@@ -1287,7 +1318,11 @@ While checking the reference IFEval number I found the run's own config snapshot
 | `tool_call_parser` | `hermes` |
 | `seed` / `repeats` / `limit` | `42` / `1` / `null` |
 
-The important line is `enable_thinking: false`. **The team ran this thinking model with thinking switched off**, which is why they got a real score rather than the zero that Section 3.3 of the validation doc predicts for a model that spends its whole budget inside a `<think>` block. They also did *not* use the checkpoint's own `generation_config.json` — that file says temperature 0.6, top_k 20, top_p 0.95, max_tokens 32768, and none of those values appear here.
+The important line is `enable_thinking: false`. **The team ran this thinking model with thinking switched off**, which is why they got a real score rather than the zero that Section 3.3 of the validation doc predicts for a model that spends its whole budget inside a `<think>` block.
+
+**They did not deliberately use the checkpoint's own `generation_config.json`, but some of it reached the model anyway, and the distinction matters for the parity check.** Their `generation_config` block sets only `temperature`, `max_tokens`, `reasoning_history`, `batch_size` and `timeout` — `top_p` and `top_k` are simply absent, and nothing in the tool-call serving path passes `--generation-config vllm`. So vLLM did what it warns it will do and supplied the checkpoint's `top_k: 20` and `top_p: 0.95` underneath. It happens not to have changed the number: at `temperature: 0.0` vLLM decodes greedily, and the argmax token is always inside both a top-20 and a 0.95 nucleus, so those two values were inert here. The one field that would have mattered, `max_tokens`, was set explicitly to 8192 rather than inherited from the file's 32768.
+
+Which means the parity target is the clean profile — temperature 0, 8192 tokens, thinking off — and reproducing it does not require reproducing the leak. It also means this run is a fair warning rather than a cautionary tale: the same two missing fields under a thinking profile at temperature 0.6 would have changed the output, silently, with the hash claiming comparability the whole time.
 
 Two things follow. First, the Milestone 1 parity run should reproduce **this** profile — `no_think`, greedy, 8192 tokens — before varying anything, otherwise it isn't a parity check. Second, this is a neat confirmation of the modelling choice in [Section 5.3](#53-the-registry--what-exists-and-where): thinking on or off was a per-run setting for the same weights, not a property of the checkpoint. So it belongs on `eval_run.thinking_mode` and inside `profile_hash`, exactly where I've put it, and the same weights with thinking on would correctly land in a different hash and a different leaderboard row.
 
@@ -1444,7 +1479,7 @@ sequenceDiagram
 
 Step by step, in terms of rows.
 
-**Submit.** The controller resolves the three Layer 2 sources into concrete values. `benchmark_default` reads `recipe.default_*`; `checkpoint` reads the cached `checkpoint.generation_config`; `user` takes what came in the request. It builds `resolved_profile` with every field populated, computes `profile_hash`, sets `is_standard`, and inserts one `eval_run` at `status='queued'`, `phase='queued'`. Nothing touches the cluster. The response is immediate.
+**Submit.** The controller resolves the three Layer 2 sources into concrete values, each one starting from `recipe.default_sampling` and overlaying the chosen source per [Section 6](#how-a-partial-source-becomes-a-complete-profile): `benchmark_default` keeps the recipe's values; `checkpoint` overlays the cached `checkpoint.generation_config`; `user` overlays what came in the request. It builds `resolved_profile` with every field populated, computes `profile_hash`, and inserts one `eval_run` at `status='queued'`, `phase='queued'`. Whether the run counts as standard is not decided or written here — it's a comparison the leaderboard makes later against `recipe.standard_profile_hash`. Nothing touches the cluster. The response is immediate.
 
 Two checks are worth doing right here, at submit, where the error message can still be useful: that the recipe is `active`, and that `resolved max_tokens` fits inside `serving_profile.max_model_len` with room for the prompt. The second one catches a class of failure that otherwise surfaces six minutes later as a confusing runtime error.
 
@@ -1552,8 +1587,9 @@ JOIN   recipe   rc ON rc.id = r.recipe_id AND rc.status = 'active'
 JOIN   metric   m  ON m.eval_run_id = r.id AND m.is_primary
 WHERE  r.status       = 'completed'
   AND  r.result_status = 'ok'
-  AND  r.is_standard
-  AND  r.profile_hash = $1
+  AND  r.sample_limit IS NULL
+  AND  NOT r.is_smoke
+  AND  r.profile_hash = COALESCE($1, rc.standard_profile_hash)
 ORDER  BY r.checkpoint_id, r.thinking_mode, r.benchmark_id, r.finished_at DESC;
 ```
 
@@ -1562,10 +1598,12 @@ Which wants:
 ```sql
 CREATE INDEX eval_run_leaderboard
     ON eval_run (profile_hash, checkpoint_id, thinking_mode, benchmark_id, finished_at DESC)
-    WHERE status = 'completed' AND is_standard;
+    WHERE status = 'completed' AND sample_limit IS NULL AND NOT is_smoke;
 ```
 
-A partial index, because the leaderboard only ever looks at completed standard runs and those are a minority of rows. `profile_hash` leads because it's the equality predicate and the grouping key the whole design turns on.
+A partial index, because the leaderboard only ever looks at completed full runs and those are a minority of rows. `profile_hash` leads because it's the equality predicate and the grouping key the whole design turns on.
+
+The `COALESCE` is where "standard" now lives, and it replaces the `is_standard` flag [Section 5.4](#54-execution) argues against storing. Passing no hash gives you the default board: each benchmark column matched against its own active recipe's `standard_profile_hash`. Passing one gives you any other population you want to look at. That also quietly fixes something the single-parameter version got wrong — `profile_hash` has `recipe_hash` folded into it, so IFEval's standard hash and GSM8K's are different values and one bind parameter could never have matched a full row of benchmark columns at once.
 
 Three more that earn their place:
 
@@ -1606,16 +1644,18 @@ That's a real cost with a real policy attached, and it's the only place in this 
 
 ## 15. Build order
 
-Mapped onto the plan's milestones. Eight tables get Milestone 0 and 1 working end to end.
+Mapped onto the plan's milestones. Seventeen of the nineteen tables get Milestone 0 and 1 working end to end.
 
-**Milestone 0 — importer and a read-only leaderboard.**
-`cluster`, `framework`, `benchmark`, `recipe`, `recipe_metric`, `model`, `checkpoint`, `eval_run`, `metric`.
-No Redis needed at all. The importer reads existing `summary.json` files from the tool-call results tree and writes `eval_run` + `metric` rows with `is_standard = false` and a legacy label. This is where we find out whether the schema survives contact with real data — and it's real data, since those files are `schema_version: 3` with a stable shape.
+**Milestone 0 — the schema, the standards loader, and an empty leaderboard.**
+`cluster`, `framework`, `benchmark`, `recipe`, `recipe_metric`, `model`, `checkpoint`, `eval_run`, `metric`, plus `sampling_profile` and `serving_profile`, which move up from Milestone 1 because the standards loader can't expand `default_sampling: greedy` without them.
+No Redis needed at all. This milestone produces no scores: it's the tables, the YAML loader that fills `recipe` and computes both `recipe_hash` and `standard_profile_hash`, the seeded profile rows, and a leaderboard page that correctly renders nothing.
 
-One warning from the validation doc: don't write that importer as a naive recursive scan. `find -maxdepth 4` took 47 seconds and a recursive `grep` never returned. The results tree has a known shape — `<bench>/<model_tag>/<config_id>/latest/summary.json` — so glob that exact pattern with a bounded depth and a hard timeout.
+**We are not importing anyone's existing results.** Every number in this system will be produced by this system, starting from the Milestone 1 parity run. That's a deliberate call and it costs something worth naming: the earlier plan used an importer over tool-call's `summary.json` tree as the first real test of whether the schema survives contact with actual data, and without it the first such test is Milestone 1 itself. It buys back more than it costs. There is no second class of `eval_run` row with a partial `resolved_profile` and no honest `profile_hash`, no "legacy" label to explain forever, and no risk of a historical number pooling into a ranking with a properly resolved one because the two happened to hash alike from incomplete inputs. The schema is simpler for it — `profile_hash` stays `NOT NULL` and means one thing.
 
-**Milestone 1 — one benchmark, end to end.**
-Add `serving_profile`, `sampling_profile`, `artifact_location`, `endpoint`, `job`, `orphan_job_sighting`, `run_artifact`, `run_group`.
+Cheap substitute for the lost checkpoint, worth ten minutes before writing the loader: open one `summary.json` by hand and check the metric shape against [Section 7](#7-metrics-are-the-messy-part). Reading the file is the part that had the value; storing rows from it was the part that had the cost.
+
+**Milestone 1 — one benchmark, end to end, and the first real number.**
+Add `artifact_location`, `endpoint`, `job`, `orphan_job_sighting`, `run_artifact`, `run_group`.
 Redis arrives here: `lock:reconciler`, `lock:endpoint:*`, `lease:scoring:*`, `cache:squeue:*`, `logtail:*` and the three pub/sub channels. This is the full loop for `Qwen3-4B-allternary-ep03` on IFEval.
 
 `orphan_job_sighting` earns its place this early rather than being deferred, even though a healthy system should rarely populate it: `max_concurrent_gpus` is meaningless as a safety cap if the count behind it can silently drift, and the account-scoped audit that keeps it honest is one query, not a separate subsystem — cheaper to build alongside `job` from the start than to retrofit once something's already gone missing.
@@ -1635,6 +1675,10 @@ Alembic from the first commit, one migration per logical change, and every migra
 Listing these honestly rather than burying them, in roughly the order I'd want them settled.
 
 **Splitting `model_profile` into two tables is a change to the plan, and I could be wrong about it.** The argument in [Section 5.2](#52-the-two-profile-tables-and-why-i-split-model_profile-in-two) is sound — serving settings are per-server and sampling settings are per-request, so they belong to different lifetimes — and it directly increases endpoint reuse, which the validation numbers price at 350 seconds of H100 per avoided load. But it's two tables where the plan has one, and whoever owns Section 5 should agree before it's built.
+
+**What the benchmark default should be for a thinking run, and what happens to the models it doesn't suit.** The recipe carries one `default_sampling`, applied whichever way `thinking_mode` goes. For the `no_think` path that's settled and measured — greedy at 8192 is the profile behind the reference IFEval number. For the `think` path it's very likely wrong: Qwen explicitly warn that greedy decoding makes their thinking models repeat and degenerate, so the thinking row on the board would be a bad number produced by our own default. Nothing forces a decision yet, because Milestone 1 runs with thinking off, but it lands the first time somebody wants a thinking row. Three ways out, and I don't think the choice can be made without seeing how often it actually bites: split `default_sampling` by thinking mode so the recipe carries two (Artificial Analysis do exactly this — temperature 0 for non-reasoning models, 0.6 for reasoning); let a checkpoint's `default_sampling_profile_id`, declared at registration and frozen thereafter, count as standard the way an external evaluator honours a model card; or accept that thinking rows are exploratory and never reach the board. The same question covers the handful of instruct models a single greedy default suits badly — tool-call sample LFM2.5-2.6B at temperature 0.1 with a repetition penalty and MiniCPM5 at 0.7, and neither would be standard under one global default.
+
+**`repeats` almost certainly needs to be more than 1 wherever sampling isn't greedy.** Every recipe defaults to `repeats: 1`, which is right at temperature 0 where the run is deterministic and wrong the moment it isn't — a single sample at 0.6 is measuring luck as much as capability, and the confidence interval in [Section 7](#7-metrics-are-the-messy-part) will happily report a tight interval around a number that moves on the next run. Artificial Analysis run ten repeats on their hard reasoning subset for this reason. I haven't costed what that does to GPU-hours across the suite, which is the only reason this isn't just a recommendation.
 
 **`n_samples` is confirmed available for EvalScope but not for the other two frameworks.** I checked a real report and EvalScope's `raw` block carries `num` per metric and per subset, so error bars are straightforwardly computable for everything in Milestone 1 and 2. What I haven't verified is the VLMEvalKit and lm-eval paths — VLMEvalKit's `scores.csv` is three columns with no count in sight, so its sample counts will have to come from `benchmark.question_count` or from counting prediction rows. That's fine, just slower, and it means the vision benchmarks in wave 6 may reach the board without intervals until someone does that work.
 
