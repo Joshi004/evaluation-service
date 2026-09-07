@@ -515,12 +515,19 @@ benchmark            name, framework_id, task_name, modality, where_it_runs,
                      typical_gpu_hours, verified
 recipe               benchmark_id, version, status, protocol (jsonb),
                      dataset_revision, few_shot, prompt_template, extraction,
-                     metrics[], primary_metric, repeats,
+                     repeats,
                      default_sampling (jsonb),        -- the "benchmark default" source
                      default_max_tokens, default_think_handling,
                      judge_model,
                      source_note, changelog, verified_against_run_id,
                      effective_from                          -- layer 1, we own this
+
+recipe_metric        recipe_id, name, display_name, unit, higher_is_better,
+                     is_primary, harness_key
+                     -- one row per number a benchmark reports. Metrics aren't
+                     -- always "bigger is better" (an edit-distance score isn't),
+                     -- so this replaces the `metrics[]` / `primary_metric` fields
+                     -- above rather than living as an array on recipe itself
 
 framework            name, version, image, notes
 
@@ -549,6 +556,7 @@ publication          eval_run_id, published_by, published_at, superseded_by
 Deliberate choices:
 
 - **`recipe` and `model_profile` are the two layers of Section 5**, as real tables rather than free-form params. `eval_run.is_standard` is true when a run used the active recipe *and* the benchmark-default source for all three Layer 2 settings — that's the flag the leaderboard filters on.
+- **`recipe_metric` is its own table, not a `metrics[]` array on `recipe`.** A benchmark reports more than one number — IFEval alone gives four — and each one needs its own `unit` and `higher_is_better`: an edit-distance metric (VLMEvalKit's OmniDocBench) is *worse* the bigger it is, and that can't be derived from the number itself, only written down per metric. `harness_key` is the other half of it — lm-eval's real name for a metric is `exact_match,strict-match`, and that ugly, framework-specific string needs somewhere to live that isn't the clean name we show on the leaderboard.
 - **The three `*_source` columns record the choice; `resolved_profile` records the outcome.** Both matter. The source is what the user picked in the UI and is what the UI shows back to them; the resolved values are what actually reached the model server, and they're what `profile_hash` is computed over. Storing only the source would leave us unable to prove what was run; storing only the values would lose the intent.
 - **`profile_hash` is the grouping key for the leaderboard.** Two rows may only share a ranking if they share this hash. It's a real indexed column, not something derived at render time.
 - **`artifact_location.state` is what makes staging skippable.** A run checks for `ready` plus a passing verification against `object_count` and `total_bytes` before deciding whether to sync. A cancelled sync leaves `syncing` or `failed`, never `ready`, so a half-copied checkpoint can't be mistaken for a complete one.
