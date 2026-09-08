@@ -58,6 +58,20 @@ services:
       # where they're mounted FROM, below.
       CLUSTER_SSH_KEY_PATH: /secrets/cluster_ssh_key
       CLUSTER_SSH_KNOWN_HOSTS_PATH: /root/.ssh/known_hosts
+      # The harness (Phase 4). Same "compose doesn't forward .env into
+      # the container" reason as above -- each value is passed through
+      # explicitly rather than relying on Settings(env_file=".env").
+      # Must resolve to an ABSOLUTE path, unlike the volume line below:
+      # runner.py hands this string straight to a nested `docker run -v`
+      # from inside this container, and that bind-mount source is
+      # resolved by the HOST daemon, which has no idea what this
+      # container's own working directory means. ${PWD} is the
+      # directory `docker compose` itself was run from -- the repo
+      # root, by the same convention every other relative path in this
+      # file already assumes.
+      OUTPUT_ROOT_HOST_PATH: ${OUTPUT_ROOT_HOST_PATH:-${PWD}/runs}
+      HARNESS_IMAGE: ${HARNESS_IMAGE:-registry.local/evalscope:2ce95c3}
+      HARNESS_DOCKER_NETWORK: ${HARNESS_DOCKER_NETWORK:-evaluation-service_default}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     volumes:
@@ -71,9 +85,26 @@ services:
       # notice, with a clear I/O error rather than a compose-level failure.
       - ${CLUSTER_SSH_KEY_HOST_PATH:-/dev/null}:/secrets/cluster_ssh_key:ro
       - ${CLUSTER_SSH_KNOWN_HOSTS_HOST_PATH:-/dev/null}:/root/.ssh/known_hosts:ro
+      # The harness (Phase 4). The backend spawns harness containers as
+      # siblings via the host Docker daemon -- not children -- so it
+      # needs the daemon's own socket, not a nested Docker-in-Docker
+      # setup. ./runs is a host directory, not a named volume: `docker
+      # compose down -v` must never take a run's predictions with it
+      # (see harness/evalscope's own module docstrings).
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${OUTPUT_ROOT_HOST_PATH:-./runs}:/data/evalsvc/runs
     depends_on:
       postgres:
         condition: service_healthy
+
+  # Built by `docker compose build harness` (part of the stack's normal
+  # build story) but never started by a plain `docker compose up` --
+  # the backend spawns short-lived containers from this image itself,
+  # one per eval run (app/services/harness/runner.py).
+  harness:
+    build: ./harness/evalscope
+    image: ${HARNESS_IMAGE:-registry.local/evalscope:2ce95c3}
+    profiles: ["build-only"]
 
   frontend:
     build:

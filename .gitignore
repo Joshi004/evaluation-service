@@ -4,6 +4,11 @@
 # Environment overrides (copy .env.example to .env, don't commit it)
 .env
 
+# Eval run outputs (Phase 4) -- a host directory, not a named volume,
+# precisely so nobody's `docker compose down -v` deletes a prediction
+# file. No retention policy, so this can grow large; keep it local.
+/runs/
+
 # Python
 __pycache__/
 *.py[cod]

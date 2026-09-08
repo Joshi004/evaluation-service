@@ -42,10 +42,20 @@ class Settings(BaseSettings):
     slurm_walltime_seconds: int = 7200
     cluster_log_root: str = "/home/shared/eval-service/logs"
 
-    # Our own server (Appendix C). Also unused until later phases.
+    # Our own server (Appendix C).
     output_root: str = "/data/evalsvc/runs"
+    # Two settings for one directory: output_root is where the backend
+    # reads the run tree, output_root_host_path is what `docker run -v`
+    # is given, because the harness container is created by the host
+    # Docker daemon and never sees our own mount namespace. Same split
+    # as CLUSTER_SSH_KEY_HOST_PATH below and in docker-compose.yml.
+    output_root_host_path: str = "./runs"
     hf_home: str = "/data/evalsvc/hf-cache"
     harness_image: str = "registry.local/evalscope:2ce95c3"
+    # The docker-compose network the backend's own container is on, so
+    # a harness container joins it and can reach the Phase 3 tunnel at
+    # http://backend:PORT/v1 (see services/cluster/tunnel.py).
+    harness_docker_network: str = "evaluation-service_default"
     standards_dir: str = "/standards"
 
 

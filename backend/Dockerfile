@@ -7,6 +7,12 @@
 FROM python:3.12-slim
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+# The docker CLI (Phase 4): app/services/harness/runner.py shells out to
+# `docker run` to spawn harness containers as siblings on the host
+# daemon (via the socket mount in docker-compose.yml). One static
+# binary, no daemon and no apt repo needed for it -- python:3.12-slim
+# has neither.
+COPY --from=docker:27-cli /usr/local/bin/docker /usr/local/bin/docker
 
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
     UV_COMPILE_BYTECODE=1 \
