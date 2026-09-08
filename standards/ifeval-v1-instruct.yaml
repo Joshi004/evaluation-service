@@ -1,0 +1,91 @@
+# standards/ifeval-v1-instruct.yaml
+#
+# IFEval, Instruct mode (no thinking). Layer 1 is identical to
+# ifeval-v1-think.yaml; only enable_thinking and the sampling block differ.
+
+label: ifeval/v1-instruct
+
+# --- Layer 1: the protocol ------------------------------------------------
+
+benchmark: ifeval
+framework: evalscope
+framework_image: registry.local/evalscope:2ce95c3
+task_name: ifeval
+
+dataset_name: opencompass/ifeval
+# Source: EvalScope's own adapter registration, confirmed from a real
+# resolved task_config.yaml. NOT "google/IFEval" -- that's the paper's
+# release, a different id from the ModelScope mirror EvalScope fetches.
+
+dataset_revision: null
+# Decision D3, confirmed 8 Sep. EvalScope's dataset_args expose no revision
+# knob for a ModelScope-hosted set, so there is no real value to put here.
+# The column is nullable for exactly this case: null says "we don't have
+# one" rather than standing in a fake pin. Revisit the day a real revision
+# string exists -- setting it then is a new recipe row, like any other
+# field change.
+
+split: train            # source: EvalScope. IFEval ships one split, oddly named "train".
+few_shot: 0             # source: paper and EvalScope agree.
+prompt_template: ""     # source: paper and EvalScope agree -- no wrapper at all.
+# The empty template isn't cosmetic: IFEval's instructions include things
+# like "respond in all lowercase", so any wrapper we added could itself
+# violate the instruction under test.
+
+extraction:
+  method: none
+  # source: EvalScope. IFEval's checkers run against the raw completion;
+  # there is no separate answer-extraction step for this benchmark.
+
+metrics:
+  - name: prompt_level_strict
+    display_name: "Prompt-level (strict)"
+    harness_key: "prompt_level_strict:mean"
+    higher_is_better: true
+    is_primary: true
+  - name: inst_level_strict
+    display_name: "Instruction-level (strict)"
+    harness_key: "inst_level_strict:mean"
+    higher_is_better: true
+    is_primary: false
+  - name: prompt_level_loose
+    display_name: "Prompt-level (loose)"
+    harness_key: "prompt_level_loose:mean"
+    higher_is_better: true
+    is_primary: false
+  - name: inst_level_loose
+    display_name: "Instruction-level (loose)"
+    harness_key: "inst_level_loose:mean"
+    higher_is_better: true
+    is_primary: false
+  # harness_key is the key inside the report's raw.<task>.metrics block --
+  # verified against a real report.json. EvalScope's key has no "_acc" and
+  # is colon-separated; "prompt_level_strict_acc,none" is lm-eval's format.
+
+repeats: 1
+# source: our decision. IFEval's own 95% CI at n=541 is already +/-4 points;
+# repeats is for the small benchmarks, not this one.
+
+sample_limit: null   # null = the full 541 prompts. Never null on a published run.
+
+# --- Layer 2: sampling. Legitimately depends on the checkpoint. -----------
+
+enable_thinking: false   # this recipe is the Instruct-mode number.
+think_handling: strip    # inert here -- there's no think block to strip. Set
+                         # rather than left ambiguous, per the "every sampling
+                         # column NOT NULL on purpose" rule.
+
+temperature: 0.0          # our decision -- greedy, deterministic.
+top_p: 1.0                # vLLM's own neutral defaults, written down
+top_k: -1                 # explicitly rather than omitted, so nothing is
+min_p: 0.0                # supplied invisibly. min_p never reaches vLLM
+presence_penalty: 0.0     # through this path -- decision D4; must be 0.0.
+repetition_penalty: 1.0
+max_tokens: 8192          # our decision. Generous for a non-thinking 4B reply.
+
+# --- Provenance -----------------------------------------------------------
+# Reference checkpoint: Qwen3-4B-allternary-ep03
+#   (/home/shared/agentic_slm/models/Qwen3-4B-allternary-ep03)
+# Reference score: prompt_level_strict = 0.7412 (n = 541), from a real
+#   completed tool-call run: simple_eval/results/ifeval/
+#   Qwen3-4B-allternary-ep03/full-ternary-04b/run-270187

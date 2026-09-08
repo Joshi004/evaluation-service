@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     cluster_ssh_host: str = "login-6"
     cluster_ssh_user: str = "naresh"
     cluster_ssh_key_path: str = "/secrets/cluster_ssh_key"
+    # The backend image runs as root (no USER in the Dockerfile), so this
+    # is where a read-only mount of the developer's own known_hosts lands
+    # -- see docker-compose.yml. Verifying the login node's host key for
+    # real (rather than known_hosts=None) costs nothing here: validation
+    # already SSHed to it by hand, so the entry already exists.
+    cluster_ssh_known_hosts_path: str = "/root/.ssh/known_hosts"
     cluster_ssh_port: int = 22
     cluster_proxy_jump: str = "login-6"
     slurm_partition: str = "main"

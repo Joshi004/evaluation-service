@@ -42,11 +42,35 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-eval_service}:${POSTGRES_PASSWORD:-eval_service}@postgres:5432/${POSTGRES_DB:-eval_service}
+      # The cluster (Phase 3). Settings(env_file=".env") reads /app/.env
+      # *inside the container*, which doesn't exist -- the real .env lives
+      # at the repo root, outside the ./backend bind mount below. So, same
+      # as DATABASE_URL above, each value has to be passed through
+      # explicitly for an edit to .env to actually reach the app.
+      CLUSTER_SSH_HOST: ${CLUSTER_SSH_HOST:-login-6}
+      CLUSTER_SSH_USER: ${CLUSTER_SSH_USER:-naresh}
+      CLUSTER_SSH_PORT: ${CLUSTER_SSH_PORT:-22}
+      CLUSTER_PROXY_JUMP: ${CLUSTER_PROXY_JUMP:-login-6}
+      SLURM_PARTITION: ${SLURM_PARTITION:-main}
+      SLURM_WALLTIME_SECONDS: ${SLURM_WALLTIME_SECONDS:-7200}
+      CLUSTER_LOG_ROOT: ${CLUSTER_LOG_ROOT:-/home/shared/eval-service/logs}
+      # Fixed container-side paths -- not meant to vary. What varies is
+      # where they're mounted FROM, below.
+      CLUSTER_SSH_KEY_PATH: /secrets/cluster_ssh_key
+      CLUSTER_SSH_KNOWN_HOSTS_PATH: /root/.ssh/known_hosts
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     volumes:
       - ./backend:/app
       - ./standards:/standards:ro
+      # Neither has a meaningful default (unlike the ports/passwords
+      # above) -- both must be set in .env to real absolute paths before
+      # cluster access works. The /dev/null fallback keeps `docker compose
+      # up` working with zero cluster setup (Phases 1-2's guarantee):
+      # mounting it is harmless, and only an actual SSH attempt would ever
+      # notice, with a clear I/O error rather than a compose-level failure.
+      - ${CLUSTER_SSH_KEY_HOST_PATH:-/dev/null}:/secrets/cluster_ssh_key:ro
+      - ${CLUSTER_SSH_KNOWN_HOSTS_HOST_PATH:-/dev/null}:/root/.ssh/known_hosts:ro
     depends_on:
       postgres:
         condition: service_healthy

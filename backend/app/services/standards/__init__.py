@@ -11,9 +11,10 @@ describing:
     "benchmark default" source a run can pick, per Section 5's three-way
     choice.
 
-This module will parse and strictly validate those files with Pydantic
-(a typo in a recipe should fail loudly, not silently) and load them into
-the `recipe` table.
-
-Not implemented yet.
+`loader.py` parses and strictly validates those files with Pydantic (a
+typo in a recipe should fail loudly, not silently) and loads them into
+the `recipe` table -- idempotent, since the row is content-addressed.
+`resolve.py` is the same insert-if-new path for a user override at
+submit time (Phase 6), and `capabilities.py` holds the one per-framework
+table decision D4 needs (docs/IMPLEMENTATION_PHASES.md Section 0.8).
 """
