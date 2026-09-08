@@ -2,9 +2,9 @@
 
 **Date:** Sep 2026
 **About:** [`EVAL_SERVICE_PLAN.md`](./EVAL_SERVICE_PLAN.md) · [`DATA_MODEL.md`](./DATA_MODEL.md) · [`BENCHMARK_UNIFICATION_RESEARCH.md`](./BENCHMARK_UNIFICATION_RESEARCH.md)
-**What this is:** you said the plan is doing too much at once and listed what you'd drop. I went through all of it, checked each item against the rest of the plan and the cluster findings, and looked for more. This is the answer plus a v1 schema.
+**What this is:** you said the plan is doing too much at once and listed what you'd drop. I went through all of it, checked each item against the rest of the plan and the cluster findings, and looked for more. This is the reasoning; the schema itself is in [`DATA_MODEL_V1.md`](./DATA_MODEL_V1.md).
 
-Nothing here changes any code or any other doc.
+**Settled since the first draft of this doc:** no cluster concept at all, `run_group` stays, no system-enforced GPU cap, and nothing runs on the login node.
 
 ---
 
@@ -14,13 +14,14 @@ You were right about nearly all of it. I'd keep eight small things you wanted to
 
 | | Current plan | v1 |
 |---|---|---|
-| Tables | ~20 | **6** |
-| Columns (rough) | ~285 | **~80** |
+| Tables | ~20 | **7** |
+| Columns (rough) | ~285 | **~85** |
 | Hashes | 2 (`recipe_hash`, `profile_hash`) | **1** |
 | Redis | locks, caches, pub/sub, leases | **none** |
 | Background machinery | reconciler loop + state machine | **one task per run** |
 | UI pages | 9 | **5** |
 | S3 | browse, register, stage, verify | **none** |
+| Containers | 4 (postgres, redis, backend, frontend) | **3** |
 
 Nothing in the current schema is built yet — there are zero Alembic migrations and `models/base.py` is an empty `Base` class. So this isn't a rewrite, it's just deciding what to write first. That's a good position to be in.
 
@@ -99,9 +100,7 @@ I'd keep the hash rule from the data model doc as-is, because it's free and gett
 
 ### Agreed, but here's the tweak
 
-**One cluster: I'd drop the table, not just the rows.** You said keep the table and assume one row. But with one cluster, every `cluster_id` column is a constant — that's five columns of noise plus five joins that never branch. And the contents (`ssh_host`, `ssh_user`, `model_root`, `log_root`, `default_partition`, `default_walltime_s`) are deployment config that sits next to the SSH key, not data a user should be able to edit in a UI. Put them in `app/config.py`, which already exists and already uses pydantic-settings.
-
-If you'd rather keep the table for the Cluster page, that's fine — but keep it as a single row with **no `cluster_id` foreign keys anywhere else**. A table nothing points at is cheap; a constant FK on five tables is not. Adding it properly later is one small migration.
+**One cluster: drop the table, not just the rows.** *(Settled — no cluster concept in v1.)* You initially said keep the table with one row. With one cluster, every `cluster_id` column is a constant — five columns of noise plus five joins that never branch. And the contents (`ssh_host`, `ssh_user`, `proxy_jump`, `default_partition`, `default_walltime_s`, `log_root`) are deployment config that sits next to the SSH key, not data a user should edit in a UI. They're in `app/config.py`, which already exists and already uses pydantic-settings. Adding the table properly later is one small migration.
 
 **`endpoint` needs `checkpoint_id`.** Your column list was `id, cluster_id, serving_profile_id`. Without the checkpoint you can't answer "is there already a server running these weights?", and that question is the entire reason endpoints are a separate table — a cold start was measured at **350 seconds of H100 time**. The reuse key is `(checkpoint_id, serving_profile_id)`.
 
@@ -164,10 +163,17 @@ Its whole job is answering "are these weights staged on this cluster, verified, 
 
 `benchmark` is the debatable one. Strip everything v1 doesn't use — `framework_id` (moves to recipe), `modality` (text only), `where_it_runs` (always our server), `family` (no composites), `typical_gpu_hours` (no dry-run estimate), `needs_judge` (no judges), `verified` (dropped), `task_name` and `question_count` (both belong to the recipe) — and you're left with `name` and `display_name`. A two-column table with two rows. I'd make it `recipe.benchmark` as a text slug and get the leaderboard's column list from `SELECT DISTINCT benchmark FROM recipe`. Keep the table if you want somewhere to hang per-benchmark descriptions for a methodology page.
 
-### Two more tables that just aren't v1
+### One more table that just isn't v1
 
-- **`publication`** — the deliberate act of putting a number on the board, with a supersede chain. Your "any result is comparable, colour by hash" decision replaces it. The leaderboard shows the latest run per (checkpoint, recipe) and colours by recipe. Add this back when numbers start leaving the building.
-- **`run_group`** — for sweeps: submit fifteen cells, get one progress bar and one cancel button. v1 submits one run at a time. Add it when you add sweeps.
+**`publication`** — the deliberate act of putting a number on the board, with a supersede chain. Your "any result is comparable, colour by hash" decision replaces it. The leaderboard shows the latest run per (checkpoint, recipe) and colours by recipe. Add this back when numbers start leaving the building.
+
+### `run_group` stays
+
+I'd originally cut this on the assumption that v1 submits one run at a time. You're right that it doesn't — one submit is a grid, a checkpoint against six benchmarks or three checkpoints against two, and those runs need something tying them together for one page and one cancel button.
+
+It stays, stripped to four columns: `id`, `name`, `submitted_by`, `created_at`. No `description`, no `team`, and no `is_dry_run` — a dry-run preview is something the submit page renders before it POSTs, not a row in the database. No `UNIQUE` on `name` either, since two submits can both reasonably be called `smoke` and you navigate by id from the UI anyway.
+
+Every run belongs to a group, including a single run, so `eval_run.run_group_id` is `NOT NULL`. Always creating one is less code than branching on whether there is one.
 
 ### Shrink `serving_profile` from 13 columns to 6
 
@@ -201,10 +207,11 @@ This is reversible. Swapping in a reconciler later is a rewrite of one module pl
 
 ### The one guardrail I would not skip
 
-Dropping the endpoint state machine, the orphan detection and `max_concurrent_gpus` together leaves v1 with no automatic brake on a shared 1200-GPU cluster that three other teams are also using. Two things cost nothing and I'd treat both as non-negotiable:
+Dropping the endpoint state machine, the orphan detection and `max_concurrent_gpus` together leaves v1 with no automatic brake on a shared 1200-GPU cluster that three other teams also use. You've said you'll manage GPU usage by hand, which is fine — but one thing costs nothing and I'd treat it as non-negotiable:
 
-- **An explicit `--time` on every single job.** `main` has `MaxTime=UNLIMITED` and `DefaultTime=NONE`, so the cluster will never impose one for us. This is the only thing standing between a forgotten vLLM server and eight idle H100s over a weekend. It bounds the damage by construction.
-- **A hard cap on live endpoints in config.** `MAX_LIVE_ENDPOINTS=2`, checked with `SELECT count(*) FROM endpoint WHERE expires_at > now()` before submitting. One query, no table, no orphan tracking, and it makes a runaway loop impossible.
+**An explicit `--time` on every single job.** `main` has `MaxTime=UNLIMITED` and `DefaultTime=NONE`, so the cluster will never impose one for us. This is the only thing standing between a forgotten vLLM server and eight idle H100s over a weekend, and it bounds the damage by construction rather than by anyone remembering to check.
+
+*(Settled: no system-enforced GPU or endpoint cap.)* One number makes managing it by eye practical: **the GPUs a submit costs equals the number of distinct checkpoints in it**, not the number of runs — because benchmarks against the same checkpoint share one server. A 3-checkpoint × 6-benchmark grid is 18 runs and 3 GPUs. The Endpoints page plus `expires_at` shows what's live at any moment.
 
 ---
 
@@ -227,115 +234,19 @@ So the only genuinely different thing is run output, and that's now one `output_
 
 ## The v1 schema
 
-Six tables. Every column here has a reason; anything I couldn't justify for the first real number is gone.
+**The DDL lives in [`DATA_MODEL_V1.md`](./DATA_MODEL_V1.md)** — that's the reference to build from, and keeping it in one place stops the two docs drifting. Seven tables:
 
-```sql
--- 1. weights we can evaluate. always already on the cluster in v1.
-CREATE TABLE checkpoint (
-    id                   bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    name                 text NOT NULL UNIQUE,      -- 'Qwen3-4B-allternary-ep03'
-    path                 text NOT NULL,             -- '/home/shared/agentic_slm/models/...'
-    family               text,                      -- 'Qwen3-4B', for grouping in the UI
-    parent_checkpoint_id bigint REFERENCES checkpoint(id),
-    serving_profile_id   bigint NOT NULL REFERENCES serving_profile(id),
-    generation_config    jsonb,                     -- the checkpoint's own sampling defaults
-    registered_by        text,
-    created_at           timestamptz NOT NULL DEFAULT now()
-);
+| Table | What it's for | Replaces |
+|---|---|---|
+| `serving_profile` | how to launch vLLM; the endpoint reuse key | itself, minus 7 columns folded into `vllm_flags` |
+| `checkpoint` | weights we can evaluate, always already on the NFS | `model`, `artifact_location`, `s3_listing_cache` |
+| `recipe` | everything that can change the number; immutable, content-addressed | `recipe`, `recipe_metric`, `sampling_profile`, `framework`, `benchmark` |
+| `run_group` | ties one submit's runs together | itself, minus 3 columns |
+| `endpoint` | a running vLLM server | `endpoint` + `job` |
+| `eval_run` | one attempt to evaluate one checkpoint under one recipe | itself, minus ~27 columns; `publication`, `audit_event`, `run_artifact` |
+| `metric` | one row per number produced | itself, minus 5 columns |
 
--- 2. how to launch vllm for this family of weights. also the endpoint reuse key.
-CREATE TABLE serving_profile (
-    id             bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    name           text NOT NULL UNIQUE,            -- 'qwen3'
-    vllm_flags     text[] NOT NULL DEFAULT '{}',    -- one argv token per element
-    gpus           smallint NOT NULL DEFAULT 1,
-    max_model_len  integer,
-    engine_version text NOT NULL,                   -- '0.19.0'
-    created_at     timestamptz NOT NULL DEFAULT now()
-);
-
--- 3. everything that defines how a benchmark is run. immutable, content-addressed.
-CREATE TABLE recipe (
-    id                bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    hash              char(16) NOT NULL UNIQUE,     -- identity. computed from the content.
-    label             text,                         -- 'ifeval/v1'; NULL = ad-hoc override
-    benchmark         text NOT NULL,                -- 'ifeval'
-    framework         text NOT NULL,                -- 'evalscope' -- also picks the parser
-    framework_image   text NOT NULL,                -- pinned image ref or digest
-    task_name         text NOT NULL,                -- what the harness calls it
-    dataset_name      text NOT NULL,
-    dataset_revision  text NOT NULL,                -- pinned, not merely recorded
-    split             text,
-    few_shot          smallint NOT NULL DEFAULT 0,
-    prompt_template   text NOT NULL DEFAULT '',
-    extraction        jsonb NOT NULL,               -- genuinely shapeless per benchmark
-    metrics           jsonb NOT NULL,               -- [{name, display_name,
-                                                    --   higher_is_better, is_primary,
-                                                    --   harness_key}]
-    repeats           smallint NOT NULL DEFAULT 1,
-    sample_limit      integer,                      -- harness --limit; NULL = full run
-    -- sampling, as real columns. every one NOT NULL on purpose:
-    -- anything we leave unset is a value the checkpoint fills in for us, invisibly.
-    temperature        double precision NOT NULL,
-    top_p              double precision NOT NULL,
-    top_k              integer NOT NULL,
-    min_p              double precision NOT NULL DEFAULT 0.0,
-    presence_penalty   double precision NOT NULL DEFAULT 0.0,
-    repetition_penalty double precision NOT NULL DEFAULT 1.0,
-    max_tokens         integer NOT NULL,
-    enable_thinking    boolean NOT NULL,            -- think vs no-think = two recipes
-    think_handling     text NOT NULL
-                            CHECK (think_handling IN ('strip','as_is')),
-    created_at        timestamptz NOT NULL DEFAULT now()
-);
-
--- 4. a running vllm server. one slurm serve job per row; no separate job table.
-CREATE TABLE endpoint (
-    id                 bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    checkpoint_id      bigint NOT NULL REFERENCES checkpoint(id),
-    serving_profile_id bigint NOT NULL REFERENCES serving_profile(id),
-    url                text,                        -- one reachable URL, not node+port
-    slurm_job_id       integer,
-    expires_at         timestamptz NOT NULL,        -- submitted_at + walltime
-    created_at         timestamptz NOT NULL DEFAULT now()
-);
-
--- 5. one attempt to evaluate one checkpoint under one recipe.
-CREATE TABLE eval_run (
-    id              bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    checkpoint_id   bigint NOT NULL REFERENCES checkpoint(id),
-    recipe_id       bigint NOT NULL REFERENCES recipe(id),
-    endpoint_id     bigint REFERENCES endpoint(id),
-    status          text NOT NULL
-                         CHECK (status IN ('queued','running','done','failed','cancelled')),
-    output_dir      text,                           -- harness wrote everything here
-    results_json    jsonb,                          -- the harness summary, verbatim
-    truncation_rate double precision,               -- 12/12 on the milestone 1 checkpoint
-    error           text,
-    submitted_by    text,
-    created_at      timestamptz NOT NULL DEFAULT now(),
-    started_at      timestamptz,
-    finished_at     timestamptz
-);
-
--- 6. one row per number a run produced. rows, not columns, so a new
---    benchmark never needs a migration.
-CREATE TABLE metric (
-    id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    eval_run_id bigint NOT NULL REFERENCES eval_run(id) ON DELETE CASCADE,
-    name        text NOT NULL,                      -- 'prompt_level_strict'
-    value       double precision NOT NULL,          -- normalized: fractions are 0..1
-    n_samples   integer,                            -- 541 for a full IFEval run
-    is_primary  boolean NOT NULL DEFAULT false,
-    UNIQUE (eval_run_id, name)
-);
-
-CREATE INDEX eval_run_board ON eval_run (checkpoint_id, recipe_id, finished_at DESC)
-    WHERE status = 'done';
-CREATE INDEX endpoint_reuse ON endpoint (checkpoint_id, serving_profile_id, expires_at);
-```
-
-One index each for the two queries that run constantly — the leaderboard and endpoint reuse. Everything else can table-scan at these row counts.
+The rest of this section is the reasoning behind two choices in there that are easy to get wrong.
 
 ### On results storage
 
@@ -380,8 +291,13 @@ Worth being straight about this so nobody's surprised later. None of it is a one
 | `publication` | No "official number" concept | One table plus a publish button |
 | Re-scoring (`inference_source_run_id`) | A scoring fix means re-running on GPUs | Add one column later — **but keep the predictions from day one.** A prediction we deleted is a re-score we can't do, and that's the one thing on this list you genuinely cannot recover. No retention policy in v1: keep everything. |
 | `audit_event` | No durable who-did-what beyond `submitted_by` | One append-only table, written from the controller layer |
-| GPU admission control | A runaway loop could take real GPUs | The `--time` rule and the config cap cover the realistic cases |
+| GPU admission control | A runaway loop could take real GPUs | Managed by hand. The `--time` rule bounds the damage; a config cap is three lines if it ever bites |
+| `cluster` table | Nothing today | One table, one row, add the FKs back to five tables |
 | Error bars stored | Nothing — they're derived | Already have `value` and `n_samples` |
+
+**Also considered and rejected: running the service on the login node.** It looked like it would remove the SSH connector, the tunnels and the latency in one go. I checked the box directly and it doesn't work — there's no Docker daemon, `/` is NFSv3, the only local disk is a Kubernetes `emptyDir` that's wiped if the pod moves, Postgres isn't installed and there's no root to install it, and PID 1 is `sshd` so nothing restarts anything. The plan's original "nothing of ours runs there" was right. Full findings are in Section 1 of [`DATA_MODEL_V1.md`](./DATA_MODEL_V1.md).
+
+One useful thing came out of looking, though: **the SLURM daemons are fast.** `squeue`, `sinfo` and `sacct` all return in 0.05–0.15 s run locally. So the 27 s and 47 s in the validation doc were SSH connect plus a login node at load average 17 — not slow schedulers. With a pooled connection, expect a second or two typical. Still use generous timeouts and one bulk `squeue` per tick, but the SSH path is much less painful than those numbers implied.
 
 ---
 
@@ -389,18 +305,19 @@ Worth being straight about this so nobody's surprised later. None of it is a one
 
 Two steps instead of four milestones.
 
-**Step 1 — the schema and an empty board.** The six tables above, one Alembic migration, the YAML loader, `standards/ifeval.yaml` with every field sourced, and a leaderboard page that correctly renders nothing. No cluster contact. Seed one `serving_profile` (`qwen3`) and register `/home/shared/agentic_slm/models/Qwen3-4B-allternary-ep03` as a checkpoint.
+**Step 1 — the schema and an empty board.** The seven tables, one Alembic migration, the YAML loader, `standards/ifeval.yaml` with every field sourced, and a leaderboard page that correctly renders nothing. No cluster contact at all. Seed one `serving_profile` (`qwen3`) and register `/home/shared/agentic_slm/models/Qwen3-4B-allternary-ep03` as a checkpoint — I checked, it's still there.
 
 **Step 2 — one real number.** The SSH connector behind the six-method interface, the serve job template (explicit `--time`, `--generation-config vllm`, `kill -0` liveness check inside the readiness loop, port from `8000 + (job_id % 250) * 8`), the EvalScope container, the per-run background task, the result parser, and the run detail page. Then run IFEval at full size and compare against the team's number.
 
-Three things carry over from the validation work and are worth restating because they're cheap and each one has already cost someone real time:
+Four things carry over from the validation work and are worth restating because they're cheap and each one has already cost someone real time:
 
 - **Expect a six-minute cold start.** 350 seconds measured for a 4B model — about 128s of Python imports off the NFS, 80s to read the 8 GB shard, 72s of engine init. The 900-second readiness timeout is right.
 - **Check `kill -0` on the vLLM process inside the readiness loop.** A bad flag killed the server in seconds and the readiness poll then held an H100 for 10 minutes 46 seconds polling a dead process.
-- **Never trust a cached node name.** Even with one URL column, re-read it from `squeue` if a connection fails rather than assuming the server is dead — a stale hostname and a dead server look identical.
+- **Never trust a cached node name.** Re-read it from `squeue` and rebuild the tunnel if a connection fails, rather than assuming the server is dead — a stale hostname and a dead server look identical.
+- **Pool the SSH connections and supervise the tunnels.** A cold connect is 16 seconds against about 1 for a reused one, and a tunnel died unprompted during validation. Keepalives plus a reconnect path, not a retry that gives up.
 
 And the one open question that v1 can't dodge, because it decides what `recipe.think_handling` and `max_tokens` get seeded with: **what is our default think handling, and what is the token budget?** The recommendation in the plan is `strip`, on the evidence that this checkpoint returns no answer at all otherwise. Under immutable recipes this is less scary than it was — a different answer is just a different recipe row and a different colour — but somebody still has to pick what goes in `ifeval/v1`.
 
 ---
 
-*Everything about the cluster quoted here — the 350-second cold start, the 47-second `sacct`, the 12-of-12 truncation, the 8 GB shard at ~100 MB/s, `MaxTime=UNLIMITED` — is measured and comes from [`CLUSTER_VALIDATION.md`](./CLUSTER_VALIDATION.md). Table and column shapes are the ones in Section 5 of [`DATA_MODEL.md`](./DATA_MODEL.md), reduced. The claim that EvalScope reports a per-metric sample count comes from the real `summary.json` quoted in that doc's Section 7. Row-count arithmetic is arithmetic on assumptions, not measurement.*
+*Everything about the cluster quoted here — the 350-second cold start, the 12-of-12 truncation, the 16-second cold SSH connect, the 8 GB shard at ~100 MB/s, `MaxTime=UNLIMITED` — is measured and comes from [`CLUSTER_VALIDATION.md`](./CLUSTER_VALIDATION.md). The login-node findings and the 0.05–0.15 s SLURM latencies I measured directly on `login-4` on 8 Sep 2026; they supersede that doc's 27–47 s figures, which included SSH connect time and a heavily loaded login node. Table and column shapes are the ones in Section 5 of [`DATA_MODEL.md`](./DATA_MODEL.md), reduced — the buildable version is [`DATA_MODEL_V1.md`](./DATA_MODEL_V1.md). The claim that EvalScope reports a per-metric sample count comes from the real `summary.json` quoted in that doc's Section 7. Row-count arithmetic is arithmetic on assumptions, not measurement.*

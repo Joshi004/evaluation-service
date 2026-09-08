@@ -1,6 +1,15 @@
 # The Data Model — Postgres, Redis, and How It All Moves
 
+> ## ⚠️ Deferred — not the schema we're building
+>
+> **This document describes the full target design and is deferred to a later version.** It is kept because the reasoning in it is good and we will want most of it eventually — but it is roughly 20 tables, two hashes, a Redis layer and a reconciler loop, which is more than we can build with confidence up front.
+>
+> **For version 1, build [`DATA_MODEL_V1.md`](./DATA_MODEL_V1.md)** — seven tables, one hash, no Redis, no reconciler, no S3, no cluster table. [`V1_SIMPLIFICATION.md`](./V1_SIMPLIFICATION.md) explains what was cut, why, and how to get each piece back.
+>
+> Treat this file as the reference for *how* to reintroduce something once v1 is running, not as a build target. Two corrections to note while reading it: the 27–47 second SLURM command latencies quoted throughout were SSH connect time plus a heavily loaded login node — the scheduler daemons themselves answer in 0.05–0.15 seconds — and the `sampling_profile` / `model_profile` split is moot in v1, where sampling lives as real columns on an immutable `recipe` row.
+
 **Date:** Sep 2026
+**Status:** Deferred. See the banner above.
 **Companion to:** [`EVAL_SERVICE_PLAN.md`](./EVAL_SERVICE_PLAN.md) · [`CLUSTER_VALIDATION.md`](./CLUSTER_VALIDATION.md) · [`BENCHMARK_UNIFICATION_RESEARCH.md`](./BENCHMARK_UNIFICATION_RESEARCH.md)
 **What this is:** Section 10 of the plan was a sketch — table names and column names, no types, no keys, no indexes. This turns it into something you could hand to Alembic on Monday, plus the part the plan doesn't cover at all: what Redis is actually for, and how the pieces move at runtime.
 
