@@ -10,6 +10,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
+from app.schemas.recipes import RecipeFieldWarning
+
 
 class RecipeExtraction(BaseModel):
     """The `extraction` column is "shapeless per benchmark" (DATA_MODEL_V1.md
@@ -120,18 +122,6 @@ class StandardDocument(BaseModel):
             "enable_thinking": self.enable_thinking,
             "think_handling": self.think_handling,
         }
-
-
-class RecipeFieldWarning(BaseModel):
-    """A recipe field whose value is recorded but has no effect for this
-    recipe's framework -- e.g. a non-zero `min_p` under evalscope (decision
-    D4; see app/services/standards/capabilities.py). Surfaced next to the
-    field on the Standards page rather than hidden or rejected at load
-    time.
-    """
-
-    field: str
-    message: str
 
 
 class StandardRecipe(BaseModel):

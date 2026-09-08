@@ -12,7 +12,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Checkpoint, ServingProfile
+from app.models import Checkpoint, Recipe, ServingProfile
 from app.schemas.runs import RunSubmission
 from app.services.endpoints import queries as endpoints_queries
 from app.services.recipes import queries as recipes_queries
@@ -34,6 +34,38 @@ class SubmitValidationError(Exception):
     """
 
 
+async def load_checkpoints_and_profiles(
+    db: AsyncSession, checkpoint_ids: list[int]
+) -> list[tuple[Checkpoint, ServingProfile]] | None:
+    """None if any checkpoint_id doesn't exist, so the caller's router
+    can 404. Shared with `preview.py`'s read-only `preview_runs` (Phase
+    6) so the two can never resolve a grid's checkpoints differently.
+    """
+    checkpoints_and_profiles: list[tuple[Checkpoint, ServingProfile]] = []
+    for checkpoint_id in checkpoint_ids:
+        checkpoint_and_profile = await endpoints_queries.get_checkpoint_and_serving_profile(
+            db, checkpoint_id
+        )
+        if checkpoint_and_profile is None:
+            return None
+        checkpoints_and_profiles.append(checkpoint_and_profile)
+    return checkpoints_and_profiles
+
+
+async def load_base_recipes(db: AsyncSession, recipe_ids: list[int]) -> list[Recipe] | None:
+    """None if any recipe_id doesn't exist -- see
+    `load_checkpoints_and_profiles`, its sibling for the other half of
+    the grid.
+    """
+    base_recipes: list[Recipe] = []
+    for recipe_id in recipe_ids:
+        base_recipe = await recipes_queries.get_recipe(db, recipe_id)
+        if base_recipe is None:
+            return None
+        base_recipes.append(base_recipe)
+    return base_recipes
+
+
 async def submit_runs(
     db: AsyncSession,
     name: str,
@@ -46,21 +78,13 @@ async def submit_runs(
     router 404s. Raises SubmitValidationError for a pair that cannot run
     as requested.
     """
-    checkpoints_and_profiles: list[tuple[Checkpoint, ServingProfile]] = []
-    for checkpoint_id in checkpoint_ids:
-        checkpoint_and_profile = await endpoints_queries.get_checkpoint_and_serving_profile(
-            db, checkpoint_id
-        )
-        if checkpoint_and_profile is None:
-            return None
-        checkpoints_and_profiles.append(checkpoint_and_profile)
+    checkpoints_and_profiles = await load_checkpoints_and_profiles(db, checkpoint_ids)
+    if checkpoints_and_profiles is None:
+        return None
 
-    base_recipes = []
-    for recipe_id in recipe_ids:
-        base_recipe = await recipes_queries.get_recipe(db, recipe_id)
-        if base_recipe is None:
-            return None
-        base_recipes.append(base_recipe)
+    base_recipes = await load_base_recipes(db, recipe_ids)
+    if base_recipes is None:
+        return None
 
     # Validate the whole grid before resolving anything -- see module
     # docstring on why a rejected submit must never mint a recipe row.
@@ -89,24 +113,44 @@ async def submit_runs(
     return RunSubmission(run_group_id=run_group.id, run_ids=run_ids)
 
 
-def _check_fits_context_window(
+def context_window_conflict(
     recipe_config: dict[str, Any], serving_profile: ServingProfile
-) -> None:
+) -> str | None:
+    """None if `recipe_config` fits `serving_profile`'s context window,
+    otherwise the exact reason it doesn't. Returning the reason rather
+    than raising directly is what lets `preview.py`'s read-only preview
+    report the same text `_check_fits_context_window` below would 400
+    with -- the two must never disagree about what a value does.
+    """
     if serving_profile.max_model_len is None:
-        return
+        return None
     max_tokens = recipe_config["max_tokens"]
     if max_tokens + _PROMPT_ALLOWANCE_TOKENS > serving_profile.max_model_len:
-        raise SubmitValidationError(
+        return (
             f"recipe max_tokens ({max_tokens}) plus a {_PROMPT_ALLOWANCE_TOKENS}-token "
             f"prompt allowance exceeds serving profile {serving_profile.name!r}'s "
             f"max_model_len ({serving_profile.max_model_len})"
         )
+    return None
 
 
-def _check_think_handling_compatible(
+def _check_fits_context_window(
     recipe_config: dict[str, Any], serving_profile: ServingProfile
 ) -> None:
-    """Phase 2 Trap T5: think_handling='strip' is only mechanically true
+    reason = context_window_conflict(recipe_config, serving_profile)
+    if reason is not None:
+        raise SubmitValidationError(reason)
+
+
+def think_handling_conflict(
+    recipe_config: dict[str, Any], serving_profile: ServingProfile
+) -> str | None:
+    """None if `recipe_config`'s think_handling is compatible with
+    `serving_profile`, otherwise the exact reason it isn't -- see
+    `context_window_conflict` above on why this returns rather than
+    raises.
+
+    Phase 2 Trap T5: think_handling='strip' is only mechanically true
     when the endpoint's profile carries --reasoning-parser -- vLLM has to
     split <think>...</think> into reasoning_content before EvalScope ever
     sees content. An 'as_is' recipe needs the opposite: no reasoning
@@ -117,8 +161,17 @@ def _check_think_handling_compatible(
     """
     has_reasoning_parser = "--reasoning-parser" in serving_profile.vllm_flags
     if recipe_config["think_handling"] == "as_is" and has_reasoning_parser:
-        raise SubmitValidationError(
+        return (
             f"recipe think_handling='as_is' cannot run against serving profile "
             f"{serving_profile.name!r}, which carries --reasoning-parser: the think "
             "block would never reach the completion this recipe means to score whole"
         )
+    return None
+
+
+def _check_think_handling_compatible(
+    recipe_config: dict[str, Any], serving_profile: ServingProfile
+) -> None:
+    reason = think_handling_conflict(recipe_config, serving_profile)
+    if reason is not None:
+        raise SubmitValidationError(reason)

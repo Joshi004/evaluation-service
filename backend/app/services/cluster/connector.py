@@ -131,9 +131,21 @@ async def logs(path: str, follow: bool = False) -> str | AsyncIterator[str]:
 
 
 async def _follow(conn: asyncssh.SSHClientConnection, path: str) -> AsyncIterator[str]:
+    """`tail -f` over SSH, closed in a `finally` (Phase 6 addition) so a
+    subscriber that stops consuming this generator early -- an abandoned
+    browser tab, or its own run reaching a terminal status -- always
+    closes the remote channel instead of leaking a `tail -f` process on
+    the login node (Trap T3). Cancelling the task that owns this
+    generator's `async for` throws into this exact frame, which is what
+    makes that cleanup run even though nothing here calls `.aclose()`
+    directly.
+    """
     process = await conn.create_process(f"tail -f {path}")
-    async for line in process.stdout:
-        yield line
+    try:
+        async for line in process.stdout:
+            yield line
+    finally:
+        process.close()
 
 
 async def stage_file(local_path: str, remote_path: str) -> None:

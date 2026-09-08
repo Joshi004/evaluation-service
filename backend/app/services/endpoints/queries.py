@@ -51,8 +51,9 @@ async def get_checkpoint_and_serving_profile(
     for the checkpoints resource), this returns the models themselves,
     for internal use. Starting an endpoint directly (POST /endpoints) was
     the only caller through Phase 4; Phase 5's submit path
-    (app.services.runs.submit) is a second, reusing this rather than
-    duplicating the join.
+    (app.services.runs.submit) is a second, and Phase 6's read-only
+    preview (app.services.runs.preview) is a third, both reusing this
+    rather than duplicating the join.
     """
     stmt = (
         select(Checkpoint, ServingProfile)

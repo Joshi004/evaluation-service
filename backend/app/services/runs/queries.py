@@ -13,42 +13,174 @@ from datetime import UTC, datetime
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Checkpoint, EvalRun, Recipe, RunGroup, ServingProfile
-from app.schemas.runs import RunListItem
+from app.models import Checkpoint, Endpoint, EvalRun, Metric, Recipe, RunGroup, ServingProfile
+from app.schemas.runs import (
+    RunDetail,
+    RunEndpointSummary,
+    RunListItem,
+    RunMetric,
+    RunRecipeDetail,
+)
+from app.services.standards.capabilities import sampling_field_warnings
 
 _ACTIVE_STATUSES = ("queued", "running")
+
+
+def _to_run_list_item(
+    run: EvalRun,
+    checkpoint_name: str,
+    recipe_label: str | None,
+    recipe_hash: str,
+    benchmark: str,
+    run_group_name: str,
+) -> RunListItem:
+    return RunListItem(
+        id=run.id,
+        run_group_id=run.run_group_id,
+        run_group_name=run_group_name,
+        checkpoint_id=run.checkpoint_id,
+        checkpoint_name=checkpoint_name,
+        recipe_id=run.recipe_id,
+        recipe_label=recipe_label,
+        recipe_hash=recipe_hash,
+        benchmark=benchmark,
+        endpoint_id=run.endpoint_id,
+        status=run.status,
+        truncation_rate=run.truncation_rate,
+        error=run.error,
+        submitted_by=run.submitted_by,
+        created_at=run.created_at,
+        started_at=run.started_at,
+        finished_at=run.finished_at,
+    )
 
 
 async def list_runs(
     db: AsyncSession, status: str | None, run_group_id: int | None
 ) -> list[RunListItem]:
     """Eval runs, most recent first, optionally filtered by status
-    and/or run group.
+    and/or run group. Joins in checkpoint name, recipe label/hash/
+    benchmark and run group name -- the same join get_run_list_item
+    below uses for one run, so the Runs list and a run's detail page can
+    never show a different name for the same ids.
     """
-    stmt = select(EvalRun).order_by(EvalRun.created_at.desc())
+    stmt = (
+        select(EvalRun, Checkpoint.name, Recipe.label, Recipe.hash, Recipe.benchmark, RunGroup.name)
+        .join(Checkpoint, EvalRun.checkpoint_id == Checkpoint.id)
+        .join(Recipe, EvalRun.recipe_id == Recipe.id)
+        .join(RunGroup, EvalRun.run_group_id == RunGroup.id)
+        .order_by(EvalRun.created_at.desc())
+    )
     if status is not None:
         stmt = stmt.where(EvalRun.status == status)
     if run_group_id is not None:
         stmt = stmt.where(EvalRun.run_group_id == run_group_id)
 
-    runs = (await db.execute(stmt)).scalars().all()
-    return [
-        RunListItem(
-            id=run.id,
-            run_group_id=run.run_group_id,
-            checkpoint_id=run.checkpoint_id,
-            recipe_id=run.recipe_id,
-            endpoint_id=run.endpoint_id,
-            status=run.status,
-            truncation_rate=run.truncation_rate,
-            error=run.error,
-            submitted_by=run.submitted_by,
-            created_at=run.created_at,
-            started_at=run.started_at,
-            finished_at=run.finished_at,
-        )
-        for run in runs
-    ]
+    rows = (await db.execute(stmt)).all()
+    return [_to_run_list_item(*row) for row in rows]
+
+
+async def get_run_list_item(db: AsyncSession, eval_run_id: int) -> RunListItem | None:
+    """The same enriched shape as list_runs, for one run -- cancel_run's
+    response (controllers/runs.py) needs it too, not just the bare
+    eval_run row worker.cancel_run returns.
+    """
+    stmt = (
+        select(EvalRun, Checkpoint.name, Recipe.label, Recipe.hash, Recipe.benchmark, RunGroup.name)
+        .join(Checkpoint, EvalRun.checkpoint_id == Checkpoint.id)
+        .join(Recipe, EvalRun.recipe_id == Recipe.id)
+        .join(RunGroup, EvalRun.run_group_id == RunGroup.id)
+        .where(EvalRun.id == eval_run_id)
+    )
+    row = (await db.execute(stmt)).first()
+    if row is None:
+        return None
+    return _to_run_list_item(*row)
+
+
+def _to_run_recipe_detail(recipe: Recipe) -> RunRecipeDetail:
+    """The resolved-recipe half of a run's detail -- every field that
+    can affect the run's score, plus decision D4's per-field warnings
+    (the same sampling_field_warnings the Standards page and the Phase 6
+    preview also use, so a run's own recipe page never disagrees with
+    either).
+    """
+    config = recipe.as_hashable_dict()
+    return RunRecipeDetail(
+        id=recipe.id,
+        hash=recipe.hash,
+        label=recipe.label,
+        benchmark=recipe.benchmark,
+        framework=recipe.framework,
+        framework_image=recipe.framework_image,
+        task_name=recipe.task_name,
+        dataset_name=recipe.dataset_name,
+        dataset_revision=recipe.dataset_revision,
+        split=recipe.split,
+        few_shot=recipe.few_shot,
+        prompt_template=recipe.prompt_template,
+        extraction=recipe.extraction,
+        metrics=recipe.metrics,
+        repeats=recipe.repeats,
+        sample_limit=recipe.sample_limit,
+        temperature=recipe.temperature,
+        top_p=recipe.top_p,
+        top_k=recipe.top_k,
+        min_p=recipe.min_p,
+        presence_penalty=recipe.presence_penalty,
+        repetition_penalty=recipe.repetition_penalty,
+        max_tokens=recipe.max_tokens,
+        enable_thinking=recipe.enable_thinking,
+        think_handling=recipe.think_handling,
+        created_at=recipe.created_at,
+        warnings=sampling_field_warnings(recipe.framework, config),
+    )
+
+
+async def get_run_detail(db: AsyncSession, eval_run_id: int) -> RunDetail | None:
+    """Everything the run detail page needs (Phase 6): the enriched row
+    (shared with list_runs/get_run_list_item), the fully resolved
+    recipe, the endpoint it ran against (None if it never got one --
+    Phase 5's known cancel-before-endpoint gap), and its metric rows.
+
+    Four small queries rather than one giant join: Recipe and Metric
+    each have their own multi-column shape a single flat SELECT would
+    otherwise have to repeat once per metric row.
+    """
+    run_list_item = await get_run_list_item(db, eval_run_id)
+    if run_list_item is None:
+        return None
+
+    eval_run = await db.get(EvalRun, eval_run_id)
+    assert eval_run is not None  # get_run_list_item above just found this row
+
+    recipe = await db.get(Recipe, eval_run.recipe_id)
+    assert recipe is not None  # eval_run.recipe_id is a NOT NULL foreign key
+
+    endpoint_summary = None
+    if eval_run.endpoint_id is not None:
+        endpoint = await db.get(Endpoint, eval_run.endpoint_id)
+        if endpoint is not None:
+            endpoint_summary = RunEndpointSummary(
+                id=endpoint.id,
+                url=endpoint.url,
+                slurm_job_id=endpoint.slurm_job_id,
+                expires_at=endpoint.expires_at,
+            )
+
+    metrics_stmt = select(Metric).where(Metric.eval_run_id == eval_run_id).order_by(Metric.name)
+    metric_rows = (await db.execute(metrics_stmt)).scalars().all()
+
+    return RunDetail(
+        **run_list_item.model_dump(),
+        output_dir=eval_run.output_dir,
+        recipe=_to_run_recipe_detail(recipe),
+        endpoint=endpoint_summary,
+        metrics=[
+            RunMetric(name=m.name, value=m.value, n_samples=m.n_samples, is_primary=m.is_primary)
+            for m in metric_rows
+        ],
+    )
 
 
 async def create_run_group(db: AsyncSession, name: str, submitted_by: str | None) -> RunGroup:

@@ -10,10 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.models import Recipe
-from app.schemas.standards import RecipeFieldWarning, StandardRecipe
+from app.schemas.standards import StandardRecipe
 from app.services.recipes import queries as recipes_queries
 from app.services.standards import loader as standards_loader
-from app.services.standards.capabilities import FRAMEWORK_UNSUPPORTED_SAMPLING_FIELDS
+from app.services.standards.capabilities import sampling_field_warnings
 
 
 async def list_standards(db: AsyncSession) -> list[StandardRecipe]:
@@ -27,23 +27,6 @@ async def reload_standards(db: AsyncSession) -> list[StandardRecipe]:
     await standards_loader.load_all(standards_dir, db)
     recipes = await recipes_queries.list_standards(db)
     return [_to_standard_recipe(recipe, standards_dir) for recipe in recipes]
-
-
-def _build_warnings(recipe: Recipe) -> list[RecipeFieldWarning]:
-    """Decision D4: a value a framework silently drops is recorded, not
-    rejected -- but flagged here so it's visible wherever the recipe is
-    shown to a human.
-    """
-    warnings = []
-    unsupported_fields = FRAMEWORK_UNSUPPORTED_SAMPLING_FIELDS.get(recipe.framework, set())
-    if "min_p" in unsupported_fields and recipe.min_p != 0.0:
-        warnings.append(
-            RecipeFieldWarning(
-                field="min_p",
-                message="not forwarded by evalscope's openai_api path — recorded, has no effect",
-            )
-        )
-    return warnings
 
 
 def _to_standard_recipe(recipe: Recipe, standards_dir: Path) -> StandardRecipe:
@@ -75,6 +58,6 @@ def _to_standard_recipe(recipe: Recipe, standards_dir: Path) -> StandardRecipe:
         enable_thinking=recipe.enable_thinking,
         think_handling=recipe.think_handling,
         created_at=recipe.created_at,
-        warnings=_build_warnings(recipe),
+        warnings=sampling_field_warnings(recipe.framework, recipe.as_hashable_dict()),
         source_yaml=standards_loader.read_source_yaml(standards_dir, recipe.label),
     )

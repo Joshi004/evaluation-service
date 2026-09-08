@@ -2,7 +2,10 @@
 // proxies to the backend container (see vite.config.ts) — no CORS setup
 // needed in development.
 
-const API_BASE = '/api/v1'
+// Exported so LogStream.helper.ts can build an EventSource URL against
+// the same base -- EventSource has no fetch-wrapper equivalent to
+// apiFetch above, so it needs this constant directly.
+export const API_BASE = '/api/v1'
 
 export interface HealthResponse {
   status: string
@@ -107,6 +110,193 @@ export interface StandardRecipe {
   created_at: string
   warnings: RecipeFieldWarning[]
   source_yaml: string | null
+}
+
+// One eval_run row, enriched server-side with the names a human needs
+// to read it without a second round trip -- see app/schemas/runs.py's
+// RunListItem. recipe_label falls back to null for an unlabelled
+// override, in which case recipe_hash is what identifies it.
+export interface RunListItem {
+  id: number
+  run_group_id: number
+  run_group_name: string
+  checkpoint_id: number
+  checkpoint_name: string
+  recipe_id: number
+  recipe_label: string | null
+  recipe_hash: string
+  benchmark: string
+  endpoint_id: number | null
+  status: string
+  truncation_rate: number | null
+  error: string | null
+  submitted_by: string | null
+  created_at: string
+  started_at: string | null
+  finished_at: string | null
+}
+
+// A user override of a base recipe's fields -- see app/schemas/runs.py's
+// RecipeOverrides. Every field is optional and nullable: a key left out
+// entirely means "don't touch this field" (the backend's
+// `exclude_unset=True`), while a key present with `null` is itself an
+// override -- dataset_revision, split and sample_limit are legitimately
+// nullable. Only include a key here once the caller has actually set
+// it.
+export interface RecipeOverrides {
+  benchmark?: string | null
+  framework?: string | null
+  framework_image?: string | null
+  task_name?: string | null
+  dataset_name?: string | null
+  dataset_revision?: string | null
+  split?: string | null
+  few_shot?: number | null
+  prompt_template?: string | null
+  extraction?: Record<string, unknown> | null
+  metrics?: Record<string, unknown>[] | null
+  repeats?: number | null
+  sample_limit?: number | null
+  temperature?: number | null
+  top_p?: number | null
+  top_k?: number | null
+  min_p?: number | null
+  presence_penalty?: number | null
+  repetition_penalty?: number | null
+  max_tokens?: number | null
+  enable_thinking?: boolean | null
+  think_handling?: string | null
+}
+
+// POST /api/v1/runs body -- every (checkpoint, recipe) pair in the
+// cartesian product of checkpoint_ids x recipe_ids becomes one queued
+// run, all sharing one new run_group.
+export interface CreateRunsRequest {
+  name: string
+  checkpoint_ids: number[]
+  recipe_ids: number[]
+  overrides: RecipeOverrides
+  submitted_by?: string | null
+}
+
+export interface RunSubmission {
+  run_group_id: number
+  run_ids: number[]
+}
+
+export interface RunGroupCancellation {
+  run_group_id: number
+  cancelled_run_ids: number[]
+}
+
+// POST /api/v1/runs/preview body -- the same grid shape as
+// CreateRunsRequest minus `name` and `submitted_by`.
+export interface RunPreviewRequest {
+  checkpoint_ids: number[]
+  recipe_ids: number[]
+  overrides: RecipeOverrides
+}
+
+// One (checkpoint, recipe) cell of the grid a submit would create.
+// blocking_error is the exact text POST /runs would 400 with for this
+// pair -- computed by the same backend functions that raise it, so this
+// and a real submit can never disagree about what a value does.
+export interface RunPreviewPair {
+  checkpoint_id: number
+  checkpoint_name: string
+  recipe_id: number
+  recipe_label: string | null
+  benchmark: string
+  blocking_error: string | null
+}
+
+// One field an override would change from the base recipe's value.
+// base_value/override_value are `unknown`, not `any` -- a recipe
+// field's value is genuinely dynamic across fields (a number for
+// temperature, an object for extraction), so the caller has to narrow
+// before using either.
+export interface RecipeFieldChange {
+  field: string
+  base_value: unknown
+  override_value: unknown
+}
+
+// What resolve_recipe would do for one base recipe plus the submit's
+// overrides, without actually doing it -- see app/services/runs/preview.py.
+export interface ResolvedRecipePreview {
+  base_recipe_id: number
+  hash: string
+  is_new_recipe: boolean
+  changed_fields: RecipeFieldChange[]
+  warnings: RecipeFieldWarning[]
+}
+
+// Response for POST /api/v1/runs/preview -- everything the Submit page
+// needs to render before anything POSTs.
+export interface RunPreview {
+  run_count: number
+  gpu_count: number
+  pairs: RunPreviewPair[]
+  resolved_recipes: ResolvedRecipePreview[]
+}
+
+export interface RunMetric {
+  name: string
+  value: number
+  n_samples: number | null
+  is_primary: boolean
+}
+
+// The vLLM server a run ran against -- just enough to show whether it's
+// still live, not the full EndpointListItem shape (checkpoint_name and
+// gpus are already known from the run itself).
+export interface RunEndpointSummary {
+  id: number
+  url: string | null
+  slurm_job_id: number | null
+  expires_at: string
+}
+
+// The fully resolved recipe a run actually used -- the same fields as
+// StandardRecipe minus source_yaml, which only exists for a reviewed
+// standard, not an ad-hoc override.
+export interface RunRecipeDetail {
+  id: number
+  hash: string
+  label: string | null
+  benchmark: string
+  framework: string
+  framework_image: string
+  task_name: string
+  dataset_name: string
+  dataset_revision: string | null
+  split: string | null
+  few_shot: number
+  prompt_template: string
+  extraction: Record<string, unknown>
+  metrics: RecipeMetricDefinition[]
+  repeats: number
+  sample_limit: number | null
+  temperature: number
+  top_p: number
+  top_k: number
+  min_p: number
+  presence_penalty: number
+  repetition_penalty: number
+  max_tokens: number
+  enable_thinking: boolean
+  think_handling: string
+  created_at: string
+  warnings: RecipeFieldWarning[]
+}
+
+// GET /api/v1/runs/{id} -- the full row (RunListItem) plus what a human
+// reads to actually understand what happened.
+export interface RunDetail extends RunListItem {
+  output_dir: string | null
+  recipe: RunRecipeDetail
+  endpoint: RunEndpointSummary | null
+  metrics: RunMetric[]
 }
 
 // FastAPI's HTTPException puts the human-readable reason in a `detail`

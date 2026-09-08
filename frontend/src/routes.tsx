@@ -5,6 +5,7 @@ import { CheckpointDetailPage } from './pages/CheckpointDetailPage'
 import { StandardsPage } from './pages/StandardsPage'
 import { SubmitPage } from './pages/SubmitPage'
 import { RunsPage } from './pages/RunsPage'
+import { RunDetailPage } from './pages/RunDetailPage'
 import { EndpointsPage } from './pages/EndpointsPage'
 import { PrototypeApp } from './prototype/PrototypeApp'
 import { prototypeRouteElements } from './prototype/prototypeRoutes'
@@ -21,6 +22,7 @@ export function AppRoutes() {
         <Route path="standards" element={<StandardsPage />} />
         <Route path="submit" element={<SubmitPage />} />
         <Route path="runs" element={<RunsPage />} />
+        <Route path="runs/:runId" element={<RunDetailPage />} />
         <Route path="endpoints" element={<EndpointsPage />} />
       </Route>
 
