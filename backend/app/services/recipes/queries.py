@@ -51,6 +51,15 @@ async def get_recipe_by_hash(db: AsyncSession, hash_value: str) -> Recipe | None
     return (await db.execute(stmt)).scalar_one_or_none()
 
 
+async def get_recipe(db: AsyncSession, recipe_id: int) -> Recipe | None:
+    """The plain-id lookup submit.py needs for a recipe named in a
+    request body -- get_recipe_by_hash is the identity lookup used
+    internally by the loader and resolve_recipe, a different key for a
+    different caller.
+    """
+    return await db.get(Recipe, recipe_id)
+
+
 async def insert_recipe(
     db: AsyncSession, config: dict[str, Any], hash_value: str, label: str | None
 ) -> Recipe:

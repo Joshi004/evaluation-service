@@ -1,10 +1,16 @@
 """FastAPI application factory.
 
-Assembles middleware and routers, and loads standards/*.yaml into the
-`recipe` table on startup (Phase 2) so a fresh `docker compose up` has
-the two IFEval recipes without a manual reload call. The reconciler loop
-(app/services/reconciler) will likely start from the lifespan context
-below once it exists.
+Assembles middleware and routers, and on startup (Phase 2) loads
+standards/*.yaml into the `recipe` table so a fresh `docker compose up`
+has the two IFEval recipes without a manual reload call, and (Phase 5)
+fails any eval_run left `queued`/`running` by an unclean stop. Per Phase
+5's own "no reconciler and no state machine" decision, a run's
+background worker task is spawned directly from `POST /runs`
+(app.services.runs.worker.spawn_run_worker), not from here -- this
+lifespan only ever runs once, at startup, so it's the wrong place for
+anything that has to happen per run. The reconciler loop
+(app/services/reconciler) remains an unimplemented stub; if it's ever
+built, it would start from the lifespan context below.
 """
 
 import logging
@@ -17,6 +23,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.router import api_router
 from app.config import get_settings
 from app.db import AsyncSessionLocal
+from app.services.runs.recovery import fail_interrupted_runs
 from app.services.standards.loader import load_all
 
 # Uvicorn configures handlers for its own loggers (uvicorn.error,
@@ -34,6 +41,17 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     settings = get_settings()
     async with AsyncSessionLocal() as db:
+        # Before anything else: a run left queued/running by an unclean
+        # stop has no worker left to finish it (Phase 5, item 3 -- v1 has
+        # no reconciler to resume it), so it's marked failed rather than
+        # left looking like it's still in progress forever.
+        failed_run_count = await fail_interrupted_runs(db)
+        if failed_run_count:
+            logger.info(
+                "marked %d run(s) failed on startup (status was queued/running)",
+                failed_run_count,
+            )
+
         loaded = await load_all(Path(settings.standards_dir), db)
         logger.info("loaded %d standard(s) from %s", len(loaded), settings.standards_dir)
     yield

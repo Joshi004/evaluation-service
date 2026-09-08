@@ -64,6 +64,14 @@ def _host_run_directory(eval_run_id: int) -> str:
     return f"{settings.output_root_host_path.rstrip('/')}/run-{eval_run_id}"
 
 
+def _container_name(eval_run_id: int) -> str:
+    """The one name both `run_harness` (below) and `kill_harness_container`
+    use -- a single function so cancel's `docker kill` can never target a
+    different name than `docker run --name` actually used.
+    """
+    return f"evalsvc-harness-run-{eval_run_id}"
+
+
 async def run_harness(
     recipe: Recipe, checkpoint: Checkpoint, endpoint: Endpoint, eval_run_id: int
 ) -> None:
@@ -87,7 +95,7 @@ async def run_harness(
         "run",
         "--rm",
         "--name",
-        f"evalsvc-harness-run-{eval_run_id}",
+        _container_name(eval_run_id),
         "--network",
         settings.harness_docker_network,
         "-v",
@@ -125,3 +133,35 @@ async def run_harness(
     if exit_code != 0:
         tail_lines = output.decode("utf-8", errors="replace").splitlines()[-_STDOUT_TAIL_LINES:]
         raise HarnessFailedError(exit_code=exit_code, stdout_tail="\n".join(tail_lines))
+
+
+async def kill_harness_container(eval_run_id: int) -> None:
+    """Best-effort `docker kill` on this run's harness container, for
+    cancel (Phase 5, Trap T4's sibling problem): cancelling the asyncio
+    task awaiting `run_harness` above does not stop the `docker run`
+    child it started, which would otherwise keep running and keep the
+    endpoint busy as an orphan.
+
+    A run cancelled before the harness container ever started (still
+    waiting on an endpoint) has no matching container -- `docker kill`
+    exits non-zero for that case, logged and swallowed rather than
+    raised, since by definition there is nothing left to kill.
+    """
+    container_name = _container_name(eval_run_id)
+    process = await asyncio.create_subprocess_exec(
+        "docker",
+        "kill",
+        container_name,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT,
+    )
+    assert process.stdout is not None  # guaranteed by stdout=PIPE above
+    output = await process.stdout.read()
+    await process.wait()
+    if process.returncode != 0:
+        logger.info(
+            "docker kill %s exited %d (likely already stopped, or never started): %s",
+            container_name,
+            process.returncode,
+            output.decode("utf-8", errors="replace").strip(),
+        )

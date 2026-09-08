@@ -49,7 +49,10 @@ async def get_checkpoint_and_serving_profile(
     """The raw ORM rows the endpoint lifecycle needs to build a serve
     script. Unlike checkpoints/queries.py (which returns response DTOs
     for the checkpoints resource), this returns the models themselves,
-    for internal use -- starting an endpoint is the only caller.
+    for internal use. Starting an endpoint directly (POST /endpoints) was
+    the only caller through Phase 4; Phase 5's submit path
+    (app.services.runs.submit) is a second, reusing this rather than
+    duplicating the join.
     """
     stmt = (
         select(Checkpoint, ServingProfile)
