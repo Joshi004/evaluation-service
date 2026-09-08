@@ -1,17 +1,16 @@
 import { NavLink, Outlet } from 'react-router'
 
-// The nine pages from EVAL_SERVICE_PLAN.md, Section 13. Leaderboard is
-// the front door and lives at "/"; the rest are one level down.
+// The six pages confirmed by decision D5 (docs/IMPLEMENTATION_PHASES.md):
+// S3 Browser, Compare and Cluster were cut from the original nine.
+// Leaderboard is the front door and lives at "/"; the rest are one level
+// down.
 const navItems = [
   { to: '/', label: 'Leaderboard' },
   { to: '/checkpoints', label: 'Checkpoints' },
   { to: '/standards', label: 'Standards' },
-  { to: '/s3-browser', label: 'S3 Browser' },
   { to: '/submit', label: 'Submit' },
   { to: '/runs', label: 'Runs' },
-  { to: '/compare', label: 'Compare' },
   { to: '/endpoints', label: 'Endpoints' },
-  { to: '/cluster', label: 'Cluster' },
 ]
 
 // Deliberately separate from navItems above: the vision prototype is a

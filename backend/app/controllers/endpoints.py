@@ -1,9 +1,12 @@
-"""Served-endpoint controller.
-
-Will orchestrate calls into app.services.cluster to list served models
-and handle the manual kill action, and shape responses for
-app.api.v1.endpoints. Node/GPU info is always refreshed from the cluster,
-never trusted from the stored row — see EVAL_SERVICE_PLAN.md, Section 10.
-
-Not implemented yet.
+"""Served-endpoint controller -- validates + delegates, no DB access.
+See .cursor/rules/backend-layering.mdc.
 """
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.schemas.endpoints import EndpointListItem
+from app.services.endpoints import queries as endpoints_service
+
+
+async def list_endpoints(db: AsyncSession) -> list[EndpointListItem]:
+    return await endpoints_service.list_live_endpoints(db)

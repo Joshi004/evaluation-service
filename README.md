@@ -9,8 +9,8 @@ only** — no business logic yet. See the design docs for what's actually
 being built and why:
 
 - [`docs/EVAL_SERVICE_PLAN.md`](docs/EVAL_SERVICE_PLAN.md) — the build plan and tech stack
-- [`docs/POC_PLAN.md`](docs/POC_PLAN.md) — the cut-down first slice: twelve tables, one benchmark, one real number
-- [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) — the Postgres schema, what Redis holds, and how a run moves
+- [`docs/IMPLEMENTATION_PHASES.md`](docs/IMPLEMENTATION_PHASES.md) — the seven-phase build order; the current source of truth for what to build next
+- [`docs/DATA_MODEL_V1.md`](docs/DATA_MODEL_V1.md) — the Postgres schema being built, the recipe hash rule, and how a run moves
 - [`docs/CLUSTER_VALIDATION.md`](docs/CLUSTER_VALIDATION.md) — hands-on validation of the SLURM cluster
 - [`docs/BENCHMARK_UNIFICATION_RESEARCH.md`](docs/BENCHMARK_UNIFICATION_RESEARCH.md) — how the four teams evaluate today
 
@@ -21,12 +21,11 @@ being built and why:
 | Backend | FastAPI + SQLAlchemy 2.0 (async) + Alembic + Pydantic v2 | [`backend/`](backend/) |
 | Frontend | React + TypeScript + Vite | [`frontend/`](frontend/) |
 | Database | Postgres 17 | Docker container, named volume |
-| Cache / queue / locks | Redis 7 | Docker container, named volume |
 
-Four containers, one `docker-compose.yml`. Backend and frontend source
+Three containers, one `docker-compose.yml`. Backend and frontend source
 directories are bind-mounted into their containers for local hot reload;
-Postgres and Redis data live in named Docker volumes (not bind-mounted),
-which avoids macOS bind-mount permission and fsync quirks.
+Postgres data lives in a named Docker volume (not bind-mounted), which
+avoids macOS bind-mount permission and fsync quirks.
 
 ## Running it
 
@@ -40,11 +39,10 @@ Then:
 - Frontend: http://localhost:5173
 - Backend API docs: http://localhost:8000/docs
 - Health check: http://localhost:8000/api/v1/health — reports whether the
-  API can actually reach Postgres and Redis, not just that the container
-  started
+  API can actually reach Postgres, not just that the container started
 
 Stop everything with `docker compose down`. Add `-v` to also drop the
-named Postgres/Redis volumes (deletes all local data).
+named Postgres volume (deletes all local data).
 
 ### Adding a dependency
 
@@ -85,5 +83,6 @@ frontend/             React + Vite UI — see frontend/README.md
 
 ## Status
 
-Basic structure only, per the plan. Nothing beyond a health check that
-proves the four containers can talk to each other is implemented yet.
+Phase 1 of `docs/IMPLEMENTATION_PHASES.md`: the seven-table schema, seed
+data, and read-only APIs for checkpoints and the leaderboard are
+implemented. No cluster/SSH access anywhere yet.

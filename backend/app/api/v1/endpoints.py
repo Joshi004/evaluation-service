@@ -1,15 +1,19 @@
-"""Served-model endpoint management.
+"""Served-endpoint listing: every endpoint that hasn't expired yet.
 
-Will cover what's currently served on the cluster, on which node/GPUs,
-idle time, and a manual kill button. See the `endpoint` table in
-EVAL_SERVICE_PLAN.md, Section 10 — note `node` is a cache refreshed from
-`squeue`, never trusted as-is — and the "Endpoints" page in Section 13.
-
-Once routes exist, each should validate via its Pydantic schema and
-delegate immediately to app.controllers.endpoints — see
-.cursor/rules/backend-layering.mdc. No routes yet.
+The manual kill action belongs to a later phase -- this phase is
+read-only.
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.controllers import endpoints as endpoints_controller
+from app.db import get_db
+from app.schemas.endpoints import EndpointListItem
 
 router = APIRouter()
+
+
+@router.get("", response_model=list[EndpointListItem])
+async def list_endpoints(db: AsyncSession = Depends(get_db)) -> list[EndpointListItem]:
+    return await endpoints_controller.list_endpoints(db)

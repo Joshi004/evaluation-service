@@ -1,9 +1,14 @@
-"""Eval run controller.
-
-Will validate submission requests (checkpoint x benchmark x profile
-source), orchestrate calls into app.services.cluster to submit/track jobs,
-and shape responses for app.api.v1.runs. See EVAL_SERVICE_PLAN.md, Section
-10 ("How a run moves") and Section 11.
-
-Not implemented yet.
+"""Eval run controller -- validates + delegates, no DB access. See
+.cursor/rules/backend-layering.mdc.
 """
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.schemas.runs import RunListItem
+from app.services.runs import queries as runs_service
+
+
+async def list_runs(
+    db: AsyncSession, status: str | None, run_group_id: int | None
+) -> list[RunListItem]:
+    return await runs_service.list_runs(db, status, run_group_id)

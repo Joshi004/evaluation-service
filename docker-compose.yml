@@ -1,11 +1,13 @@
 # Evaluation Service — local development stack.
 #
-# Four services, mapped to the local filesystem, per the tech stack in
+# Three services, mapped to the local filesystem, per the tech stack in
 # EVAL_SERVICE_PLAN.md (Section 16):
 #   - postgres   the source of truth (Section 10 — data model)
-#   - redis      ephemeral state only: queue, locks, live updates
 #   - backend    FastAPI control-plane API, source bind-mounted for reload
 #   - frontend   React + Vite UI, source bind-mounted for hot reload
+#
+# Redis was dropped (decision D1, docs/IMPLEMENTATION_PHASES.md) -- v1 has
+# no reconciler, no locks, and no live streaming, so nothing needs it.
 #
 # Quick start:
 #   cp .env.example .env
@@ -34,27 +36,12 @@ services:
       retries: 10
       start_period: 5s
 
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
-    volumes:
-      - redisdata:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-      start_period: 5s
-
   backend:
     build:
       context: ./backend
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-eval_service}:${POSTGRES_PASSWORD:-eval_service}@postgres:5432/${POSTGRES_DB:-eval_service}
-      REDIS_URL: redis://redis:6379/0
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     volumes:
@@ -62,8 +49,6 @@ services:
       - ./standards:/standards:ro
     depends_on:
       postgres:
-        condition: service_healthy
-      redis:
         condition: service_healthy
 
   frontend:
@@ -82,4 +67,3 @@ services:
 
 volumes:
   pgdata:
-  redisdata:

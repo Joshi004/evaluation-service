@@ -14,10 +14,11 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from alembic import context
 from app.config import get_settings
-from app.models.base import Base
 
-# Import model modules here so autogenerate can see their tables on
-# Base.metadata. None exist yet.
+# Importing from app.models (rather than app.models.base) pulls in every
+# table module through its __init__.py re-export, which is what makes
+# autogenerate see them on Base.metadata below.
+from app.models import Base
 
 config = context.config
 

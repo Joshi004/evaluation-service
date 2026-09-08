@@ -1,48 +1,119 @@
 import { useQuery } from '@tanstack/react-query'
-import { apiFetch, type HealthResponse } from '../api/client'
+import { apiFetch, type CheckpointListItem, type HealthResponse, type LeaderboardRow } from '../api/client'
+import { EmptyState } from '../components/EmptyState/EmptyState'
+import { MetricCell } from '../components/MetricCell/MetricCell'
+import { buildLeaderboardGrid } from './LeaderboardPage.helper'
 
 function statusColor(value: string) {
   return value === 'ok' ? 'text-emerald-400' : 'text-amber-400'
 }
 
 export function LeaderboardPage() {
-  const { data, isLoading, isError, error } = useQuery({
+  const health = useQuery({
     queryKey: ['health'],
     queryFn: () => apiFetch<HealthResponse>('/health'),
     refetchInterval: 10_000,
   })
 
+  const leaderboard = useQuery({
+    queryKey: ['leaderboard'],
+    queryFn: () => apiFetch<LeaderboardRow[]>('/leaderboard'),
+  })
+
+  // Fetched only to resolve checkpoint_id -> display name: the
+  // leaderboard query is used verbatim from the spec and returns ids,
+  // not names.
+  const checkpoints = useQuery({
+    queryKey: ['checkpoints'],
+    queryFn: () => apiFetch<CheckpointListItem[]>('/checkpoints'),
+  })
+
+  const grid =
+    leaderboard.data && checkpoints.data ? buildLeaderboardGrid(leaderboard.data, checkpoints.data) : null
+
   return (
     <div>
       <h1 className="text-2xl font-semibold">Leaderboard</h1>
       <p className="mt-2 max-w-2xl text-slate-400">
-        The front door. Rows are (checkpoint, mode) pairs, columns are
-        benchmarks, grouped by <code>profile_hash</code>. See
-        EVAL_SERVICE_PLAN.md, Section 14. Not implemented yet.
+        Every checkpoint's most recent finished result per recipe. Cells are
+        coloured by recipe hash, so cells scored the same way are visually
+        obvious at a glance.
       </p>
 
       <div className="mt-6 max-w-md rounded-lg border border-slate-800 bg-slate-900 p-4">
         <h2 className="text-sm font-medium text-slate-300">Backend connectivity</h2>
 
-        {isLoading && <p className="mt-2 text-sm text-slate-500">Checking…</p>}
+        {health.isLoading && <p className="mt-2 text-sm text-slate-500">Checking…</p>}
 
-        {isError && (
-          <p className="mt-2 text-sm text-red-400">
-            Could not reach the backend: {String(error)}
-          </p>
+        {health.isError && (
+          <p className="mt-2 text-sm text-red-400">Could not reach the backend: {String(health.error)}</p>
         )}
 
-        {data && (
+        {health.data && (
           <ul className="mt-2 space-y-1 text-sm">
             <li>
-              Overall: <span className={statusColor(data.status)}>{data.status}</span>
+              Overall: <span className={statusColor(health.data.status)}>{health.data.status}</span>
             </li>
-            {Object.entries(data.dependencies).map(([name, value]) => (
+            {Object.entries(health.data.dependencies).map(([name, value]) => (
               <li key={name}>
                 {name}: <span className={statusColor(value)}>{value}</span>
               </li>
             ))}
           </ul>
+        )}
+      </div>
+
+      <div className="mt-8">
+        {(leaderboard.isLoading || checkpoints.isLoading) && (
+          <p className="text-sm text-slate-500">Loading leaderboard…</p>
+        )}
+
+        {(leaderboard.isError || checkpoints.isError) && (
+          <p className="text-sm text-red-400">
+            Could not load the leaderboard: {String(leaderboard.error ?? checkpoints.error)}
+          </p>
+        )}
+
+        {grid && grid.rows.length === 0 && <EmptyState message="No results yet" />}
+
+        {grid && grid.rows.length > 0 && (
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr>
+                <th className="border-b border-slate-800 p-2 text-left font-medium text-slate-400">
+                  Checkpoint
+                </th>
+                {grid.benchmarks.map((benchmark) => (
+                  <th
+                    key={benchmark}
+                    className="border-b border-slate-800 p-2 text-right font-medium text-slate-400"
+                  >
+                    {benchmark}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {grid.rows.map((row) => (
+                <tr key={row.checkpointId}>
+                  <td className="border-b border-slate-800/50 p-2 text-slate-200">{row.checkpointName}</td>
+                  {grid.benchmarks.map((benchmark) => {
+                    const cell = row.cellsByBenchmark[benchmark]
+                    return cell ? (
+                      <MetricCell key={benchmark} value={cell.value} recipeHash={cell.recipeHash} />
+                    ) : (
+                      <td
+                        key={benchmark}
+                        className="border-b border-slate-800/50 p-2 text-right text-slate-600"
+                      >
+                        —
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
     </div>

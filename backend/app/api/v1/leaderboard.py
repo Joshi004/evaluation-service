@@ -1,13 +1,19 @@
-"""Leaderboard endpoints.
+"""Leaderboard endpoint: one row per (checkpoint, recipe) pair.
 
-Will read only published, standard eval_run rows, grouped by profile_hash,
-with confidence intervals. See EVAL_SERVICE_PLAN.md, Section 14.
-
-Once routes exist, each should validate via its Pydantic schema and
-delegate immediately to app.controllers.leaderboard — see
-.cursor/rules/backend-layering.mdc. No routes yet.
+Pivoting these flat rows into a checkpoints-by-benchmarks grid is a
+frontend concern (frontend/src/pages/LeaderboardPage.helper.ts).
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.controllers import leaderboard as leaderboard_controller
+from app.db import get_db
+from app.schemas.leaderboard import LeaderboardRow
 
 router = APIRouter()
+
+
+@router.get("", response_model=list[LeaderboardRow])
+async def get_leaderboard(db: AsyncSession = Depends(get_db)) -> list[LeaderboardRow]:
+    return await leaderboard_controller.get_leaderboard(db)

@@ -1,10 +1,11 @@
 """Shared declarative base for all ORM models.
 
-No tables defined yet. The intended schema — cluster, model, checkpoint,
-artifact_location, model_profile, benchmark, recipe, eval_run, metric,
-endpoint, job, publication — is specified in EVAL_SERVICE_PLAN.md, Section
-10. Each will become a module here as it's implemented, and imported in
-alembic/env.py so autogenerate can see it.
+The v1 schema is seven tables: serving_profile, checkpoint, recipe,
+run_group, endpoint, eval_run, metric. See docs/DATA_MODEL_V1.md for the
+full reasoning behind each table and docs/IMPLEMENTATION_PHASES.md
+Section 0.5 for the exact DDL being built. Each table is its own module
+under app/models/, re-exported from app/models/__init__.py so
+alembic/env.py can see them on Base.metadata.
 """
 
 from sqlalchemy.orm import DeclarativeBase

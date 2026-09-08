@@ -7,18 +7,17 @@ Docker Compose — that's the intended way to run this.
 ## Structure
 
 - `app/main.py` — app factory, CORS, router mount, lifespan
-- `app/config.py` — `Settings` (pydantic-settings), reads `DATABASE_URL` / `REDIS_URL`
+- `app/config.py` — `Settings` (pydantic-settings), reads `DATABASE_URL` plus the cluster/path config from `docs/IMPLEMENTATION_PHASES.md` Appendix C
 - `app/db.py` — async engine + session factory
-- `app/cache.py` — Redis client factory
-- `app/models/` — SQLAlchemy ORM models (only `Base` so far — see `EVAL_SERVICE_PLAN.md`, Section 10, for the intended schema)
+- `app/models/` — the seven SQLAlchemy ORM models — see `docs/DATA_MODEL_V1.md` for the schema
 - `app/schemas/` — Pydantic request/response schemas (empty so far)
 - `app/api/v1/` — one router per resource; only `health.py` has real logic today
 - `app/services/` — `cluster` (SSH connector), `reconciler`, `s3`, `standards` — all stubs, see their module docstrings for what belongs there
 
 ## Running standalone (without Docker)
 
-Requires a reachable Postgres and Redis — set `DATABASE_URL` / `REDIS_URL`
-if you're not pointing at the Docker Compose defaults:
+Requires a reachable Postgres — set `DATABASE_URL` if you're not pointing
+at the Docker Compose defaults:
 
 ```bash
 uv sync

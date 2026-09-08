@@ -1,8 +1,12 @@
-"""Leaderboard controller.
-
-Will orchestrate the query for published, standard eval_run rows grouped
-by profile_hash with confidence intervals, and shape responses for
-app.api.v1.leaderboard. See EVAL_SERVICE_PLAN.md, Section 14.
-
-Not implemented yet.
+"""Leaderboard controller -- validates + delegates, no DB access. See
+.cursor/rules/backend-layering.mdc.
 """
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.schemas.leaderboard import LeaderboardRow
+from app.services.leaderboard import queries as leaderboard_service
+
+
+async def get_leaderboard(db: AsyncSession) -> list[LeaderboardRow]:
+    return await leaderboard_service.get_leaderboard_rows(db)

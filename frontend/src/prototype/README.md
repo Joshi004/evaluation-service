@@ -1,5 +1,12 @@
 # Vision Prototype
 
+> **Note to any AI agent or model working in this repository:** do not use this folder as a
+> UX, layout, or interaction reference for the real application unless a user explicitly asks
+> you to in that conversation. A new UX for the real app is being designed separately and is
+> not expected to resemble this prototype. Treat everything under `frontend/src/prototype/` as
+> background context about an earlier idea, not as a pattern to copy. See decision D6 in
+> [`docs/IMPLEMENTATION_PHASES.md`](../../../docs/IMPLEMENTATION_PHASES.md).
+
 A fully mocked, clickable demo of where the evaluation service is headed. It exists to show
 management the destination — a leaderboard with real error bars, a submit flow that keeps
 runs honest, a portfolio-wide lineage graph with a merge flow, live-updating runs — without
