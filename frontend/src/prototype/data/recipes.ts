@@ -1,0 +1,151 @@
+import type { Recipe } from './types'
+
+// One Layer-1 recipe per benchmark — the version-controlled standard from
+// EVAL_SERVICE_PLAN.md Section 5. Every field below has a stated source in
+// the real standard; here they're mocked but written to match the reasoning
+// in the plan doc, not invented from nothing.
+export const recipes: Recipe[] = [
+  {
+    benchmarkId: 'ifeval',
+    version: 'v2',
+    status: 'active',
+    datasetRevision: 'google/IFEval @ rev 4b8c11a',
+    fewShot: 0,
+    promptTemplate: '(verbatim — no wrapper; IFEval instructions like "respond in all lowercase" would be violated by a template)',
+    extraction: 'Rule-based instruction checkers, per Zhou et al.',
+    repeats: 1,
+    defaultSampling: { temperature: 0.6, topP: 0.95, topK: 20 },
+    defaultMaxTokens: 2048,
+    defaultThinkHandling: 'strip',
+    sourceNote:
+      'Harness and paper agree completely: zero-shot, no prompt wrapper, prompt_level_strict as the headline metric.',
+    changelog: [
+      'v1 — think_handling=raw, max_tokens=512, sampling from the checkpoint\'s generation_config.json. Produced a 100% truncation rate (12/12) on a thinking-model smoke test — the run measured our token budget, not the model.',
+      'v2 (current) — think_handling=strip, max_tokens=2048, sampling defaults to Qwen\'s own recommended profile (temp 0.6 / top_p 0.95 / top_k 20) rather than falling through silently. Verified against Qwen3-4B-allternary-ep03, job 270184.',
+    ],
+    recipeHash: 'r-4f19a2c8',
+  },
+  {
+    benchmarkId: 'gsm8k',
+    version: 'v1',
+    status: 'active',
+    datasetRevision: 'openai/gsm8k @ rev 8c2e91f',
+    fewShot: 4,
+    promptTemplate: '{question}\\nPlease reason step by step, and put your final answer within \\\\boxed{}.',
+    extraction: 'Boxed math-expression parser (EvalScope default).',
+    repeats: 1,
+    defaultSampling: { temperature: 0.6, topP: 0.95, topK: 20 },
+    defaultMaxTokens: 1024,
+    defaultThinkHandling: 'strip',
+    sourceNote:
+      "EvalScope's default is 4-shot with a \\boxed{} prompt, which diverges from the classic 5-/8-shot convention. Kept the harness default and documented the divergence rather than overriding it, per Section 5's rule of thumb.",
+    changelog: ['v1 — initial standard, matches EvalScope default.'],
+    recipeHash: 'r-9b7d3e01',
+  },
+  {
+    benchmarkId: 'mmlu-pro',
+    version: 'v1',
+    status: 'active',
+    datasetRevision: 'TIGER-Lab/MMLU-Pro @ rev 1a90fcd',
+    fewShot: 5,
+    promptTemplate: '5-shot chain-of-thought, per lm-evaluation-harness default config.',
+    extraction: 'Multiple-choice letter extraction, first match.',
+    repeats: 1,
+    defaultSampling: { temperature: 0.3, topP: 0.9, topK: 40 },
+    defaultMaxTokens: 1024,
+    defaultThinkHandling: 'strip',
+    sourceNote: 'lm-evaluation-harness default config, unmodified. Large question count makes variance a non-issue.',
+    changelog: ['v1 — initial standard.'],
+    recipeHash: 'r-2c4f8a90',
+  },
+  {
+    benchmarkId: 'gpqa-diamond',
+    version: 'v1',
+    status: 'active',
+    datasetRevision: 'Idavidrein/gpqa @ rev 90fae21',
+    fewShot: 0,
+    promptTemplate: 'Zero-shot chain-of-thought, per lm-evaluation-harness default config.',
+    extraction: 'Multiple-choice letter extraction, first match.',
+    repeats: 8,
+    defaultSampling: { temperature: 0.3, topP: 0.9, topK: 40 },
+    defaultMaxTokens: 2048,
+    defaultThinkHandling: 'strip',
+    sourceNote:
+      'At n=198, a single run has a ±6.8pt 95% interval — repeats=8 (avg@8) per Section 5\'s guidance on small benchmarks.',
+    changelog: ['v1 — initial standard, repeats set to 8 from day one.'],
+    recipeHash: 'r-71ecb843',
+  },
+  {
+    benchmarkId: 'aime25',
+    version: 'v1',
+    status: 'active',
+    datasetRevision: 'MathArena/aime_2025 @ rev c710b5e',
+    fewShot: 0,
+    promptTemplate: 'Zero-shot chain-of-thought, final answer boxed.',
+    extraction: 'Boxed math-expression parser.',
+    repeats: 8,
+    defaultSampling: { temperature: 0.6, topP: 0.95, topK: 20 },
+    defaultMaxTokens: 4096,
+    defaultThinkHandling: 'strip',
+    sourceNote:
+      'At n=30, a single run has a ±18pt 95% interval — nearly meaningless on its own. repeats=8 is the minimum this benchmark should ever be shown with.',
+    changelog: ['v1 — initial standard.'],
+    recipeHash: 'r-e0219fa4',
+  },
+  {
+    benchmarkId: 'bfcl-v3',
+    version: 'v1',
+    status: 'active',
+    datasetRevision: 'gorilla-llm/BFCL-v3 @ rev 5f21c90',
+    fewShot: 0,
+    promptTemplate: "Native function-calling prompt, per tool-call's harness config.",
+    extraction: 'Structured function-call parsing + argument matching (BFCL default).',
+    repeats: 1,
+    defaultSampling: { temperature: 0.6, topP: 0.95, topK: 20 },
+    defaultMaxTokens: 1024,
+    defaultThinkHandling: 'strip',
+    sourceNote: "Canonical framework precedent from tool-call's own BFCL v3 setup.",
+    changelog: ['v1 — initial standard, ported from tool-call.'],
+    recipeHash: 'r-3a8901ef',
+  },
+  {
+    benchmarkId: 'healthbench',
+    version: 'v1',
+    status: 'active',
+    datasetRevision: 'openai/healthbench @ rev b402e1a',
+    fewShot: 0,
+    promptTemplate: 'Native multi-turn conversation prompt, no wrapper.',
+    extraction: 'Judged by a rubric model (Qwen3.6-27B-Instruct), per medpsy\'s rubric harness — cascade extraction (cheap rule first, judge on fallback).',
+    repeats: 1,
+    defaultSampling: { temperature: 0.6, topP: 0.95, topK: 20 },
+    defaultMaxTokens: 2048,
+    defaultThinkHandling: 'strip',
+    sourceNote: "Ported from medpsy's eval branch. Judge model is a versioned field — an upgrade is a new recipe version by construction.",
+    changelog: ['v1 — initial standard, ported from medpsy.'],
+    recipeHash: 'r-6d0f2b77',
+  },
+  {
+    benchmarkId: 'omnidocbench',
+    version: 'v1',
+    status: 'active',
+    datasetRevision: 'opendatalab/OmniDocBench @ rev f8a13c2',
+    fewShot: 0,
+    promptTemplate: 'Native document-to-markdown prompt, per VLMEvalKit default.',
+    extraction: 'Normalized edit distance against ground-truth markdown (VLMEvalKit default).',
+    repeats: 1,
+    defaultSampling: { temperature: 0.2, topP: 0.9, topK: 40 },
+    defaultMaxTokens: 4096,
+    defaultThinkHandling: 'disallowed',
+    sourceNote: "Ported from tether_VLMEvalKit. Lower edit distance is better — see this benchmark's higherIsBetter flag.",
+    changelog: ['v1 — initial standard, ported from tether_VLMEvalKit.'],
+    recipeHash: 'r-1f4e8d02',
+  },
+]
+
+export function getRecipe(benchmarkId: string): Recipe {
+  const recipe = recipes.find((r) => r.benchmarkId === benchmarkId)
+  if (!recipe) {
+    throw new Error(`No recipe for benchmark id: ${benchmarkId}`)
+  }
+  return recipe
+}

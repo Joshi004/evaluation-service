@@ -9,6 +9,8 @@ import { RunsPage } from './pages/RunsPage'
 import { ComparePage } from './pages/ComparePage'
 import { EndpointsPage } from './pages/EndpointsPage'
 import { ClusterPage } from './pages/ClusterPage'
+import { PrototypeApp } from './prototype/PrototypeApp'
+import { prototypeRouteElements } from './prototype/prototypeRoutes'
 
 // The nine pages from EVAL_SERVICE_PLAN.md, Section 13, nested under the
 // App shell (nav + layout). Leaderboard is the index route ("/").
@@ -25,6 +27,17 @@ export function AppRoutes() {
         <Route path="compare" element={<ComparePage />} />
         <Route path="endpoints" element={<EndpointsPage />} />
         <Route path="cluster" element={<ClusterPage />} />
+      </Route>
+
+      {/*
+       * VISION PROTOTYPE — a fully mocked demo for management buy-in, not
+       * part of the real product. A sibling of the route above, not a
+       * child of it, so it gets its own shell/nav instead of inheriting
+       * the real one. See src/prototype/README.md for what's mocked and
+       * exactly how to remove this block and the folder it points to.
+       */}
+      <Route path="/vision" element={<PrototypeApp />}>
+        {prototypeRouteElements}
       </Route>
     </Routes>
   )

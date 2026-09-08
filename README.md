@@ -9,6 +9,7 @@ only** — no business logic yet. See the design docs for what's actually
 being built and why:
 
 - [`docs/EVAL_SERVICE_PLAN.md`](docs/EVAL_SERVICE_PLAN.md) — the build plan and tech stack
+- [`docs/POC_PLAN.md`](docs/POC_PLAN.md) — the cut-down first slice: twelve tables, one benchmark, one real number
 - [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) — the Postgres schema, what Redis holds, and how a run moves
 - [`docs/CLUSTER_VALIDATION.md`](docs/CLUSTER_VALIDATION.md) — hands-on validation of the SLURM cluster
 - [`docs/BENCHMARK_UNIFICATION_RESEARCH.md`](docs/BENCHMARK_UNIFICATION_RESEARCH.md) — how the four teams evaluate today

@@ -14,6 +14,12 @@ const navItems = [
   { to: '/cluster', label: 'Cluster' },
 ]
 
+// Deliberately separate from navItems above: the vision prototype is a
+// mocked demo, not one of the nine real pages, and it gets its own shell
+// once you're inside it (see src/prototype/PrototypeApp.tsx). This is the
+// only place the real app links to it.
+const visionPrototypeLink = { to: '/vision', label: 'Vision Demo' }
+
 function App() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -34,6 +40,12 @@ function App() {
               </NavLink>
             ))}
           </nav>
+          <NavLink
+            to={visionPrototypeLink.to}
+            className="ml-auto rounded-full border border-amber-500/30 px-3 py-1 text-sm font-medium text-amber-300 hover:bg-amber-500/10"
+          >
+            {visionPrototypeLink.label}
+          </NavLink>
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-6 py-8">
