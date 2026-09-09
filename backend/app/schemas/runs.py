@@ -9,6 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.compatibility import CompatibilityFinding
 from app.schemas.recipes import RecipeFieldWarning
 
 
@@ -123,12 +124,15 @@ class RunPreviewRequest(BaseModel):
 
 class RunPreviewPair(BaseModel):
     """One (checkpoint, recipe) cell of the grid a submit would create.
-    `blocking_error` is the exact text POST /runs would 400 with for
-    this pair -- computed by the same functions
-    (app.services.runs.submit.context_window_conflict and
-    think_handling_conflict) submit.py itself raises with, so the
-    preview and the real submit can never disagree about what a value
-    does.
+    `errors` and `warnings` are exactly what
+    `app.services.compatibility.validator.validate_compatibility` found
+    for this pair's (checkpoint, serving profile, recipe) triple.
+
+    `blocking_error` stays alongside them, joined from `errors` the same
+    way `submit.py` itself joins them before raising -- so the preview
+    and a real submit can never disagree about what a value does, and
+    the existing Submit page keeps working unchanged until Phase 8
+    renders the structured lists instead.
     """
 
     checkpoint_id: int
@@ -136,6 +140,8 @@ class RunPreviewPair(BaseModel):
     recipe_id: int
     recipe_label: str | None
     benchmark: str
+    errors: list[CompatibilityFinding]
+    warnings: list[CompatibilityFinding]
     blocking_error: str | None
 
 

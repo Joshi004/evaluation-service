@@ -1,12 +1,12 @@
 """Read-only dry run for POST /runs (docs/IMPLEMENTATION_PHASES.md Phase
 6). Mirrors submit.py's own grid resolution -- same checkpoint/recipe
-loading, same two blocking checks -- but never calls `resolve_recipe`
+loading, same compatibility validator -- but never calls `resolve_recipe`
 (which inserts a recipe row) and never creates a run_group or eval_run
-rows. It exists at all because the two blocking checks and decision D4's
-warning all need `ServingProfile` fields (`max_model_len`,
-`reasoning_parser`) the browser can't see; duplicating those rules in
-TypeScript would let the Submit page and the Standards page disagree
-about what a value does.
+rows. It exists at all because compatibility findings and decision D4's
+warning all need `ServingProfile` and `Checkpoint` fields
+(`max_model_len`, `reasoning_parser`, `availability_status`, ...) the
+browser can't see; duplicating those rules in TypeScript would let the
+Submit page and the Standards page disagree about what a value does.
 """
 
 from typing import Any
@@ -15,14 +15,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Checkpoint, Recipe, ServingProfile
 from app.schemas.runs import RecipeFieldChange, ResolvedRecipePreview, RunPreview, RunPreviewPair
+from app.services.compatibility.validator import validate_compatibility
 from app.services.recipes import queries as recipes_queries
 from app.services.recipes.hashing import recipe_hash
-from app.services.runs.submit import (
-    context_window_conflict,
-    load_base_recipes,
-    load_checkpoints_and_profiles,
-    think_handling_conflict,
-)
+from app.services.runs.submit import load_base_recipes, load_checkpoints_and_profiles
 from app.services.standards.capabilities import sampling_field_warnings
 
 
@@ -33,9 +29,9 @@ async def preview_runs(
     overrides: dict[str, Any],
 ) -> RunPreview | None:
     """None if a checkpoint_id or recipe_id doesn't exist, so the router
-    404s -- the same contract as submit_runs. Reports a blocking_error
-    per pair instead of raising on the first one: a 3x6 grid with one
-    bad pair should still show the other 17.
+    404s -- the same contract as submit_runs. Reports errors and
+    warnings per pair instead of raising on the first one: a 3x6 grid
+    with one bad pair should still show the other 17.
     """
     checkpoints_and_profiles = await load_checkpoints_and_profiles(db, checkpoint_ids)
     if checkpoints_and_profiles is None:
@@ -76,21 +72,21 @@ def _preview_pair(
     merged_config: dict[str, Any],
     serving_profile: ServingProfile,
 ) -> RunPreviewPair:
-    conflicts = [
-        reason
-        for reason in (
-            context_window_conflict(merged_config, serving_profile),
-            think_handling_conflict(merged_config, serving_profile),
-        )
-        if reason is not None
-    ]
+    report = validate_compatibility(checkpoint, serving_profile, merged_config)
     return RunPreviewPair(
         checkpoint_id=checkpoint.id,
         checkpoint_name=checkpoint.name,
         recipe_id=base_recipe.id,
         recipe_label=base_recipe.label,
         benchmark=merged_config["benchmark"],
-        blocking_error="; ".join(conflicts) if conflicts else None,
+        errors=report.errors,
+        warnings=report.warnings,
+        # Joined from `errors` the same way submit.py itself joins them
+        # before raising SubmitValidationError (R-T20): the preview a
+        # user read must match the error a real submit would 400 with.
+        blocking_error=(
+            "; ".join(finding.message for finding in report.errors) if report.errors else None
+        ),
     )
 
 

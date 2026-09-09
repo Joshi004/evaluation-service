@@ -14,19 +14,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Checkpoint, Recipe, ServingProfile
 from app.schemas.runs import RunSubmission
+from app.services.compatibility.validator import validate_compatibility
 from app.services.endpoints import queries as endpoints_queries
 from app.services.recipes import queries as recipes_queries
 from app.services.runs import queries as runs_queries
-from app.services.serving_profiles.render import serving_profile_display_name
 from app.services.standards.resolve import resolve_recipe
-
-# The endpoint's max_model_len is the model's whole context window --
-# prompt plus completion together -- while recipe.max_tokens bounds only
-# the generated completion. IFEval prompts run to a few hundred tokens;
-# 2048 is deliberately generous headroom rather than a measured worst
-# case, so a recipe that is genuinely too big for a profile fails at
-# submit time instead of after a cold start.
-_PROMPT_ALLOWANCE_TOKENS = 2048
 
 
 class SubmitValidationError(Exception):
@@ -91,9 +83,10 @@ async def submit_runs(
     # docstring on why a rejected submit must never mint a recipe row.
     for base_recipe in base_recipes:
         merged_config = base_recipe.as_hashable_dict() | overrides
-        for _checkpoint, serving_profile in checkpoints_and_profiles:
-            _check_fits_context_window(merged_config, serving_profile)
-            _check_think_handling_compatible(merged_config, serving_profile)
+        for checkpoint, serving_profile in checkpoints_and_profiles:
+            report = validate_compatibility(checkpoint, serving_profile, merged_config)
+            if report.status == "invalid":
+                raise SubmitValidationError("; ".join(finding.message for finding in report.errors))
 
     resolved_recipe_id_by_base_id: dict[int, int] = {}
     for base_recipe in base_recipes:
@@ -112,69 +105,3 @@ async def submit_runs(
         db, run_group.id, checkpoint_and_recipe_ids, submitted_by
     )
     return RunSubmission(run_group_id=run_group.id, run_ids=run_ids)
-
-
-def context_window_conflict(
-    recipe_config: dict[str, Any], serving_profile: ServingProfile
-) -> str | None:
-    """None if `recipe_config` fits `serving_profile`'s context window,
-    otherwise the exact reason it doesn't. Returning the reason rather
-    than raising directly is what lets `preview.py`'s read-only preview
-    report the same text `_check_fits_context_window` below would 400
-    with -- the two must never disagree about what a value does.
-    """
-    if serving_profile.max_model_len is None:
-        return None
-    max_tokens = recipe_config["max_tokens"]
-    if max_tokens + _PROMPT_ALLOWANCE_TOKENS > serving_profile.max_model_len:
-        return (
-            f"recipe max_tokens ({max_tokens}) plus a {_PROMPT_ALLOWANCE_TOKENS}-token "
-            f"prompt allowance exceeds serving profile "
-            f"{serving_profile_display_name(serving_profile)!r}'s max_model_len "
-            f"({serving_profile.max_model_len})"
-        )
-    return None
-
-
-def _check_fits_context_window(
-    recipe_config: dict[str, Any], serving_profile: ServingProfile
-) -> None:
-    reason = context_window_conflict(recipe_config, serving_profile)
-    if reason is not None:
-        raise SubmitValidationError(reason)
-
-
-def think_handling_conflict(
-    recipe_config: dict[str, Any], serving_profile: ServingProfile
-) -> str | None:
-    """None if `recipe_config`'s think_handling is compatible with
-    `serving_profile`, otherwise the exact reason it isn't -- see
-    `context_window_conflict` above on why this returns rather than
-    raises.
-
-    Phase 2 Trap T5: think_handling='strip' is only mechanically true
-    when the endpoint's profile carries --reasoning-parser -- vLLM has to
-    split <think>...</think> into reasoning_content before EvalScope ever
-    sees content. An 'as_is' recipe needs the opposite: no reasoning
-    parser, or the think text never reaches content for EvalScope to
-    score in the first place. A recipe requesting 'as_is' against a
-    profile with a reasoning parser is a request that cannot do what it
-    says.
-    """
-    has_reasoning_parser = serving_profile.reasoning_parser is not None
-    if recipe_config["think_handling"] == "as_is" and has_reasoning_parser:
-        return (
-            f"recipe think_handling='as_is' cannot run against serving profile "
-            f"{serving_profile_display_name(serving_profile)!r}, which carries "
-            "--reasoning-parser: the think block would never reach the completion "
-            "this recipe means to score whole"
-        )
-    return None
-
-
-def _check_think_handling_compatible(
-    recipe_config: dict[str, Any], serving_profile: ServingProfile
-) -> None:
-    reason = think_handling_conflict(recipe_config, serving_profile)
-    if reason is not None:
-        raise SubmitValidationError(reason)

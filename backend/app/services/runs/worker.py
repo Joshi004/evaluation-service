@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import AsyncSessionLocal
 from app.models import EvalRun
 from app.schemas.runs import RunGroupCancellation
+from app.services.checkpoints import availability as availability_service
 from app.services.endpoints import lifecycle
 from app.services.harness import queries as harness_queries
 from app.services.harness import runner as harness_runner
@@ -58,11 +59,12 @@ def _get_endpoint_lock(checkpoint_id: int, serving_profile_id: int) -> asyncio.L
 
 
 async def _run_one(eval_run_id: int) -> None:
-    """The straight-line pipeline: reuse-or-start an endpoint, run the
-    harness against it, parse the result, and persist it -- on one
-    session held for the run's whole lifetime, with every query helper
-    below committing immediately so no transaction is ever open across
-    the ~350s cold start or the harness subprocess (Trap T2).
+    """The straight-line pipeline: re-check the checkpoint's
+    availability, reuse-or-start an endpoint, run the harness against
+    it, parse the result, and persist it -- on one session held for the
+    run's whole lifetime, with every query helper below committing
+    immediately so no transaction is ever open across the ~350s cold
+    start or the harness subprocess (Trap T2).
     """
     async with AsyncSessionLocal() as db:
         context = await runs_queries.load_run_context(db, eval_run_id)
@@ -73,6 +75,34 @@ async def _run_one(eval_run_id: int) -> None:
         await runs_queries.mark_running(db, eval_run_id)
 
         try:
+            # R-D26: submit-time validation (compatibility/rules.py's
+            # checkpoint_unavailable) already gave an immediate 400 for
+            # a checkpoint known-unavailable then -- this is the check
+            # that actually protects the GPUs, because a queued run can
+            # sit long enough for that record to go stale. No
+            # transaction is open here (load_run_context and
+            # mark_running above both commit already, R-T22), and this
+            # is inside the try so a cancellation raised mid-SSH-call
+            # still reaches the CancelledError handler below rather than
+            # a handler of its own (R-T23).
+            availability = await availability_service.refresh_availability(db, context.checkpoint)
+            if availability.status != "available":
+                message = (
+                    f"checkpoint {context.checkpoint.name!r} is not available "
+                    f"({availability.status})"
+                )
+                if availability.detail:
+                    message += f": {availability.detail}"
+                logger.warning(
+                    "run %d: checkpoint %d is not available (%s) -- failing before a serve "
+                    "job is submitted",
+                    eval_run_id,
+                    context.checkpoint.id,
+                    availability.status,
+                )
+                await runs_queries.mark_failed(db, eval_run_id, message)
+                return
+
             lock = _get_endpoint_lock(context.checkpoint.id, context.serving_profile.id)
             async with lock:
                 endpoint = await lifecycle.start_or_reuse_endpoint(
