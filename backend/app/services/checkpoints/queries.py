@@ -7,7 +7,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Checkpoint, EvalRun, ServingProfile
-from app.schemas.checkpoints import CheckpointDetail, CheckpointListItem, CheckpointRunSummary
+from app.schemas.checkpoints import (
+    CheckpointDetail,
+    CheckpointInferredMetadata,
+    CheckpointListItem,
+    CheckpointRunSummary,
+)
 
 
 async def list_registered_checkpoint_paths(db: AsyncSession) -> set[str]:
@@ -30,7 +35,7 @@ async def list_checkpoints(db: AsyncSession) -> list[CheckpointListItem]:
     """
     stmt = (
         select(Checkpoint, ServingProfile.label, ServingProfile.hash)
-        .join(ServingProfile, Checkpoint.serving_profile_id == ServingProfile.id)
+        .join(ServingProfile, Checkpoint.default_serving_profile_id == ServingProfile.id)
         .order_by(Checkpoint.family, Checkpoint.name)
     )
     rows = (await db.execute(stmt)).all()
@@ -44,6 +49,8 @@ async def list_checkpoints(db: AsyncSession) -> list[CheckpointListItem]:
             serving_profile_label=serving_profile_label,
             serving_profile_hash=serving_profile_hash,
             created_at=checkpoint.created_at,
+            availability_status=checkpoint.availability_status,
+            availability_checked_at=checkpoint.availability_checked_at,
         )
         for checkpoint, serving_profile_label, serving_profile_hash in rows
     ]
@@ -55,7 +62,7 @@ async def get_checkpoint_with_runs(db: AsyncSession, checkpoint_id: int) -> Chec
     """
     stmt = (
         select(Checkpoint, ServingProfile.label, ServingProfile.hash)
-        .join(ServingProfile, Checkpoint.serving_profile_id == ServingProfile.id)
+        .join(ServingProfile, Checkpoint.default_serving_profile_id == ServingProfile.id)
         .where(Checkpoint.id == checkpoint_id)
     )
     row = (await db.execute(stmt)).first()
@@ -79,8 +86,23 @@ async def get_checkpoint_with_runs(db: AsyncSession, checkpoint_id: int) -> Chec
         serving_profile_label=serving_profile_label,
         serving_profile_hash=serving_profile_hash,
         created_at=checkpoint.created_at,
+        availability_status=checkpoint.availability_status,
+        availability_checked_at=checkpoint.availability_checked_at,
         generation_config=checkpoint.generation_config,
         registered_by=checkpoint.registered_by,
+        inferred=CheckpointInferredMetadata(
+            model_type=checkpoint.model_type,
+            architecture=checkpoint.architecture,
+            base_model=checkpoint.base_model,
+            context_length=checkpoint.context_length,
+            torch_dtype=checkpoint.torch_dtype,
+            quantization=checkpoint.quantization,
+            weight_format=checkpoint.weight_format,
+            shard_count=checkpoint.shard_count,
+            size_bytes=checkpoint.size_bytes,
+            source_config=checkpoint.source_config,
+        ),
+        availability_detail=checkpoint.availability_detail,
         runs=[
             CheckpointRunSummary(
                 id=run.id,

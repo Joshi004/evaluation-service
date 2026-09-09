@@ -57,7 +57,7 @@ async def get_checkpoint_and_serving_profile(
     """
     stmt = (
         select(Checkpoint, ServingProfile)
-        .join(ServingProfile, Checkpoint.serving_profile_id == ServingProfile.id)
+        .join(ServingProfile, Checkpoint.default_serving_profile_id == ServingProfile.id)
         .where(Checkpoint.id == checkpoint_id)
     )
     row = (await db.execute(stmt)).first()

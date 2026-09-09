@@ -12,6 +12,11 @@ export interface HealthResponse {
   dependencies: Record<string, string>
 }
 
+// Independent of registration (R-D1): a checkpoint stays listed even if
+// the weights behind it later vanish -- 'unknown' is the honest state
+// for a row nobody has checked yet.
+export type CheckpointAvailabilityStatus = 'unknown' | 'available' | 'unavailable' | 'incomplete'
+
 // Field names match the JSON wire format (snake_case, same as the
 // backend's Pydantic schemas) rather than being renamed to camelCase.
 export interface CheckpointListItem {
@@ -26,6 +31,48 @@ export interface CheckpointListItem {
   serving_profile_label: string | null
   serving_profile_hash: string
   created_at: string
+  availability_status: CheckpointAvailabilityStatus
+  availability_checked_at: string | null
+}
+
+// What inspection read off the cluster at registration -- see
+// app/schemas/checkpoints.py's CheckpointInferredMetadata. Every field
+// is nullable: null means "we could not read this," not "empty" (R-D20).
+// source_config is `Record<string, unknown> | null`, not `any` (R-T24)
+// -- its shape genuinely varies by model family.
+export interface CheckpointInferredMetadata {
+  model_type: string | null
+  architecture: string | null
+  base_model: string | null
+  context_length: number | null
+  torch_dtype: string | null
+  quantization: string | null
+  weight_format: string | null
+  shard_count: number | null
+  size_bytes: number | null
+  source_config: Record<string, unknown> | null
+}
+
+// One eval_run row belonging to a checkpoint -- see
+// app/schemas/checkpoints.py's CheckpointRunSummary. Always empty until
+// a later phase submits real jobs against a registered checkpoint.
+export interface CheckpointRunSummary {
+  id: number
+  recipe_id: number
+  status: string
+  created_at: string
+  finished_at: string | null
+}
+
+// GET /api/v1/checkpoints/{id} -- see app/schemas/checkpoints.py's
+// CheckpointDetail. Not fetched by any page yet; the fields exist so a
+// later phase can render them without redefining the shape.
+export interface CheckpointDetail extends CheckpointListItem {
+  generation_config: Record<string, unknown> | null
+  registered_by: string | null
+  inferred: CheckpointInferredMetadata
+  availability_detail: string | null
+  runs: CheckpointRunSummary[]
 }
 
 // A live vLLM server -- see app/schemas/endpoints.py. gpus and

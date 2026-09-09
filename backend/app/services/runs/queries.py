@@ -244,7 +244,7 @@ async def load_run_context(db: AsyncSession, eval_run_id: int) -> RunContext | N
         select(EvalRun, Checkpoint, Recipe, ServingProfile)
         .join(Checkpoint, EvalRun.checkpoint_id == Checkpoint.id)
         .join(Recipe, EvalRun.recipe_id == Recipe.id)
-        .join(ServingProfile, Checkpoint.serving_profile_id == ServingProfile.id)
+        .join(ServingProfile, Checkpoint.default_serving_profile_id == ServingProfile.id)
         .where(EvalRun.id == eval_run_id)
     )
     row = (await db.execute(stmt)).first()
