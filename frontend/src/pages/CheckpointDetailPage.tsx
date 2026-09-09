@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router'
 import { apiFetch, type CheckpointListItem } from '../api/client'
 import { EmptyState } from '../components/EmptyState/EmptyState'
 import { servingProfileDisplayName } from '../utils/servingProfileDisplayName'
@@ -35,8 +36,18 @@ export function CheckpointDetailPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold">Checkpoints</h1>
-      <p className="mt-2 max-w-2xl text-slate-400">Every registered checkpoint, grouped by family.</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Checkpoints</h1>
+          <p className="mt-2 max-w-2xl text-slate-400">Every registered checkpoint, grouped by family.</p>
+        </div>
+        <Link
+          to="/checkpoints/register"
+          className="shrink-0 rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
+        >
+          Register checkpoint
+        </Link>
+      </div>
 
       {isLoading && <p className="mt-6 text-sm text-slate-500">Loading checkpoints…</p>}
 

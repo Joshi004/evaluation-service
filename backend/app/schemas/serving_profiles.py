@@ -81,8 +81,14 @@ class ServingProfileConfig(BaseModel):
 
 
 class ServingProfileSummary(BaseModel):
-    """What the profile picker shows: id/hash/label plus the fields a
-    human uses to tell profiles apart at a glance.
+    """What the profile picker shows: id/hash/label, plus every field
+    from `ServingProfileConfig` (all eleven -- the six shown at a glance
+    plus the five below). The wizard's "customise" form seeds its draft
+    from whichever profile is currently selected (recommended or picked),
+    so the summary must carry a *complete* config -- a field missing here
+    would seed the draft from a default instead of the real value, and
+    "customise, change nothing" would then mint a new profile instead of
+    reusing the one it started from.
     """
 
     id: int
@@ -91,8 +97,14 @@ class ServingProfileSummary(BaseModel):
     engine: str
     engine_version: str
     gpus: int
+    tensor_parallel_size: int
+    pipeline_parallel_size: int
     max_model_len: int | None
     reasoning_parser: str | None
+    dtype: str
+    quantization: str | None
+    gpu_memory_utilization: float
+    engine_options: dict[str, _EngineOptionValue]
 
 
 class ServingProfileRecommendation(BaseModel):

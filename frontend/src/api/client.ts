@@ -75,6 +75,112 @@ export interface CheckpointDetail extends CheckpointListItem {
   runs: CheckpointRunSummary[]
 }
 
+// Serving-profile wire shapes (docs/CHECKPOINT_REGISTRATION_PHASES.md
+// Section 0.5, Phases 3 and 5). ServingProfileConfig is the eleven-field
+// hashable config a customisation submits -- identical to
+// ServingProfile.as_hashable_dict()'s key set. engine_options is an
+// escape hatch for uncommon engine flags (R-D6); the registration
+// wizard doesn't expose it for editing, so a customisation carries it
+// through unchanged from whichever profile it started from.
+export interface ServingProfileConfig {
+  engine: string
+  engine_version: string
+  gpus: number
+  tensor_parallel_size: number
+  pipeline_parallel_size: number
+  max_model_len: number | null
+  reasoning_parser: string | null
+  dtype: string
+  quantization: string | null
+  gpu_memory_utilization: number
+  engine_options: Record<string, string | number | boolean>
+}
+
+// A persisted profile row -- every ServingProfileConfig field plus
+// identity. label is null for an ad-hoc customisation (R-D16), in which
+// case hash is what identifies it (see utils/servingProfileDisplayName.ts).
+// Carries the full config, not just the fields a table would show at a
+// glance, so a "customise" form can seed its draft from whichever
+// summary is currently selected without silently resetting the fields
+// it doesn't display.
+export interface ServingProfileSummary extends ServingProfileConfig {
+  id: number
+  hash: string
+  label: string | null
+}
+
+// Registration's suggested profile for a freshly-inspected checkpoint,
+// attached to CheckpointInspection by the controller
+// (app.services.checkpoints.recommendation). `reason` is never empty --
+// a recommendation the user can't see the basis for is one they'll
+// ignore. `profile` is null when nothing fits; `reason` still explains
+// why.
+export interface ServingProfileRecommendation {
+  profile: ServingProfileSummary | null
+  reason: string
+}
+
+// One directory on the cluster that looks evaluable -- not yet a
+// database row (Phase 2). `already_registered` is set server-side by
+// comparing `reference` against every registered checkpoint's path, so
+// the frontend never has to do that matching itself (R-D32).
+export interface CheckpointCandidate {
+  reference: string
+  display_name: string
+  already_registered: boolean
+  modified_at: string | null
+}
+
+// Everything readable about one candidate (Phase 2). A partial
+// inspection is still a success (R-D15): an unreadable optional file
+// shows up as a line in `problems` with its field left null, not as a
+// thrown error -- `readable` is false only when config.json itself
+// couldn't be read. source_config/generation_config are
+// `Record<string, unknown> | null`, not `any` (R-T24) -- their shape
+// genuinely varies by model family.
+export interface CheckpointInspection {
+  reference: string
+  display_name: string
+  model_type: string | null
+  architecture: string | null
+  base_model: string | null
+  context_length: number | null
+  torch_dtype: string | null
+  quantization: string | null
+  weight_format: string | null
+  shard_count: number | null
+  size_bytes: number | null
+  generation_config: Record<string, unknown> | null
+  source_config: Record<string, unknown> | null
+  readable: boolean
+  problems: string[]
+  recommendation: ServingProfileRecommendation | null
+}
+
+// POST /checkpoints' `serving_profile` field -- a union, not two
+// optional fields, because the backend's model_validator rejects a
+// request unless exactly one of these is set. Modelling it as two
+// optional fields would let the wizard construct the one shape (both
+// set, or neither) that always 422s with an array-shaped `detail`
+// apiFetch cannot render as a single readable string.
+export type ServingProfileSelection =
+  | { existing_profile_id: number }
+  | { customised: ServingProfileConfig }
+
+// POST /api/v1/checkpoints' body. Deliberately excludes model_type,
+// architecture, context_length, and every other inferred field -- the
+// server re-reads a fresh inspection itself and writes those columns
+// from its own reading (R-D4), so the wizard's job is to confirm, name,
+// and choose what genuinely can't be inferred.
+export interface RegisterCheckpointRequest {
+  reference: string
+  name: string
+  family?: string | null
+  parent_checkpoint_id?: number | null
+  serving_profile: ServingProfileSelection
+  registered_by?: string | null
+}
+
 // A live vLLM server -- see app/schemas/endpoints.py. gpus and
 // checkpoint_name are joined in server-side (from serving_profile and
 // checkpoint) so the Endpoints page can show both without a second

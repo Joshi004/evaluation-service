@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router'
 import App from './App'
 import { LeaderboardPage } from './pages/LeaderboardPage'
 import { CheckpointDetailPage } from './pages/CheckpointDetailPage'
+import { RegisterCheckpointPage } from './pages/RegisterCheckpointPage'
 import { StandardsPage } from './pages/StandardsPage'
 import { SubmitPage } from './pages/SubmitPage'
 import { RunsPage } from './pages/RunsPage'
@@ -19,6 +20,14 @@ export function AppRoutes() {
       <Route path="/" element={<App />}>
         <Route index element={<LeaderboardPage />} />
         <Route path="checkpoints" element={<CheckpointDetailPage />} />
+        {/*
+         * No nav item -- reached only via the "Register checkpoint"
+         * button on the checkpoints page. Its four steps live in this
+         * page's own component state, not further router segments
+         * (R-D30): a deep link to step 3 has nothing to render without
+         * step 2's server response.
+         */}
+        <Route path="checkpoints/register" element={<RegisterCheckpointPage />} />
         <Route path="standards" element={<StandardsPage />} />
         <Route path="submit" element={<SubmitPage />} />
         <Route path="runs" element={<RunsPage />} />

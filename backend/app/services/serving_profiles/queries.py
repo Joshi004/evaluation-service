@@ -25,8 +25,14 @@ async def list_serving_profiles(db: AsyncSession) -> list[ServingProfileSummary]
             engine=profile.engine,
             engine_version=profile.engine_version,
             gpus=profile.gpus,
+            tensor_parallel_size=profile.tensor_parallel_size,
+            pipeline_parallel_size=profile.pipeline_parallel_size,
             max_model_len=profile.max_model_len,
             reasoning_parser=profile.reasoning_parser,
+            dtype=profile.dtype,
+            quantization=profile.quantization,
+            gpu_memory_utilization=profile.gpu_memory_utilization,
+            engine_options=profile.engine_options,
         )
         for profile in profiles
     ]
