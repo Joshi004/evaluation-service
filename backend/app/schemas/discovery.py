@@ -13,6 +13,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel
 
+from app.schemas.serving_profiles import ServingProfileRecommendation
+
 
 class CheckpointCandidate(BaseModel):
     """One directory on the cluster that looks evaluable -- not yet a
@@ -52,6 +54,11 @@ class CheckpointInspection(BaseModel):
     source_config: dict[str, Any] | None
     readable: bool
     problems: list[str]
+    # Set by the controller, not the port (mirrors `already_registered`
+    # on `CheckpointCandidate` above): recommending a profile needs the
+    # database, and `ModelDiscovery` implementations never touch it
+    # (R-D14). `None` until the controller attaches it.
+    recommendation: ServingProfileRecommendation | None = None
 
 
 class CheckpointAvailability(BaseModel):

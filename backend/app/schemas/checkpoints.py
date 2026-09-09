@@ -1,9 +1,13 @@
-"""Response shapes for GET /api/v1/checkpoints and /checkpoints/{id}."""
+"""Response shapes for GET /api/v1/checkpoints and /checkpoints/{id}, plus
+(Phase 5) the request shapes for POST /checkpoints.
+"""
 
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
+
+from app.schemas.serving_profiles import ServingProfileConfig
 
 
 class CheckpointListItem(BaseModel):
@@ -67,3 +71,38 @@ class CheckpointDetail(CheckpointListItem):
     inferred: CheckpointInferredMetadata
     availability_detail: str | None
     runs: list[CheckpointRunSummary]  # empty this phase -- no eval_run rows exist yet
+
+
+class ServingProfileSelection(BaseModel):
+    """Exactly one of these: an existing profile to reuse as-is, or a
+    customisation for the server to resolve (hash it, reuse an existing
+    row on a match, otherwise mint a new one -- R-D22's registration
+    counterpart of `resolve_serving_profile`).
+    """
+
+    existing_profile_id: int | None = None
+    customised: ServingProfileConfig | None = None
+
+    @model_validator(mode="after")
+    def _exactly_one_selected(self) -> "ServingProfileSelection":
+        if (self.existing_profile_id is None) == (self.customised is None):
+            raise ValueError("exactly one of existing_profile_id or customised must be set")
+        return self
+
+
+class RegisterCheckpointRequest(BaseModel):
+    """POST /checkpoints' body. Deliberately excludes `model_type`,
+    `architecture`, `context_length`, and every other inferred field --
+    the server re-reads a fresh inspection itself (R-D4), so a
+    client-supplied value could never silently corrupt what compatibility
+    checks downstream rely on.
+    """
+
+    reference: str
+    name: str
+    family: str | None = None
+    # User-selected only, never inferred (R-D5) -- see
+    # CheckpointInferredMetadata.base_model for the inferred hint.
+    parent_checkpoint_id: int | None = None
+    serving_profile: ServingProfileSelection
+    registered_by: str | None = None

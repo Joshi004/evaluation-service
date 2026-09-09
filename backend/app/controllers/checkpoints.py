@@ -4,10 +4,14 @@
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.schemas.checkpoints import CheckpointDetail, CheckpointListItem
+from app.schemas.checkpoints import CheckpointDetail, CheckpointListItem, RegisterCheckpointRequest
 from app.schemas.discovery import CheckpointCandidate, CheckpointInspection
+from app.services.checkpoints import availability as availability_service
 from app.services.checkpoints import queries as checkpoints_service
+from app.services.checkpoints import registration as registration_service
+from app.services.checkpoints.recommendation import recommend_serving_profile
 from app.services.cluster import get_model_discovery
+from app.services.serving_profiles import queries as serving_profiles_service
 
 
 async def list_checkpoints(db: AsyncSession) -> list[CheckpointListItem]:
@@ -33,10 +37,37 @@ async def list_checkpoint_candidates(db: AsyncSession) -> list[CheckpointCandida
     ]
 
 
-async def inspect_checkpoint_candidate(reference: str) -> CheckpointInspection:
-    """A pure pass-through to the port -- no session parameter at all,
-    unlike every other function in this module, because discovery never
-    touches the database (R-D14).
+async def inspect_checkpoint_candidate(db: AsyncSession, reference: str) -> CheckpointInspection:
+    """Inspects over SSH first, then attaches a serving-profile
+    recommendation built from already-registered rows -- mirrors how
+    `list_checkpoint_candidates` above sets `already_registered`
+    (R-D14: `SshModelDiscovery` itself never touches the database, so
+    the controller is where the two are joined).
     """
     discovery = get_model_discovery()
-    return await discovery.inspect_checkpoint(reference)
+    inspection = await discovery.inspect_checkpoint(reference)
+
+    profiles = await serving_profiles_service.list_serving_profiles(db)
+    profile_ids_for_same_model_type: list[int] = []
+    if inspection.model_type is not None:
+        profile_ids_for_same_model_type = (
+            await checkpoints_service.list_default_profile_ids_for_model_type(
+                db, inspection.model_type
+            )
+        )
+    recommendation = recommend_serving_profile(
+        inspection, profiles, profile_ids_for_same_model_type
+    )
+    return inspection.model_copy(update={"recommendation": recommendation})
+
+
+async def register_checkpoint(
+    db: AsyncSession, request: RegisterCheckpointRequest
+) -> CheckpointDetail:
+    return await registration_service.register_checkpoint(db, request)
+
+
+async def check_checkpoint_availability(
+    db: AsyncSession, checkpoint_id: int
+) -> CheckpointDetail | None:
+    return await availability_service.check_availability(db, checkpoint_id)

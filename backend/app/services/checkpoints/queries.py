@@ -3,6 +3,9 @@
 .cursor/rules/backend-layering.mdc.
 """
 
+from datetime import UTC, datetime
+from typing import Literal
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,6 +16,7 @@ from app.schemas.checkpoints import (
     CheckpointListItem,
     CheckpointRunSummary,
 )
+from app.schemas.discovery import CheckpointInspection
 
 
 async def list_registered_checkpoint_paths(db: AsyncSession) -> set[str]:
@@ -114,3 +118,116 @@ async def get_checkpoint_with_runs(db: AsyncSession, checkpoint_id: int) -> Chec
             for run in runs
         ],
     )
+
+
+async def get_checkpoint(db: AsyncSession, checkpoint_id: int) -> Checkpoint | None:
+    """The ORM row itself, for a caller that needs to act on it --
+    registration's lineage walk and availability's re-check -- as
+    opposed to `get_checkpoint_with_runs`'s already-shaped response DTO.
+    """
+    return await db.get(Checkpoint, checkpoint_id)
+
+
+async def get_checkpoint_by_name(db: AsyncSession, name: str) -> Checkpoint | None:
+    """Registration's duplicate-name pre-check (R-T19) -- a pre-check
+    alone still races, so `registration.py` also catches the database's
+    own UNIQUE constraint violation.
+    """
+    stmt = select(Checkpoint).where(Checkpoint.name == name)
+    return (await db.execute(stmt)).scalar_one_or_none()
+
+
+async def get_checkpoint_by_path(db: AsyncSession, path: str) -> Checkpoint | None:
+    """Registration's duplicate-path pre-check (R-D23): two names for
+    one directory would produce two leaderboard entries for one model.
+    """
+    stmt = select(Checkpoint).where(Checkpoint.path == path)
+    return (await db.execute(stmt)).scalar_one_or_none()
+
+
+async def list_default_profile_ids_for_model_type(db: AsyncSession, model_type: str) -> list[int]:
+    """Every `default_serving_profile_id` used by an already-registered
+    checkpoint of this `model_type`, most recently registered first --
+    feeds `recommend_serving_profile`'s "a derived checkpoint reuses its
+    base's profile" rule. Deduplicated in Python, preserving that
+    recency order, rather than with `SELECT DISTINCT`, which would not
+    let us keep it.
+    """
+    stmt = (
+        select(Checkpoint.default_serving_profile_id)
+        .where(Checkpoint.model_type == model_type)
+        .order_by(Checkpoint.created_at.desc())
+    )
+    rows = (await db.execute(stmt)).all()
+    deduplicated_ids: dict[int, None] = {}
+    for (profile_id,) in rows:
+        deduplicated_ids[profile_id] = None
+    return list(deduplicated_ids)
+
+
+async def insert_checkpoint(
+    db: AsyncSession,
+    name: str,
+    path: str,
+    family: str | None,
+    parent_checkpoint_id: int | None,
+    default_serving_profile_id: int,
+    registered_by: str | None,
+    inspection: CheckpointInspection,
+) -> Checkpoint:
+    """Write a new checkpoint row. Only called once registration has
+    already passed every 404/409 check (R-T18) -- nothing here can fail
+    for a reason the caller hasn't already ruled out, except the
+    UNIQUE constraint race `registration.py` catches around this call.
+
+    Takes the whole `CheckpointInspection` rather than ten separate
+    scalars so a field added to the DTO later can't be forgotten here.
+    Always writes `availability_status='available'`: the inspection
+    just proved the weights are readable, so recording anything less
+    would misrepresent what was just read (R-D24).
+    """
+    checkpoint = Checkpoint(
+        name=name,
+        path=path,
+        family=family,
+        parent_checkpoint_id=parent_checkpoint_id,
+        default_serving_profile_id=default_serving_profile_id,
+        generation_config=inspection.generation_config,
+        registered_by=registered_by,
+        model_type=inspection.model_type,
+        architecture=inspection.architecture,
+        base_model=inspection.base_model,
+        context_length=inspection.context_length,
+        torch_dtype=inspection.torch_dtype,
+        quantization=inspection.quantization,
+        weight_format=inspection.weight_format,
+        shard_count=inspection.shard_count,
+        size_bytes=inspection.size_bytes,
+        source_config=inspection.source_config,
+        availability_status="available",
+        availability_checked_at=datetime.now(UTC),
+    )
+    db.add(checkpoint)
+    await db.flush()  # populates checkpoint.id via Postgres RETURNING
+    await db.commit()
+    return checkpoint
+
+
+async def update_checkpoint_availability(
+    db: AsyncSession,
+    checkpoint_id: int,
+    status: Literal["unknown", "available", "unavailable", "incomplete"],
+    detail: str | None,
+    checked_at: datetime,
+) -> None:
+    """Writes exactly the three availability columns and nothing else
+    (R-D1) -- a validate-only check never touches a row's registration
+    data, and never deletes the row regardless of the result.
+    """
+    checkpoint = await db.get(Checkpoint, checkpoint_id)
+    if checkpoint is None:
+        return
+    checkpoint.availability_status = status
+    checkpoint.availability_detail = detail
+    checkpoint.availability_checked_at = checked_at
+    await db.commit()

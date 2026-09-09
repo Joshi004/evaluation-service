@@ -93,3 +93,15 @@ class ServingProfileSummary(BaseModel):
     gpus: int
     max_model_len: int | None
     reasoning_parser: str | None
+
+
+class ServingProfileRecommendation(BaseModel):
+    """Registration's suggested serving profile for a freshly-inspected
+    checkpoint, attached to `CheckpointInspection` by the controller
+    (`app.services.checkpoints.recommendation`). `reason` is never
+    optional -- a recommendation the user cannot see the basis for is
+    one they will ignore.
+    """
+
+    profile: ServingProfileSummary | None
+    reason: str
