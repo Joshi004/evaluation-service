@@ -54,6 +54,9 @@ services:
       SLURM_PARTITION: ${SLURM_PARTITION:-main}
       SLURM_WALLTIME_SECONDS: ${SLURM_WALLTIME_SECONDS:-7200}
       CLUSTER_LOG_ROOT: ${CLUSTER_LOG_ROOT:-/home/shared/eval-service/logs}
+      # Discovery (Phase 2 of CHECKPOINT_REGISTRATION_PHASES.md).
+      CLUSTER_MODELS_ROOT: ${CLUSTER_MODELS_ROOT:-/home/shared/agentic_slm/models}
+      DISCOVERY_MAX_DEPTH: ${DISCOVERY_MAX_DEPTH:-2}
       # Fixed container-side paths -- not meant to vary. What varies is
       # where they're mounted FROM, below.
       CLUSTER_SSH_KEY_PATH: /secrets/cluster_ssh_key

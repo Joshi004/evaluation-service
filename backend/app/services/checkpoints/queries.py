@@ -10,6 +10,19 @@ from app.models import Checkpoint, EvalRun, ServingProfile
 from app.schemas.checkpoints import CheckpointDetail, CheckpointListItem, CheckpointRunSummary
 
 
+async def list_registered_checkpoint_paths(db: AsyncSession) -> set[str]:
+    """Every registered checkpoint's `path`, for the discovery
+    controller to mark `already_registered` on each candidate -- one
+    query for the whole listing, never one per candidate. Commits
+    immediately so this read's transaction isn't left open across the
+    SSH call the controller makes right after (see
+    .cursor/rules/dev-workflow.mdc and R-T17).
+    """
+    rows = (await db.execute(select(Checkpoint.path))).all()
+    await db.commit()
+    return {path for (path,) in rows}
+
+
 async def list_checkpoints(db: AsyncSession) -> list[CheckpointListItem]:
     """Every registered checkpoint, ordered by family then name so the
     frontend's `GROUP BY family` display (CheckpointDetailPage.tsx) gets

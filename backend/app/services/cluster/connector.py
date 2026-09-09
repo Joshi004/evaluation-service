@@ -1,10 +1,13 @@
-"""The SSH connector to the SLURM cluster -- a six-method interface,
-originally everything above this module depended on directly (see
+"""The SSH connector to the SLURM cluster -- originally a six-method
+interface everything above this module depended on directly (see
 docs/IMPLEMENTATION_PHASES.md Phase 3). As of
 docs/CHECKPOINT_REGISTRATION_PHASES.md Phase 1, this module is private
-to `services/cluster/`: `ssh_slurm_runtime.py` is the only caller, and
-it exists behind the `ClusterRuntime` port so nothing above this
-package knows SSH is involved at all.
+to `services/cluster/`: `ssh_slurm_runtime.py` and, as of Phase 2,
+`ssh_model_discovery.py` are its only callers, and it exists behind the
+`ClusterRuntime` / `ModelDiscovery` ports so nothing above this package
+knows SSH is involved at all. Phase 2 adds three read-only primitives
+(`run_command`, `read_remote_texts`, `list_remote_directories`) for
+discovery to build on, so it never has to import `asyncssh` itself.
 
 "Pooling" here means one shared, kept-alive connection to the login
 node, reconnected on demand -- not a pool of several. asyncssh already
@@ -19,11 +22,12 @@ import asyncio
 import logging
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 import asyncssh
 
 from app.config import get_settings
-from app.services.cluster.ports import JobState
+from app.services.cluster.ports import ClusterUnreachableError, JobState
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +54,33 @@ class LocalForward:
     local_port: int
 
 
+@dataclass(frozen=True)
+class CommandResult:
+    """One command's result over the pooled login connection -- exit
+    status alongside stdout/stderr, so discovery's `find` and `du` calls
+    (services/cluster/ssh_model_discovery.py) never need asyncssh's own
+    process-result type to leak past this module.
+    """
+
+    exit_status: int
+    stdout: str
+    stderr: str
+
+
+@dataclass(frozen=True)
+class RemoteDirectoryEntry:
+    """One entry from a remote directory listing -- name, whether it is
+    itself a directory, and the two attributes discovery needs: size
+    and modification time. `modified_at` is None on the rare server that
+    doesn't report an mtime for an entry.
+    """
+
+    name: str
+    is_directory: bool
+    size_bytes: int
+    modified_at: datetime | None
+
+
 async def _get_login_connection() -> asyncssh.SSHClientConnection:
     """The shared, kept-alive connection to the login node, reconnecting
     if it dropped or was never opened. Never call this while holding a
@@ -60,15 +91,25 @@ async def _get_login_connection() -> asyncssh.SSHClientConnection:
     async with _login_connection_lock:
         if _login_connection is None or _login_connection.is_closed():
             logger.info("connecting to cluster login node %s", settings.cluster_ssh_host)
-            _login_connection = await asyncssh.connect(
-                settings.cluster_ssh_host,
-                port=settings.cluster_ssh_port,
-                username=settings.cluster_ssh_user,
-                client_keys=[settings.cluster_ssh_key_path],
-                known_hosts=settings.cluster_ssh_known_hosts_path,
-                keepalive_interval=30,
-                keepalive_count_max=3,
-            )
+            try:
+                _login_connection = await asyncssh.connect(
+                    settings.cluster_ssh_host,
+                    port=settings.cluster_ssh_port,
+                    username=settings.cluster_ssh_user,
+                    client_keys=[settings.cluster_ssh_key_path],
+                    known_hosts=settings.cluster_ssh_known_hosts_path,
+                    keepalive_interval=30,
+                    keepalive_count_max=3,
+                )
+            except (OSError, asyncssh.Error) as exc:
+                # Discovery (Phase 2) is the first caller that needs to
+                # tell "the cluster is down" apart from "this reference
+                # is bad" -- the run path has no caller that catches
+                # this, so its behaviour (an uncaught exception, a 500)
+                # is unchanged.
+                raise ClusterUnreachableError(
+                    f"could not reach cluster login node {settings.cluster_ssh_host}"
+                ) from exc
         return _login_connection
 
 
@@ -190,3 +231,74 @@ async def open_tunnel(node: str, remote_port: int) -> LocalForward:
         "0.0.0.0", remote_port, "localhost", remote_port
     )
     return LocalForward(connection=compute_conn, listener=listener, local_port=remote_port)
+
+
+# --- Discovery primitives (Phase 2) ---
+#
+# ssh_model_discovery.py is the only caller. `find` and `du` stay shell
+# commands (R-D9: doing a tree walk over SFTP would be hundreds of
+# round trips), while reading a config file or listing a directory's
+# attributes goes over SFTP, which has no shell to inject into at all.
+
+
+async def run_command(command: str) -> CommandResult:
+    """One arbitrary command over the pooled login connection, with the
+    same timeout every other connector call uses (R-T7). `check=False`,
+    same as `status()` above -- the caller decides what a non-zero exit
+    means, because a `find` that matches nothing and a `du` on a
+    missing path both exit non-zero without that being a connector
+    failure.
+    """
+    conn = await _get_login_connection()
+    result = await conn.run(command, check=False, timeout=_COMMAND_TIMEOUT_SECONDS)
+    exit_status = result.exit_status if result.exit_status is not None else -1
+    return CommandResult(exit_status=exit_status, stdout=result.stdout, stderr=result.stderr)
+
+
+async def read_remote_texts(paths: list[str]) -> dict[str, str | None]:
+    """Reads several remote text files over one SFTP session. A file
+    that is missing, unreadable, or not valid UTF-8 maps to None rather
+    than raising (R-D15: a partial inspection is still a success) --
+    only a dead connection escapes this function.
+    """
+    conn = await _get_login_connection()
+    texts: dict[str, str | None] = {}
+    async with conn.start_sftp_client() as sftp:
+        for path in paths:
+            try:
+                async with sftp.open(path, "r") as remote_file:
+                    texts[path] = await remote_file.read()
+            except (asyncssh.SFTPError, OSError, UnicodeDecodeError):
+                texts[path] = None
+    return texts
+
+
+async def list_remote_directories(paths: list[str]) -> dict[str, list[RemoteDirectoryEntry]]:
+    """Reads several remote directories' contents over one SFTP session.
+    A directory that is missing or unreadable maps to an empty list,
+    for the same reason read_remote_texts maps a bad file to None.
+    """
+    conn = await _get_login_connection()
+    listings: dict[str, list[RemoteDirectoryEntry]] = {}
+    async with conn.start_sftp_client() as sftp:
+        for path in paths:
+            try:
+                entries = await sftp.readdir(path)
+            except (asyncssh.SFTPError, OSError):
+                listings[path] = []
+                continue
+            listings[path] = [
+                RemoteDirectoryEntry(
+                    name=str(entry.filename),
+                    is_directory=entry.attrs.type == asyncssh.FILEXFER_TYPE_DIRECTORY,
+                    size_bytes=entry.attrs.size or 0,
+                    modified_at=(
+                        datetime.fromtimestamp(entry.attrs.mtime, tz=UTC)
+                        if entry.attrs.mtime is not None
+                        else None
+                    ),
+                )
+                for entry in entries
+                if entry.filename not in (".", "..")
+            ]
+    return listings

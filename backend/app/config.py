@@ -41,6 +41,14 @@ class Settings(BaseSettings):
     slurm_partition: str = "main"
     slurm_walltime_seconds: int = 7200
     cluster_log_root: str = "/home/shared/eval-service/logs"
+    # The configured models area (Phase 2). The seeded checkpoint lives
+    # directly under it; candidates can also nest below that, e.g. in
+    # rl/ and sft/ subdirectories.
+    cluster_models_root: str = "/home/shared/agentic_slm/models"
+    # How deep below cluster_models_root to look for a candidate
+    # directory. config.json sits one level below the candidate itself,
+    # so the `find` bound used by discovery is this value plus one.
+    discovery_max_depth: int = 2
 
     # Our own server (Appendix C).
     output_root: str = "/data/evalsvc/runs"
