@@ -1,8 +1,9 @@
 """Two live log sources for a run's detail page (docs/IMPLEMENTATION_PHASES.md
 Phase 6, item 4): the harness container's own stdout, written locally by
-runner.py, and the vLLM serve job's log on the cluster, reached the same
-way lifecycle.py's readiness poll already reaches it -- through
-connector.logs(follow=True), which had no real caller before this.
+runner.py, and the vLLM serve job's log on the cluster, reached through
+`ClusterRuntime.job_logs(handle, follow=True)`
+(docs/CHECKPOINT_REGISTRATION_PHASES.md Phase 1) -- the same port the
+endpoint lifecycle's readiness poll uses.
 
 Each source runs as a background producer task feeding an asyncio.Queue,
 consumed by `stream_log_events` and formatted as SSE wire text. The
@@ -34,16 +35,14 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import Literal
 
-from app.config import get_settings
 from app.db import AsyncSessionLocal
-from app.services.cluster import connector, serve_job
+from app.services.cluster import get_cluster_runtime
+from app.services.cluster.ports import JobHandle
 from app.services.endpoints import queries as endpoints_queries
 from app.services.harness import runner as harness_runner
 from app.services.runs import queries as runs_queries
 
 logger = logging.getLogger(__name__)
-
-settings = get_settings()
 
 LogSource = Literal["harness", "endpoint"]
 
@@ -221,13 +220,14 @@ async def _produce_endpoint_log(eval_run_id: int, queue: asyncio.Queue[str | Non
         if slurm_job_id is None:
             return
 
-        log_path = serve_job.log_path(settings.cluster_log_root, slurm_job_id)
-        initial_text = await connector.logs(log_path, follow=False)
+        runtime = get_cluster_runtime()
+        handle = JobHandle(job_id=slurm_job_id)
+        initial_text = await runtime.job_logs(handle, follow=False)
         assert isinstance(initial_text, str)  # follow=False always returns text, never a stream
         for line in initial_text.splitlines()[-_TAIL_LINES:]:
             await queue.put(line)
 
-        tail_task = asyncio.create_task(_pump_ssh_tail(log_path, queue))
+        tail_task = asyncio.create_task(_pump_ssh_tail(handle, queue))
         try:
             while not tail_task.done():
                 status = await _get_run_status(eval_run_id)
@@ -251,7 +251,7 @@ async def _produce_endpoint_log(eval_run_id: int, queue: asyncio.Queue[str | Non
         await queue.put(None)
 
 
-async def _pump_ssh_tail(log_path: str, queue: asyncio.Queue[str | None]) -> None:
+async def _pump_ssh_tail(handle: JobHandle, queue: asyncio.Queue[str | None]) -> None:
     """Forwards every line from the cluster's tail -f channel into the
     queue for as long as that channel stays open. Cancelling this task
     (see _produce_endpoint_log) unwinds through connector._follow's own
@@ -259,7 +259,7 @@ async def _pump_ssh_tail(log_path: str, queue: asyncio.Queue[str | None]) -> Non
     without that, an abandoned subscriber would leak a `tail -f` process
     on the login node (Trap T3's sibling problem).
     """
-    lines = await connector.logs(log_path, follow=True)
+    lines = await get_cluster_runtime().job_logs(handle, follow=True)
     assert not isinstance(lines, str)  # follow=True always returns an iterator, never text
     async for line in lines:
         await queue.put(line.rstrip("\n"))

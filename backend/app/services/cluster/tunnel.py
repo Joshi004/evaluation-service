@@ -53,14 +53,13 @@ async def _current_node(slurm_job_id: int) -> str:
     the node a log line printed at submit time, per 0.7.
     """
     states = await connector.status([slurm_job_id])
-    state_and_node = states[slurm_job_id]
-    _, _, node = state_and_node.partition(" ")
-    if not node:
+    job_state = states[slurm_job_id]
+    if job_state.node is None:
         raise RuntimeError(
             f"cannot open a tunnel for job {slurm_job_id}: squeue reports "
-            f"'{state_and_node}', no node assigned"
+            f"state {job_state.state!r}, no node assigned"
         )
-    return node
+    return job_state.node
 
 
 async def close_tunnel(endpoint_id: int) -> None:

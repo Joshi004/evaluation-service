@@ -1,6 +1,10 @@
-"""The SSH connector to the SLURM cluster -- the six-method interface
-everything above this module depends on instead of knowing SSH is
-involved at all. See docs/IMPLEMENTATION_PHASES.md Phase 3.
+"""The SSH connector to the SLURM cluster -- a six-method interface,
+originally everything above this module depended on directly (see
+docs/IMPLEMENTATION_PHASES.md Phase 3). As of
+docs/CHECKPOINT_REGISTRATION_PHASES.md Phase 1, this module is private
+to `services/cluster/`: `ssh_slurm_runtime.py` is the only caller, and
+it exists behind the `ClusterRuntime` port so nothing above this
+package knows SSH is involved at all.
 
 "Pooling" here means one shared, kept-alive connection to the login
 node, reconnected on demand -- not a pool of several. asyncssh already
@@ -19,6 +23,7 @@ from dataclasses import dataclass
 import asyncssh
 
 from app.config import get_settings
+from app.services.cluster.ports import JobState
 
 logger = logging.getLogger(__name__)
 
@@ -83,15 +88,14 @@ async def submit(script: str) -> int:
     return int(result.stdout.strip())
 
 
-async def status(job_ids: list[int]) -> dict[int, str]:
-    """One bulk squeue call, never one per job. Each value is
-    "<STATE> <NODE>" (e.g. "RUNNING health-35"), so the node the
-    lifecycle needs at tunnel time travels in the same call without a
-    seventh method -- 0.7's "never trust a stored node name" rule means
+async def status(job_ids: list[int]) -> dict[int, JobState]:
+    """One bulk squeue call, never one per job -- the node the lifecycle
+    needs at tunnel time travels in the same call, rather than a second
+    call to fetch it. 0.7's "never trust a stored node name" rule means
     callers re-run this rather than caching a node from an earlier call.
     A job squeue no longer knows about (finished or cancelled) maps to
-    "UNKNOWN"; a still-pending job with no node assigned yet maps to
-    "<STATE> " with an empty node.
+    state "UNKNOWN" with no node; a still-pending job with no node
+    assigned yet maps to its state with `node=None`.
     """
     conn = await _get_login_connection()
     ids = ",".join(str(job_id) for job_id in job_ids)
@@ -100,15 +104,16 @@ async def status(job_ids: list[int]) -> dict[int, str]:
         check=False,  # squeue exits non-zero once none of the ids exist any more
         timeout=_COMMAND_TIMEOUT_SECONDS,
     )
-    found: dict[int, str] = {}
+    found: dict[int, JobState] = {}
     for line in result.stdout.splitlines():
         fields = line.split(maxsplit=2)
         if len(fields) < 2:
             continue
         job_id_str, state = fields[0], fields[1]
-        node = fields[2] if len(fields) > 2 else ""
-        found[int(job_id_str)] = f"{state} {node}".rstrip()
-    return {job_id: found.get(job_id, "UNKNOWN") for job_id in job_ids}
+        node = fields[2] if len(fields) > 2 else None
+        found[int(job_id_str)] = JobState(state=state, node=node)
+    unknown = JobState(state="UNKNOWN", node=None)
+    return {job_id: found.get(job_id, unknown) for job_id in job_ids}
 
 
 async def cancel(job_id: int) -> None:

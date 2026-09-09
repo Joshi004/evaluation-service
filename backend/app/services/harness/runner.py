@@ -36,7 +36,7 @@ _STDOUT_TAIL_LINES = 60
 class HarnessFailedError(Exception):
     """The harness container exited non-zero -- a bad task config or a
     crash inside EvalScope, to surface with enough context to act on
-    (like ServerDiedError in services/endpoints/lifecycle.py), not just
+    (like ServerDiedError in services/cluster/ports.py), not just
     "the run failed".
     """
 

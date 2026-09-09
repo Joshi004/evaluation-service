@@ -2,17 +2,18 @@
 
 See docs/IMPLEMENTATION_PHASES.md Phase 3, Appendix A. Appendix A's
 script is what was validated on the cluster (job 285727, READY after
-350s) -- this parameterises it, it does not rewrite it. Only the model
-path, served name, GPU count, walltime, and vllm_flags vary per call;
-the readiness poll, the liveness check, and the port formula are
-unchanged.
+350s) -- this parameterises it, it does not rewrite it. Only the fields
+on `ServeJobSpec` (docs/CHECKPOINT_REGISTRATION_PHASES.md Phase 1) vary
+per call; the readiness poll, the liveness check, and the port formula
+are unchanged. This module knows no ORM model -- the adapter builds a
+spec from `Checkpoint` / `ServingProfile` rows before calling here.
 """
 
 import re
 from dataclasses import dataclass
 from typing import Literal
 
-from app.models import Checkpoint, ServingProfile
+from app.services.cluster.ports import ServeJobSpec
 
 # Feeds SLURM's %x-%j.out/.err filenames -- one constant so the template
 # and services/endpoints/lifecycle.py's log path can't drift apart.
@@ -62,9 +63,10 @@ def compute_port(slurm_job_id: int) -> int:
     """tool-call's scheme (0.7): derives the vLLM port from the job id
     so two jobs on one node cannot collide. The script computes this
     same formula independently in bash -- kept as one Python function so
-    the lifecycle (which needs the port before the log has necessarily
-    been read) and the template below can't drift apart, which is
-    exactly the bug Trap T4 already found once.
+    the adapter (which needs the port before the log has necessarily
+    been read -- see ssh_slurm_runtime.open_serving_tunnel) and the
+    template below can't drift apart, which is exactly the bug R-T1
+    exists to prevent.
     """
     return 8000 + (slurm_job_id % 250) * 8
 
@@ -81,10 +83,8 @@ def _format_walltime(seconds: int) -> str:
     return f"{hours:02d}:{minutes:02d}:{secs:02d}"
 
 
-def render_serve_script(
-    checkpoint: Checkpoint, serving_profile: ServingProfile, walltime_seconds: int
-) -> str:
-    """Renders a submittable sbatch script for this checkpoint. Passed to
+def render_serve_script(spec: ServeJobSpec) -> str:
+    """Renders a submittable sbatch script for this spec. Passed to
     connector.submit() over stdin -- nothing is staged on the cluster.
     """
     header = (
@@ -95,20 +95,20 @@ def render_serve_script(
         "#SBATCH --ntasks=1\n"
         "#SBATCH --cpus-per-task=8\n"
         "#SBATCH --mem=64G\n"
-        f"#SBATCH --gres=gpu:{serving_profile.gpus}\n"
+        f"#SBATCH --gres=gpu:{spec.gpus}\n"
         # Non-negotiable per 0.7: `main` has MaxTime=UNLIMITED and
         # DefaultTime=NONE, so an explicit --time is the only thing
         # standing between a forgotten server and idle H100s over a
         # weekend.
-        f"#SBATCH --time={_format_walltime(walltime_seconds)}\n"
+        f"#SBATCH --time={_format_walltime(spec.walltime_seconds)}\n"
         "#SBATCH --output=%x-%j.out\n"
         "#SBATCH --error=%x-%j.err\n"
         "\n"
         "set -u\n"
         "\n"
         f'VLLM="{_VLLM_BIN}"\n'
-        f'MODEL_PATH="{checkpoint.path}"\n'
-        f'SERVED_NAME="{checkpoint.name}"\n'
+        f'MODEL_PATH="{spec.model_reference}"\n'
+        f'SERVED_NAME="{spec.served_name}"\n'
         "\n"
         "# tool-call's trick: derive the port from the job id so two jobs on\n"
         "# one node cannot collide.\n"
@@ -123,8 +123,8 @@ def render_serve_script(
     )
 
     # max_model_len first (submit-time fit check, Phase 5's concern, not
-    # this one) then whatever the serving profile's own flags are -- for
-    # the seeded qwen3 profile that already includes --generation-config
+    # this one) then whatever the spec's own engine args are -- for the
+    # seeded qwen3 profile that already includes --generation-config
     # vllm and --reasoning-parser qwen3 (Phase 1 seed), so nothing here
     # needs to re-derive them.
     vllm_command_lines = [
@@ -133,15 +133,14 @@ def render_serve_script(
         "--host 0.0.0.0",
         '--port "${PORT}"',
     ]
-    if serving_profile.max_model_len is not None:
-        vllm_command_lines.append(f"--max-model-len {serving_profile.max_model_len}")
-    if serving_profile.vllm_flags:
-        # vllm_flags is a flat list of individual argv tokens (one flag,
-        # one value, each its own element -- see ServingProfile's own
-        # docstring), not flag/value pairs, so these join onto one line
-        # rather than risk mis-pairing a token list that might someday
-        # include a bare (valueless) flag.
-        vllm_command_lines.append(" ".join(serving_profile.vllm_flags))
+    if spec.max_model_len is not None:
+        vllm_command_lines.append(f"--max-model-len {spec.max_model_len}")
+    if spec.engine_args:
+        # engine_args is a flat list of individual argv tokens (one
+        # flag, one value, each its own element), not flag/value pairs,
+        # so these join onto one line rather than risk mis-pairing a
+        # token list that might someday include a bare (valueless) flag.
+        vllm_command_lines.append(" ".join(spec.engine_args))
     vllm_command = " \\\n    ".join(vllm_command_lines) + " &\n"
 
     return header + vllm_command + _READINESS_LOOP

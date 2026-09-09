@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.controllers import endpoints as endpoints_controller
 from app.db import get_db
 from app.schemas.endpoints import CreateEndpointRequest, EndpointListItem
-from app.services.endpoints.lifecycle import ReadinessTimeoutError, ServerDiedError
+from app.services.cluster.ports import ReadinessTimeoutError, ServerDiedError
 
 router = APIRouter()
 

@@ -15,8 +15,8 @@ async def list_endpoints(db: AsyncSession) -> list[EndpointListItem]:
 
 async def start_endpoint(db: AsyncSession, checkpoint_id: int) -> EndpointListItem | None:
     """None means the checkpoint doesn't exist -- the router 404s.
-    lifecycle.ServerDiedError / ReadinessTimeoutError propagate past
-    this unchanged; the router maps those to 502 / 504.
+    ports.ServerDiedError / ReadinessTimeoutError propagate past this
+    unchanged; the router maps those to 502 / 504.
     """
     checkpoint_and_profile = await endpoints_service.get_checkpoint_and_serving_profile(
         db, checkpoint_id
