@@ -26,6 +26,7 @@ from app.models import Checkpoint, Endpoint, ServingProfile
 from app.services.cluster import get_cluster_runtime
 from app.services.cluster.ports import ServeJobSpec
 from app.services.endpoints import queries
+from app.services.serving_profiles.render import render_engine_args
 
 logger = logging.getLogger(__name__)
 
@@ -55,8 +56,7 @@ async def start_or_reuse_endpoint(
         served_name=checkpoint.name,
         gpus=serving_profile.gpus,
         walltime_seconds=settings.slurm_walltime_seconds,
-        engine_args=serving_profile.vllm_flags,
-        max_model_len=serving_profile.max_model_len,
+        engine_args=render_engine_args(serving_profile),
     )
     handle = await runtime.submit_job(spec)
     logger.info("submitted serve job %d for endpoint %d", handle.job_id, endpoint.id)

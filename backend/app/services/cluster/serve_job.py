@@ -21,7 +21,7 @@ JOB_NAME = "evalsvc-vllm"
 
 # Hardcoded to match Appendix A: there is exactly one known vLLM install,
 # and it isn't in the doc's list of what to parameterise (model path,
-# served name, GPUs, --time, vllm_flags).
+# served name, GPUs, --time, engine args).
 _EVAL_HOME = "/home/shared/agentic_slm/qvac-research-tool-call/evaluation"
 _VLLM_BIN = f"{_EVAL_HOME}/venv/vllm/bin/vllm"
 
@@ -122,19 +122,19 @@ def render_serve_script(spec: ServeJobSpec) -> str:
         "\n"
     )
 
-    # max_model_len first (submit-time fit check, Phase 5's concern, not
-    # this one) then whatever the spec's own engine args are -- for the
-    # seeded qwen3 profile that already includes --generation-config
-    # vllm and --reasoning-parser qwen3 (Phase 1 seed), so nothing here
-    # needs to re-derive them.
+    # Every vLLM flag -- generation-config, parallelism, dtype,
+    # gpu-memory-utilization, max-model-len, reasoning-parser,
+    # quantization, and any engine_options escape hatch -- comes from
+    # spec.engine_args, rendered by
+    # services/serving_profiles/render.render_engine_args (Phase 3 of
+    # docs/CHECKPOINT_REGISTRATION_PHASES.md). This module renders none
+    # of them itself.
     vllm_command_lines = [
         '"${VLLM}" serve "${MODEL_PATH}"',
         '--served-model-name "${SERVED_NAME}"',
         "--host 0.0.0.0",
         '--port "${PORT}"',
     ]
-    if spec.max_model_len is not None:
-        vllm_command_lines.append(f"--max-model-len {spec.max_model_len}")
     if spec.engine_args:
         # engine_args is a flat list of individual argv tokens (one
         # flag, one value, each its own element), not flag/value pairs,

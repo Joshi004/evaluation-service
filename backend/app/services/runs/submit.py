@@ -17,6 +17,7 @@ from app.schemas.runs import RunSubmission
 from app.services.endpoints import queries as endpoints_queries
 from app.services.recipes import queries as recipes_queries
 from app.services.runs import queries as runs_queries
+from app.services.serving_profiles.render import serving_profile_display_name
 from app.services.standards.resolve import resolve_recipe
 
 # The endpoint's max_model_len is the model's whole context window --
@@ -128,8 +129,9 @@ def context_window_conflict(
     if max_tokens + _PROMPT_ALLOWANCE_TOKENS > serving_profile.max_model_len:
         return (
             f"recipe max_tokens ({max_tokens}) plus a {_PROMPT_ALLOWANCE_TOKENS}-token "
-            f"prompt allowance exceeds serving profile {serving_profile.name!r}'s "
-            f"max_model_len ({serving_profile.max_model_len})"
+            f"prompt allowance exceeds serving profile "
+            f"{serving_profile_display_name(serving_profile)!r}'s max_model_len "
+            f"({serving_profile.max_model_len})"
         )
     return None
 
@@ -159,12 +161,13 @@ def think_handling_conflict(
     profile with a reasoning parser is a request that cannot do what it
     says.
     """
-    has_reasoning_parser = "--reasoning-parser" in serving_profile.vllm_flags
+    has_reasoning_parser = serving_profile.reasoning_parser is not None
     if recipe_config["think_handling"] == "as_is" and has_reasoning_parser:
         return (
             f"recipe think_handling='as_is' cannot run against serving profile "
-            f"{serving_profile.name!r}, which carries --reasoning-parser: the think "
-            "block would never reach the completion this recipe means to score whole"
+            f"{serving_profile_display_name(serving_profile)!r}, which carries "
+            "--reasoning-parser: the think block would never reach the completion "
+            "this recipe means to score whole"
         )
     return None
 

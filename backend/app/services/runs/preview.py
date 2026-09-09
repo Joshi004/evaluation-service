@@ -3,10 +3,10 @@
 loading, same two blocking checks -- but never calls `resolve_recipe`
 (which inserts a recipe row) and never creates a run_group or eval_run
 rows. It exists at all because the two blocking checks and decision D4's
-warning all need `ServingProfile` fields (`max_model_len`, `vllm_flags`)
-the browser can't see; duplicating those rules in TypeScript would let
-the Submit page and the Standards page disagree about what a value
-does.
+warning all need `ServingProfile` fields (`max_model_len`,
+`reasoning_parser`) the browser can't see; duplicating those rules in
+TypeScript would let the Submit page and the Standards page disagree
+about what a value does.
 """
 
 from typing import Any

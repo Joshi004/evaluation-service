@@ -29,7 +29,7 @@ async def list_checkpoints(db: AsyncSession) -> list[CheckpointListItem]:
     each family's rows already adjacent.
     """
     stmt = (
-        select(Checkpoint, ServingProfile.name)
+        select(Checkpoint, ServingProfile.label, ServingProfile.hash)
         .join(ServingProfile, Checkpoint.serving_profile_id == ServingProfile.id)
         .order_by(Checkpoint.family, Checkpoint.name)
     )
@@ -41,10 +41,11 @@ async def list_checkpoints(db: AsyncSession) -> list[CheckpointListItem]:
             family=checkpoint.family,
             path=checkpoint.path,
             parent_checkpoint_id=checkpoint.parent_checkpoint_id,
-            serving_profile_name=serving_profile_name,
+            serving_profile_label=serving_profile_label,
+            serving_profile_hash=serving_profile_hash,
             created_at=checkpoint.created_at,
         )
-        for checkpoint, serving_profile_name in rows
+        for checkpoint, serving_profile_label, serving_profile_hash in rows
     ]
 
 
@@ -53,14 +54,14 @@ async def get_checkpoint_with_runs(db: AsyncSession, checkpoint_id: int) -> Chec
     phase -- no eval_run rows exist until Phase 3 submits real jobs.
     """
     stmt = (
-        select(Checkpoint, ServingProfile.name)
+        select(Checkpoint, ServingProfile.label, ServingProfile.hash)
         .join(ServingProfile, Checkpoint.serving_profile_id == ServingProfile.id)
         .where(Checkpoint.id == checkpoint_id)
     )
     row = (await db.execute(stmt)).first()
     if row is None:
         return None
-    checkpoint, serving_profile_name = row
+    checkpoint, serving_profile_label, serving_profile_hash = row
 
     runs_stmt = (
         select(EvalRun)
@@ -75,7 +76,8 @@ async def get_checkpoint_with_runs(db: AsyncSession, checkpoint_id: int) -> Chec
         family=checkpoint.family,
         path=checkpoint.path,
         parent_checkpoint_id=checkpoint.parent_checkpoint_id,
-        serving_profile_name=serving_profile_name,
+        serving_profile_label=serving_profile_label,
+        serving_profile_hash=serving_profile_hash,
         created_at=checkpoint.created_at,
         generation_config=checkpoint.generation_config,
         registered_by=checkpoint.registered_by,

@@ -20,7 +20,11 @@ export interface CheckpointListItem {
   family: string | null
   path: string
   parent_checkpoint_id: number | null
-  serving_profile_name: string
+  // Joined in from serving_profile -- label is null for an ad-hoc
+  // customisation (R-D16), in which case hash is what identifies it.
+  // See utils/servingProfileDisplayName.ts for the label-or-hash rule.
+  serving_profile_label: string | null
+  serving_profile_hash: string
   created_at: string
 }
 

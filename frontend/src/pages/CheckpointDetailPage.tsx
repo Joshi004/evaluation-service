@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch, type CheckpointListItem } from '../api/client'
 import { EmptyState } from '../components/EmptyState/EmptyState'
+import { servingProfileDisplayName } from '../utils/servingProfileDisplayName'
 
 // `family` is nullish for a checkpoint nobody's grouped yet -- bucket it
 // under "Ungrouped" rather than dropping it from the page.
@@ -77,7 +78,10 @@ export function CheckpointDetailPage() {
                         {checkpoint.path}
                       </td>
                       <td className="border-b border-slate-800/50 p-2 text-slate-300">
-                        {checkpoint.serving_profile_name}
+                        {servingProfileDisplayName(
+                          checkpoint.serving_profile_label,
+                          checkpoint.serving_profile_hash,
+                        )}
                       </td>
                       <td className="border-b border-slate-800/50 p-2 text-slate-300">
                         {parentName(checkpoint, data)}

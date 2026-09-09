@@ -27,6 +27,12 @@ class ServeJobSpec:
     """Everything a runtime needs to start a serving job, structured
     rather than a rendered script (R-D3) -- rendering an sbatch script
     out of this is the SSH/SLURM adapter's private business.
+
+    `engine_args` already carries `--max-model-len` when the profile
+    sets one -- rendered by
+    `app.services.serving_profiles.render.render_engine_args` -- so
+    there is no separate `max_model_len` field here to duplicate it
+    (docs/CHECKPOINT_REGISTRATION_PHASES.md Phase 3, item 5).
     """
 
     model_reference: str
@@ -34,7 +40,6 @@ class ServeJobSpec:
     gpus: int
     walltime_seconds: int
     engine_args: list[str]
-    max_model_len: int | None
 
 
 @dataclass(frozen=True)
