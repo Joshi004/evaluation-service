@@ -1,4 +1,5 @@
 import type { CheckpointListItem, StandardRecipe } from '../../api/client'
+import { AvailabilityBadge } from '../AvailabilityBadge/AvailabilityBadge'
 import { toggleId } from './SubmitGrid.helper'
 
 interface SubmitGridProps {
@@ -43,6 +44,13 @@ export function SubmitGrid({
                     }
                   />
                   {checkpoint.name}
+                  {/* Selectable either way (Phase 8 item 5): the backend's
+                   * checkpoint_unavailable error explains itself in the dry
+                   * run preview below, which teaches more than a disabled
+                   * checkbox the user can't click and can't ask why. */}
+                  {checkpoint.availability_status !== 'available' && (
+                    <AvailabilityBadge status={checkpoint.availability_status} />
+                  )}
                 </label>
               </li>
             ))}

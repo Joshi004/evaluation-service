@@ -1,5 +1,5 @@
 import type { RunPreview, StandardRecipe } from '../../api/client'
-import { formatPreviewValue } from './DryRunPreview.helper'
+import { formatPreviewValue, groupFindingsByCode, type GroupedFinding } from './DryRunPreview.helper'
 
 interface DryRunPreviewProps {
   preview: RunPreview | undefined
@@ -9,14 +9,44 @@ interface DryRunPreviewProps {
   recipesById: Map<number, StandardRecipe>
 }
 
+interface FindingGroupItemProps {
+  finding: GroupedFinding
+  textClassName: string
+}
+
+// One collapsed finding: its message once, plus which pairs it applies
+// to -- inline when there's only one, behind a <details> toggle when a
+// grid-wide finding would otherwise repeat itself for every pair it hit.
+function FindingGroupItem({ finding, textClassName }: FindingGroupItemProps) {
+  return (
+    <li className={`text-xs ${textClassName}`}>
+      {finding.message}
+      {finding.pairLabels.length === 1 ? (
+        <span className="ml-1 text-slate-500">({finding.pairLabels[0]})</span>
+      ) : (
+        <details className="mt-0.5">
+          <summary className="cursor-pointer text-slate-500">
+            {finding.pairLabels.length} pairs affected
+          </summary>
+          <ul className="mt-1 ml-4 list-disc space-y-0.5 text-slate-500">
+            {finding.pairLabels.map((pairLabel) => (
+              <li key={pairLabel}>{pairLabel}</li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </li>
+  )
+}
+
 // Everything Submit needs to show before anything POSTs: how many runs
 // and GPUs (Trap T1 -- GPUs are per distinct checkpoint, not per run,
-// so this is the one number a human will actually act on), which pairs
-// are blocked and why, and what each selected recipe's overrides would
-// actually resolve to. All of it comes straight from POST /runs/preview
-// (backend/app/services/runs/preview.py) -- this component never
-// recomputes any of it, so Submit and the Standards page can never
-// disagree about what a value does.
+// so this is the one number a human will actually act on), which
+// findings block or merely warn and why, and what each selected
+// recipe's overrides would actually resolve to. All of it comes
+// straight from POST /runs/preview (backend/app/services/runs/preview.py)
+// -- this component never recomputes any of it, so Submit and the
+// Standards page can never disagree about what a value does.
 export function DryRunPreview({ preview, isLoading, isError, error, recipesById }: DryRunPreviewProps) {
   if (isLoading) {
     return <p className="text-sm text-slate-500">Checking…</p>
@@ -30,7 +60,8 @@ export function DryRunPreview({ preview, isLoading, isError, error, recipesById 
     return <p className="text-sm text-slate-500">Select at least one checkpoint and one recipe.</p>
   }
 
-  const blockedPairs = preview.pairs.filter((pair) => pair.blocking_error !== null)
+  const groupedErrors = groupFindingsByCode(preview.pairs, 'errors')
+  const groupedWarnings = groupFindingsByCode(preview.pairs, 'warnings')
 
   return (
     <div>
@@ -43,16 +74,36 @@ export function DryRunPreview({ preview, isLoading, isError, error, recipesById 
         GPUs are counted per distinct checkpoint -- benchmarks against one checkpoint share one server.
       </p>
 
-      {blockedPairs.length > 0 && (
+      {groupedErrors.length > 0 && (
         <div className="mt-4 rounded border border-red-500/30 bg-red-500/10 p-3">
           <p className="text-sm font-medium text-red-300">
-            {blockedPairs.length} pair{blockedPairs.length === 1 ? '' : 's'} cannot run as configured
+            {groupedErrors.length} problem{groupedErrors.length === 1 ? '' : 's'} block this submission
           </p>
           <ul className="mt-2 space-y-1">
-            {blockedPairs.map((pair) => (
-              <li key={`${pair.checkpoint_id}-${pair.recipe_id}`} className="text-xs text-red-400">
-                {pair.checkpoint_name} × {pair.recipe_label ?? pair.benchmark}: {pair.blocking_error}
-              </li>
+            {groupedErrors.map((finding) => (
+              <FindingGroupItem
+                key={`${finding.code}-${finding.field}-${finding.message}`}
+                finding={finding}
+                textClassName="text-red-400"
+              />
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {groupedWarnings.length > 0 && (
+        <div className="mt-4 rounded border border-amber-500/30 bg-amber-500/10 p-3">
+          <p className="text-sm font-medium text-amber-300">
+            {groupedWarnings.length} warning{groupedWarnings.length === 1 ? '' : 's'} -- recorded, does not
+            block submitting
+          </p>
+          <ul className="mt-2 space-y-1">
+            {groupedWarnings.map((finding) => (
+              <FindingGroupItem
+                key={`${finding.code}-${finding.field}-${finding.message}`}
+                finding={finding}
+                textClassName="text-amber-400"
+              />
             ))}
           </ul>
         </div>
@@ -96,16 +147,6 @@ export function DryRunPreview({ preview, isLoading, isError, error, recipesById 
                     ))}
                   </tbody>
                 </table>
-              )}
-
-              {resolved.warnings.length > 0 && (
-                <ul className="mt-2 space-y-0.5">
-                  {resolved.warnings.map((warning) => (
-                    <li key={warning.field} className="text-xs text-amber-400">
-                      {warning.field}: {warning.message}
-                    </li>
-                  ))}
-                </ul>
               )}
             </div>
           )

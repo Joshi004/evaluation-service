@@ -103,7 +103,7 @@ export function SubmitPage() {
     })
   }
 
-  const hasBlockingError = preview.data?.pairs.some((pair) => pair.blocking_error !== null) ?? false
+  const hasCompatibilityError = preview.data?.pairs.some((pair) => pair.errors.length > 0) ?? false
   const canSubmit =
     gridReady &&
     runName.trim() !== '' &&
@@ -113,7 +113,7 @@ export function SubmitPage() {
     // so without this check a just-changed grid would briefly submit
     // against a preview that describes the selection before the change.
     !preview.isFetching &&
-    !hasBlockingError &&
+    !hasCompatibilityError &&
     !submitMutation.isPending
 
   return (

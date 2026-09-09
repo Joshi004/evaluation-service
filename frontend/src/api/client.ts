@@ -33,6 +33,7 @@ export interface CheckpointListItem {
   created_at: string
   availability_status: CheckpointAvailabilityStatus
   availability_checked_at: string | null
+  availability_detail: string | null
 }
 
 // What inspection read off the cluster at registration -- see
@@ -65,13 +66,12 @@ export interface CheckpointRunSummary {
 }
 
 // GET /api/v1/checkpoints/{id} -- see app/schemas/checkpoints.py's
-// CheckpointDetail. Not fetched by any page yet; the fields exist so a
-// later phase can render them without redefining the shape.
+// CheckpointDetail. Fetched lazily by CheckpointInferredPanel when a
+// checkpoints-page row is expanded (Phase 8), not on the list itself.
 export interface CheckpointDetail extends CheckpointListItem {
   generation_config: Record<string, unknown> | null
   registered_by: string | null
   inferred: CheckpointInferredMetadata
-  availability_detail: string | null
   runs: CheckpointRunSummary[]
 }
 
@@ -354,17 +354,27 @@ export interface RunPreviewRequest {
   overrides: RecipeOverrides
 }
 
+// One compatibility rule's result -- see app/schemas/compatibility.py's
+// CompatibilityFinding. No `severity` field: which list a finding is in
+// (errors vs warnings, below) is what determines that.
+export interface CompatibilityFinding {
+  code: string
+  field: string
+  message: string
+}
+
 // One (checkpoint, recipe) cell of the grid a submit would create.
-// blocking_error is the exact text POST /runs would 400 with for this
-// pair -- computed by the same backend functions that raise it, so this
-// and a real submit can never disagree about what a value does.
+// errors/warnings are the exact findings POST /runs would 400 on for
+// this pair -- computed by the same backend functions that raise it, so
+// this and a real submit can never disagree about what a value does.
 export interface RunPreviewPair {
   checkpoint_id: number
   checkpoint_name: string
   recipe_id: number
   recipe_label: string | null
   benchmark: string
-  blocking_error: string | null
+  errors: CompatibilityFinding[]
+  warnings: CompatibilityFinding[]
 }
 
 // One field an override would change from the base recipe's value.

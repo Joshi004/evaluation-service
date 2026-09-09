@@ -55,6 +55,7 @@ async def list_checkpoints(db: AsyncSession) -> list[CheckpointListItem]:
             created_at=checkpoint.created_at,
             availability_status=checkpoint.availability_status,
             availability_checked_at=checkpoint.availability_checked_at,
+            availability_detail=checkpoint.availability_detail,
         )
         for checkpoint, serving_profile_label, serving_profile_hash in rows
     ]

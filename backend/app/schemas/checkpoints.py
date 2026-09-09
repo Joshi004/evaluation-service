@@ -28,6 +28,10 @@ class CheckpointListItem(BaseModel):
     # route runs.
     availability_status: Literal["unknown", "available", "unavailable", "incomplete"]
     availability_checked_at: datetime | None
+    # Lifted onto the list item, not just the detail response, so an
+    # unavailable row can show why on the checkpoints page without a
+    # second request per row (Phase 8).
+    availability_detail: str | None
 
 
 class CheckpointRunSummary(BaseModel):
@@ -69,7 +73,6 @@ class CheckpointDetail(CheckpointListItem):
     generation_config: dict[str, Any] | None
     registered_by: str | None
     inferred: CheckpointInferredMetadata
-    availability_detail: str | None
     runs: list[CheckpointRunSummary]  # empty this phase -- no eval_run rows exist yet
 
 
