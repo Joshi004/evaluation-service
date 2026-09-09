@@ -1,16 +1,18 @@
-# What Standards and Serving Profiles Should We Add Next?
+# Standards, Sampling Profiles and Serving Profiles — What to Add and How to Shape It
 
 **Date:** Sep 2026
-**Scope:** `evaluation-service` (what we have) vs `qvac-research-tool-call` (what the team already runs)
-**Status:** Research notes. Nothing here changes code. It is a shopping list plus the reasons behind it.
+z**Scope:** `evaluation-service` compared against all five team repos — `qvac-research-tool-call`, `qvac-research-medpsy`, `qvac-research-one-bit-models`, `tether_VLMEvalKit`, `qvac-visionpsy-nano`
+**Status:** Research notes. Nothing here changes code.
 
-This document answers three questions:
+This document started as a shopping list of benchmarks to add. Looking at the other four teams turned it into something bigger: a proposal to change the shape of a recipe, and a finding that one concept we thought was tool-team-specific is actually needed by three teams out of four.
 
-1. We have two standards today. **Which ones should we write next, and in what order?**
-2. Our serving profile is a real database table with structured columns now — a different shape from anything the tool-call repo has. **Which profiles should exist in that table?**
-3. What is currently **hardcoded or missing** in our code that would stop us adding those standards even if we wrote the YAML perfectly?
+**How to read this.** We are building one service for every team, but we start with the tool team. So throughout, each section is split the same way:
 
-The third question turned out to be the important one. Several benchmarks are not blocked on writing a YAML file — they are blocked on four values that are baked into our harness builder.
+> **Tool team — build now.** What we need for the benchmarks we are adding first.
+>
+> **Other teams — don't block.** What the same section has to leave room for, without building it yet.
+
+If you only care about the next month of work, read the "build now" halves.
 
 ---
 
@@ -18,35 +20,39 @@ The third question turned out to be the important one. Several benchmarks are no
 
 1. [Plain-English refresher](#1-plain-english-refresher)
 2. [Where we are today](#2-where-we-are-today)
-3. [What the tool-call repo actually runs](#3-what-the-tool-call-repo-actually-runs)
-4. [Part 1 — The standards to add](#4-part-1--the-standards-to-add)
-5. [Part 2 — The serving profiles to add](#5-part-2--the-serving-profiles-to-add)
-6. [Part 3 — The four hardcoded values that block most of this](#6-part-3--the-four-hardcoded-values-that-block-most-of-this)
-7. [Part 4 — Bigger gaps that need a decision, not just a column](#7-part-4--bigger-gaps-that-need-a-decision-not-just-a-column)
-8. [Suggested order of work](#8-suggested-order-of-work)
-9. [Appendix — reference tables](#9-appendix--reference-tables)
+3. [The four other teams in one picture](#3-the-four-other-teams-in-one-picture)
+4. [Shape change 1 — split the recipe in two](#4-shape-change-1--split-the-recipe-in-two)
+5. [Shape change 2 — the second model is a first-class thing](#5-shape-change-2--the-second-model-is-a-first-class-thing)
+6. [Shape change 3 — when to use a column and when to use JSON](#6-shape-change-3--when-to-use-a-column-and-when-to-use-json)
+7. [The standards to add](#7-the-standards-to-add)
+8. [The serving profiles to add](#8-the-serving-profiles-to-add)
+9. [Fitting Groups C, D and E into the new shape](#9-fitting-groups-c-d-and-e-into-the-new-shape)
+10. [The four hardcoded values](#10-the-four-hardcoded-values)
+11. [What the other teams break that nothing here fixes](#11-what-the-other-teams-break-that-nothing-here-fixes)
+12. [Suggested order of work](#12-suggested-order-of-work)
+13. [Appendix — reference tables](#13-appendix--reference-tables)
 
 ---
 
 ## 1. Plain-English refresher
 
-Two words in this project mean very specific things, and they are easy to mix up. Worth getting straight before anything else.
+Four words, used precisely throughout.
 
-**A standard** is *what test to run and how to grade it*. It is a YAML file in `standards/`. It says which benchmark, which dataset, how many examples to show the model first, what temperature to sample at, which numbers to report. Same standard + same model = same score, every time. That is the whole point of it existing.
+**A standard** is *what test to run and how to grade it*. Which dataset, how many examples to show first, how to pull the answer out, which numbers to report. It should be identical for every model, because that is what makes two scores comparable.
 
-**A serving profile** is *how to start the model's web server*. It is a row in the `serving_profile` table. It says which engine (vLLM), how many GPUs, how much of each GPU's memory to use, how long a context window to allow, and which parsers to turn on. It says nothing about which test you are running.
+**A sampling profile** is *how we ask the model to speak*. Temperature, top_p, how many tokens it may generate, whether thinking is switched on. This genuinely depends on the model — Qwen's own guidance says greedy decoding makes their thinking models repeat and degenerate — so it cannot be one global setting.
 
-The split matters because **one served model can answer many tests**. Starting a model costs about 350 seconds of GPU time. If we run seven benchmarks against one running server instead of starting seven servers, we save roughly half an hour of H100 time per checkpoint. That saving only works if "how the model is served" and "what test we run" are separate things — which is exactly why we split them.
+**A serving profile** is *how we start the model's server*. Engine, GPUs, context window, which parsers are enabled. It says nothing about which test you are running, and that is the point: one running server can answer many tests.
 
-One more term you will see a lot below:
+**An auxiliary model** is *a second model that takes part in producing the score*. A judge that grades an answer, or a simulated user that holds up the other end of a conversation. Section 5 is about this, and it is the biggest finding in the document.
 
-**A parser** is a small piece of vLLM that reads the model's raw text output and pulls structured pieces out of it. There are two kinds we care about. A **reasoning parser** finds the `<think>...</think>` block and moves it into its own field, so the grader scores the answer and not the model's private thinking. A **tool-call parser** finds the bit where the model says "call the weather API with city=Paris" and turns it into a proper JSON function call. Different model families write these things differently, so each family needs its own parser.
+One more, because it comes up in Section 11:
+
+**Execution mode** is *how the harness reaches the model*. We assume it always talks HTTP to a running server. Two of the five repos do not — they load the model inside the harness process instead.
 
 ---
 
 ## 2. Where we are today
-
-Small. Deliberately, but small.
 
 | Thing | Count | What it is |
 |---|---|---|
@@ -55,9 +61,9 @@ Small. Deliberately, but small.
 | Harness frameworks | **1** | EvalScope, image `registry.local/evalscope:2ce95c3` |
 | Checkpoints | **1** | `Qwen3-4B-allternary-ep03` |
 
-The two standards are the same benchmark twice — once with thinking off, once with thinking on. Layer 1 (the protocol) is byte-identical between them; only the sampling block and `enable_thinking` differ. So in benchmark terms we have **one** benchmark covered.
+The two standards are the same benchmark twice — thinking off, thinking on. Layer 1 is byte-identical between them; only sampling and `enable_thinking` differ. So we have **one** benchmark covered, and we have already paid the cost of duplicating a whole file to change three numbers. That is a small preview of Section 4.
 
-The single serving profile looks like this:
+The single serving profile:
 
 | Field | Value |
 |---|---|
@@ -69,169 +75,358 @@ The single serving profile looks like this:
 | `gpu_memory_utilization` | `0.85` |
 | `engine_options` | `{}` |
 
-That is the whole inventory. Everything below is about what to add to it.
+---
+
+## 3. The four other teams in one picture
+
+Short version: **everyone separates sampling from the benchmark, three of four need a second model, and two of five never start a server at all.**
+
+| | tool-call | medpsy | one-bit-models | VLMEvalKit | visionpsy-nano |
+|---|---|---|---|---|---|
+| **Harness** | EvalScope | OpenCompass fork | lm-eval 0.4.12 | VLMEvalKit fork | none (model repo) |
+| **How the model is reached** | vLLM over HTTP | vLLM over HTTP | **in-process** | vLLM HTTP **pool** | vLLM HTTP, or **llama.cpp CLI** |
+| **Needs a second model?** | **Yes** — user simulator | **Yes** — judge | No | **Yes** — judge | n/a |
+| **Sampling lives where?** | model catalog | model profile | manifest `gen_kwargs` | model registration | script defaults |
+| **Sampling inside the benchmark?** | only where mandated | no | no | no | n/a |
+| **Benchmarks** | 20 | 18 | 18 | 61 units | none |
+
+Three things follow from that table, and they are Sections 4, 5 and 11.
+
+**Nobody puts temperature inside a benchmark definition.** All four harnesses keep sampling in a model-shaped place and let a benchmark override individual keys only where its published definition demands it. We are the only one that bakes the whole sampling block into the benchmark recipe. That is Section 4.
+
+**Three of four need a second model, and they need it for the same reason.** That is Section 5.
+
+**Two of five never speak HTTP.** That is Section 11, and it is the one problem this document does not solve.
 
 ---
 
-## 3. What the tool-call repo actually runs
+## 4. Shape change 1 — split the recipe in two
 
-The tool-call team runs **20 benchmarks**, grouped into named suites. Their `core` suite — the set they say a model should be measured on before anyone looks at it — is ten benchmarks:
+### The proposal
+
+Today one `recipe` row holds both the protocol and the sampling, and one hash covers both. The proposal is to split it:
+
+| New thing | Holds | Changes when |
+|---|---|---|
+| **`standard`** | benchmark, framework, dataset, split, subsets, few-shot, prompt, extraction, metrics, repeats — plus the sampling the benchmark's own definition *mandates* | we change what the test is |
+| **`sampling_profile`** | temperature, top_p, top_k, min_p, penalties, max_tokens, enable_thinking | we change how we ask the model to speak |
+| **`serving_profile`** | engine and its flags | we change how the server is started |
+
+### This is not a new idea — it is the original plan
+
+Worth saying up front, because it makes the change much easier to justify. `EVAL_SERVICE_PLAN.md` Section 5 already specifies exactly this, in detail: Layer 1 is the protocol, Layer 2 is "the run profile," and the data model at line 509 has a `model_profile` table sitting next to `recipe`. V1 deliberately folded Layer 2 into the recipe hash as a simplification, and `DATA_MODEL_V1.md` Section 8 records that as a known simplification rather than a decision that Layer 2 does not exist.
+
+So this is **un-simplifying something we simplified on purpose**, now that we know more. That is a normal thing to do and a much smaller argument than proposing a new architecture.
+
+### Why it is worth doing
+
+**Every other team already works this way.** Four out of four. That is the strongest evidence available, and it is not a coincidence — it is because sampling is a property of the checkpoint, not of the test.
+
+**The duplication is already visible at two standards.** Our two IFEval files are identical except for `enable_thinking` and six sampling numbers. Multiply by the twenty benchmarks in Section 7 and we are maintaining forty files that restate the same handful of sampling blocks. Change our greedy policy and we edit twenty of them, and any one we miss is a silently wrong number.
+
+**It makes the auxiliary model expressible.** This is the argument I did not expect, and it is the best one. A judge or a user simulator is described by exactly three things: which model, how it samples, how it is served. If sampling has no independent existence, there is nowhere to put "the judge runs at temperature 0.01" except inside the benchmark recipe, glued to a name. With the split, the second model reuses the same three concepts as the first. Section 5 depends on this.
+
+### The part that must not get lost
+
+The whole pitch of this service is "numbers on the leaderboard are comparable." One hash covering everything is what guarantees that today. Split it into three and you can accidentally put two IFEval scores side by side that were taken at different temperatures.
+
+The plan already solved this and the solution has to come back with the split: **every run stores a resolved composite hash**, computed from the values that were actually used, not the ones that were requested. The leaderboard groups by it. Two rows may only share a ranking if they share it.
+
+The plan calls this `profile_hash` and pairs it with `resolved_profile`, the concrete values that reached the model. Both matter: the resolved values are what you hash, and the recorded choice is what you show the user. A bug in resolution then shows up as a hash mismatch instead of a wrong number wearing the right label.
+
+**Open question worth deciding explicitly:** does the *serving* profile go into that comparison hash, or only the standard and the sampling? The plan says only the standard and sampling. But serving choices can move a score — a different KV-cache precision, a different quantization — and the whole point of the one-bit-models team is that quantization changes numbers. For them the quantization is baked into the checkpoint, so checkpoint identity covers it; for a profile that quantizes at serve time it would not. I do not think this should be settled in a research document, but it should be settled before the split ships.
+
+### The three-layer resolution order
+
+Splitting sampling out does not mean the standard has no say. Some sampling is mandated by the benchmark: BFCL specifies near-greedy `temperature: 0.001`, AIME25 needs an 81,920-token budget or the problems do not fit. Those are not free choices, they are part of the protocol.
+
+The tool-call repo already has the right precedence and even the right warning in its comments — its `sampling_overrides` key is documented as "for what the benchmark's definition requires, not for what is fast." Copy that:
 
 ```
-bfcl_v3, acebench, tau2_retail, tau2_telecom, tau3_banking,
-mmlu_pro, gpqa_diamond, ifeval, ifbench, multi_if
+sampling profile (from the checkpoint)
+  ← overridden by → standard's mandated overrides (from the benchmark)
+    ← overridden by → what the user typed at submit time
 ```
 
-We have **one** of those ten.
+Resolve those three, store the result, hash the result.
 
-They also have `math` (gsm8k, aime25, math_500), `extended` (live_code_bench), `tool_use` (adds tool_sandbox), and a few diagnostic variants that are not in any suite (`ceval`, `acebench_fc`, `acebench_prompt`, `tau2_airline`, `tau3`).
-
-Their whole stack runs on EvalScope, same as ours. That is the single most useful fact in this document: **we are not porting benchmarks across harnesses.** We are copying settings from one EvalScope config into another. The datasets, the graders, the metric names — all the same code underneath.
-
-A few structural differences worth knowing, because they shape the recommendations:
-
-- They have **no serving profile table.** How a model is served comes from a `families.yaml` file keyed by model family (qwen3, qwen3_5, lfm2, minicpm5, functiongemma). Each family is a list of vLLM flags. Our structured `serving_profile` table is genuinely new.
-- Their `config_id` — the `full-ternary-04b` in the results path we quote in the IFEval standard — is **not** a serving profile. It is just a name someone typed at submit time to label a sweep. Our equivalent is `run_group.name`, not `serving_profile.label`. Worth saying out loud because the name looks profile-shaped and is not.
-- Their sampling profiles (`greedy`, `qwen3_think`, `lfm2_5_think`, …) live in a model catalog, attached to a checkpoint. Ours live inside the recipe. Both are defensible; ours means a sampling change mints a new recipe row, which is the behaviour we wanted.
+> **Tool team — build now.** Two tables instead of one, three-layer resolution, composite hash on the run. Roughly seven named sampling profiles, which we can lift directly from the tool-call catalog (Appendix 13.3).
+>
+> **Other teams — don't block.** Medpsy resolves sampling the same way but with one wrinkle: a non-empty `generation_kwargs` block *replaces* the inherited one rather than merging key by key. If we pick merge semantics — and we should, because it is what tool-call does and what the three-layer order above implies — that is a difference to write down, not to discover later. VLMEvalKit's board policy is simpler than anybody's: greedy everywhere, on purpose, so that vision scores are reproducible. That is just one more named profile.
 
 ---
 
-## 4. Part 1 — The standards to add
+## 5. Shape change 2 — the second model is a first-class thing
 
-I have grouped these by **what it costs us to add them**, not by how interesting they are. The cheap ones first, because the cheap ones are how we prove the registry is not secretly hardcoded around IFEval.
+This is the finding that changed my recommendation from last time.
 
-### Group A — Free. Nothing new needed. (2 standards)
+### Three teams, three names, one concept
 
-These need a YAML file and nothing else. Same shape as IFEval, same harness image, no new columns, no new infrastructure.
+| Team | What they call it | Which model | How it is served |
+|---|---|---|---|
+| tool-call | user simulator | GLM-5.2 (remote API), or self-hosted Qwen3.8-27B | second vLLM launched in the same job, on 2 extra GPUs |
+| medpsy | judge | CompassJudger-2-32B, gpt-oss-20b, Gemma4_31B | second vLLM started on the worker for the eval phase |
+| VLMEvalKit | judge | Qwen3.6-27B-FP8, aliased as `gpt-4o-mini` | one replica per freed GPU after inference finishes |
 
-**IFBench** — AllenAI's harder instruction-following set. Reports the same four metrics as IFEval (prompt-level and instruction-level, strict and loose), uses the same kind of rule-based checkers, runs at the same batch size. It is the closest thing to a free benchmark we will ever get. In the tool-call config it does not even have a row in `benches.yaml`, because everything about it matches the defaults.
+I had this filed as "a tool-team problem for ACEBench." It is not. **Three of the four teams that run evaluations need a second model, and they need it for the same structural reason:** the score is not a function of the model's output alone. Something else has to read that output, or talk back to it, and whatever that something else is becomes part of the measurement.
 
-**GSM8K** — grade-school math word problems, 4-shot chain-of-thought, answer pulled out of a `\boxed{}` wrapper. Already named as benchmark number two in the plan's Milestone 2, and already flagged there as needing an explicit decision on the 4-shot-versus-convention question. Rule-scored, no judge, fast.
+### Does it change the number? Yes, and everybody knows it
 
-Both of these are `instruct` and `think` pairs, so realistically that is four YAML files. Still cheap.
+This is the user's question — where does it belong — and the evidence answers it clearly.
 
-> One caveat on GSM8K: it needs a real answer-extraction step, unlike IFEval where `extraction.method` is `none`. Our `extraction` column is deliberately shapeless (`extra="allow"`), so it can hold whatever EvalScope needs — but GSM8K will be the first standard that actually puts something in there, so it is worth checking the field names against a real EvalScope run rather than guessing.
+The tool-call config says one shared simulator instance "keeps the user's behaviour fixed across every model compared against it. That is the whole point — a simulator that drifts makes two models' agent scores incomparable."
 
-### Group B — Cheap, but each needs one small unblocking change. (4 standards)
+VLMEvalKit goes further and makes it a hard failure. Their fork removed upstream's silent fallback to exact-match scoring when the judge is unreachable:
 
-**GPQA-Diamond** — 198 hard science multiple-choice questions, 0-shot with chain-of-thought, answer choices shuffled. Small enough that the confidence interval is wide, which is exactly why the plan wants it in wave 2: it is the benchmark that forces us to settle the repeats-and-variance policy. Needs nothing new except that policy decision.
+```284:289:/home/naresh/TeamRepos/tether_VLMEvalKit/vlmeval/dataset/image_mcq.py
+            if not model.working():
+                raise RuntimeError(
+                    'Judge endpoint is not working. Refusing to fall back to exact matching '
+                    'so every recorded score is judge-backed; re-run when the judge is up.\n'
+                    + DEBUG_MESSAGE
+                )
+```
 
-**MMLU-Pro** — 12,000 ten-choice knowledge questions, 5-shot from the validation split, answers extracted from an `ANSWER: [LETTER]` pattern. The biggest generation volume of anything on this list. Blocked on two things: our hardcoded batch size of 32 (they measured the knee at 128 and 32 leaves the GPU idle), and our fixed 12-hour SLURM time limit (they raise this one to 24 hours, and note the old stack lost a job at 49% completion by not doing so).
+They would rather lose the run than record a number produced a different way. That is the same instinct as our recipe hash, expressed as an exception.
 
-**AIME25** — 30 competition math problems. Thirty. You cannot read a single run of this meaningfully; it needs `repeats` and an average. We already have a `repeats` column, so that part is fine. What blocks it is the token budget: they run it at `max_tokens: 81920` with a 7200-second timeout. Both of those hit walls in our code — see [Part 3](#6-part-3--the-four-hardcoded-values-that-block-most-of-this).
+And the judge's own sampling matters: medpsy runs it at 0.01 for generic grading, 0.5 for HealthBench rubrics, and 0 for arena judging. Three different temperatures for three different grading jobs, all deliberate.
 
-**MATH-500** — same shape as AIME25, 500 problems instead of 30, same 81920-token budget and 7200-second timeout. Add it in the same change as AIME25 or not at all; separating them just means doing the same unblocking work twice.
+**So the auxiliary model's identity and sampling belong in the standard, and must be in the comparison hash.** Not in the serving profile, not in a free-text note.
 
-### Group C — Real work, and worth it. (1 standard, high value)
+### The shape it wants
 
-**BFCL v3** — the tool-calling benchmark, and the reason the tool-call repo exists. Seventeen subsets covering simple calls, parallel calls, multi-turn conversations, and "irrelevance" (does the model correctly decline to call anything?). Rolled up into one `overall_acc` plus three group scores.
+Here is why Section 4 has to come first. Once sampling is its own thing, the auxiliary model needs no new vocabulary at all:
 
-This is the single most valuable benchmark on the list for our team, and it is the one that most clearly does not fit the current schema. Three separate problems:
+| | Model under test | Auxiliary model |
+|---|---|---|
+| which weights | `checkpoint` | `checkpoint` (or a remote endpoint) |
+| how it speaks | `sampling_profile` | `sampling_profile` |
+| how it is served | `serving_profile` | `serving_profile` |
 
-1. **Seventeen subsets.** Our harness builder writes `subset_list: ["default"]` and there is no way to say otherwise.
-2. **It needs a tool-call parser.** Every family in `families.yaml` serves with `--enable-auto-tool-choice --tool-call-parser <something>`. Our serving profile has a column for the *reasoning* parser and nothing for the *tool* parser.
-3. **It sets `temperature: 0.001`, not 0.** Near-greedy rather than greedy, on purpose. That one is easy — it is just a number in the YAML — but it is a good reminder that the benchmark's own definition sometimes overrides our house sampling policy, and the standard is where that gets written down and justified.
+A run that needs a judge points at two of each. That is it. The only genuinely new fields are the role it plays (`judge` or `user_simulator`) and, for the remote case, a URL and the name of the environment variable holding the key — never the key itself, since these configs are committed.
 
-It also sets `keeps_reasoning_history: true`, which is a Layer 1 protocol choice we have nowhere to put. More on that in Part 4.
+### The one hard part
 
-### Group D — Needs a second model running. Defer, but decide the shape now. (7+ standards)
+It is not the schema, it is the GPUs. A self-hosted auxiliary model needs its own hardware *at the same time* as the model under test, and the three teams solve it three different ways: tool-call adds 2 GPUs to the same job, medpsy starts the judge for the eval phase only, VLMEvalKit waits until inference is done and then uses the freed GPUs for judge replicas. Our endpoint and serve-job machinery assumes one model per job.
 
-**ACEBench** (and its `_fc` / `_prompt` variants), **the τ³ family** (`tau2_retail`, `tau2_telecom`, `tau3_banking`, `tau2_airline`), and **ToolSandbox**.
+> **Tool team — build now.** Nothing. Every benchmark in Groups A, B and C works without a second model. But design the standard schema so the fields have somewhere to go, because the moment we want ACEBench or τ³ we need all of it.
+>
+> **Other teams — don't block.** Medpsy needs this on day one — most of their suites are judge-scored, and their judge is chosen per suite. VLMEvalKit needs it plus replica counts, because they run one judge per GPU. Both alias the judge to a fixed name (`gpt-4o-mini`) that resolves to a local server, so the judge's *label* and its *actual weights* are separate things and both need recording. If we only record the alias we will publish scores whose grader we cannot identify.
 
-These are multi-turn conversational benchmarks. The model under test talks to a *simulated user*, and that simulated user is itself a language model. In the tool-call repo that is `user_sim.yaml`, with two flavours: `api_glm5_2` (a remote hosted GLM-5.2 endpoint) and `self_qwen3_8_27b` (a Qwen3.8-27B that gets launched on two extra GPUs inside the same job).
+---
 
-The plan document already saw this coming and put it well: for ACEBench the user simulator "is itself part of the standard." That is exactly right, and it is why this group is deferred rather than just difficult. **A simulator that drifts makes two models' agent scores incomparable.** If the remote GLM-5.2 endpoint silently upgrades between our January run and our March run, every agent number we published moves and we have no record of why.
+## 6. Shape change 3 — when to use a column and when to use JSON
 
-So the decision to make before writing any of these standards is: does the user simulator become part of the recipe hash? I think it has to. But that is a schema conversation, not a YAML file.
+The proposed rule is: **team-specific settings go in a JSON field, universal ones get a real column.** That is a good rule. Here is the sharper version and what it decides.
 
-**ToolSandbox** deserves a specific note: its primary metric is `similarity`, not accuracy. Everything else on this list reports something between 0 and 1 that means "fraction correct." Our `metric` table constrains `value` to 0..1, which `similarity` satisfies, so the storage is fine — but the leaderboard should not put a similarity score in the same visual column as an accuracy score without a label saying so.
+### The rule, stated precisely
 
-### Group E — Genuinely hard. Not soon. (2 standards)
+A field earns a column when **both** are true:
 
-**multi_if** — 4,501 samples × 3 turns × 11 languages. Enormous. It also sets `keeps_reasoning_history: false`, the opposite of BFCL, which is what makes that field a real protocol setting rather than an engine detail. Nothing about it is conceptually hard; it is just the largest generation workload in the suite and we should not point it at a new system.
+1. **More than one team needs it** — otherwise every team's pet flag becomes a migration, and the table grows forever.
+2. **The service itself has to read it** to make a decision: validate a combination, recommend a profile, decide two endpoints can be reused.
 
-**LiveCodeBench** — executes model-generated code to see if it passes tests. The tool-call repo runs it with the sandbox turned off because there is no Docker on their compute nodes. We run our harness in a container on the control plane, which is a different security posture and needs its own think. Also pins a dataset subset (`release_v6`), which is the subset problem again.
+Everything else goes in JSON.
+
+### We already do this, which makes it easy
+
+The `extraction` field is a shapeless JSON object with `extra="allow"`, and it *is* in the recipe hash. So the pattern of "hashed JSON blob for the parts that vary per benchmark" is already established, tested, and shipping. This is not a new mechanism, it is applying an existing one more widely.
+
+### Applying it — and changing my previous recommendation
+
+Last time I argued the tool-call parser deserved a column. Having looked at the other four teams, **that was wrong and the JSON-first instinct is right.**
+
+The reason it is wrong: only one team needs it. Medpsy touches tool calling only through a thin overlay that borrows the tool-call repo's own harness. The vision teams have no use for it. A column would be one team's flag promoted into everybody's schema, which is exactly what the rule exists to prevent.
+
+My original worry still stands, though — a BFCL run against a profile with no tool parser scores zero and looks like a bad model rather than a broken setup. But that worry is satisfied by something cheaper than a column: **a known key name inside `engine_options`, and a validation rule that reads it.** The validator does not care whether it reads `profile.tool_call_parser` or `profile.engine_options["tool-call-parser"]`. What it needs is an agreed spelling. So: agree the spelling, write the rule, skip the migration.
+
+Worth noticing that the current table already breaks the rule in the other direction. `gpu_memory_utilization` is a NOT NULL column, and llama.cpp has no equivalent concept at all — it controls GPU use by counting offloaded layers (`-ngl`), not by reserving a fraction of memory. So we already have a vLLM-specific setting promoted to a universal column. Not urgent, but it means "our columns are the universal ones" is not true today, and we should stop assuming it.
+
+### Where each disputed field lands
+
+| Field | Column or JSON | Why |
+|---|---|---|
+| `engine`, `engine_version` | **column** | every team, and reuse depends on it |
+| `max_model_len` / context size | **column** | every engine has one, and we validate against it |
+| `dtype`, `quantization` | **column** | every team; one-bit-models exists because of it |
+| `tensor_parallel_size`, `gpus` | **column** | multi-GPU is universal; we already validate they agree |
+| `reasoning_parser` | **column** | three teams use it, and two compatibility rules read it |
+| **`tool_call_parser`** | **JSON, with an agreed key** | one team — but validated, see above |
+| `subsets` | **column** | every single team subsets something |
+| `eval_batch_size`, `timeout`, `seed` | **column, not hashed** | universal and operational |
+| `chat_template` | JSON | medpsy and VLMEvalKit; a path, not a decision we validate |
+| `downsample_mode`, `max_pixels`, `min_pixels` | JSON | vision only |
+| `mmproj` path, `n_gpu_layers`, `mtmd_no_upscale` | JSON | llama.cpp only |
+| `kv_cache_dtype` | JSON | one team so far |
+| ACEBench `family_modes`, τ³ `retrieval_config`, `max_dialog_turns` | **JSON, hashed** | one benchmark each, but they change the score |
+
+### The distinction that actually decides things
+
+Two JSON fields, not one, because they are hashed differently:
+
+- **Does it change the number when everything is working correctly?** → it belongs to the **standard**, and the JSON blob holding it goes **in the hash**. ACEBench's per-family scoring mode, the judge's identity, τ³'s retrieval setting.
+- **Does it decide whether the thing works at all?** → it belongs to **serving**, gets **validated**, and stays out of the comparison hash. The tool-call parser, the vision plugin path, the number of offloaded layers.
+
+That is the clean answer to "where do the tool parser and the user simulator belong." They feel similar — both are fiddly, both are needed for tool benchmarks — but they are opposites under this test. Without a tool parser, BFCL does not produce a wrong number, it produces a broken one. With a different judge, ACEBench produces a perfectly valid number that simply is not comparable to yesterday's.
+
+> **Tool team — build now.** One hashed JSON field on the standard for benchmark-specific protocol settings; keep using `engine_options` for engine flags, with agreed key names for the ones we validate.
+>
+> **Other teams — don't block.** The same two JSON fields absorb almost everything the other three teams need, which is the main evidence that the rule is right. Vision pixel caps, judge chat templates, GGUF paths, KV-cache precision — all engine-side JSON. Judge identity and rubric version — hashed standard-side JSON. The things that genuinely will not fit are in Section 11, and none of them are fixable with a JSON field.
+
+---
+
+## 7. The standards to add
+
+Grouped by what they cost us, not by how interesting they are.
+
+The tool-call team runs **20 benchmarks**. Their `core` suite — what they say a model should be measured on before anyone looks at it — is ten: `bfcl_v3`, `acebench`, `tau2_retail`, `tau2_telecom`, `tau3_banking`, `mmlu_pro`, `gpqa_diamond`, `ifeval`, `ifbench`, `multi_if`. We have one of those ten.
+
+The single most useful fact: **their whole stack runs on EvalScope, same as ours.** We are not porting across harnesses, we are copying settings between two EvalScope configs. Same datasets, same graders, same metric names underneath.
+
+### Group A — free, nothing new needed
+
+**IFBench** — AllenAI's harder instruction-following set. Same four metrics as IFEval, same rule-based checkers, same batch size. In the tool-call config it does not even have a row, because everything about it matches the defaults.
+
+**GSM8K** — grade-school math, 4-shot chain-of-thought, answer pulled from a `\boxed{}` wrapper. Already named as benchmark two in Milestone 2, already flagged there as needing a decision on the 4-shot-versus-convention question.
+
+Under today's schema that is four files (instruct and think for each). **Under the Section 4 split it is two**, which is a small but real demonstration of the point.
+
+> One caveat on GSM8K: it needs a real answer-extraction step, where IFEval's `extraction.method` is `none`. The field is deliberately shapeless so it can hold whatever EvalScope wants, but GSM8K is the first standard to put anything in it — check the key names against a real run rather than guessing.
+
+### Group B — cheap, one small unblock each
+
+**GPQA-Diamond** — 198 hard science multiple-choice questions, 0-shot with chain-of-thought, choices shuffled. Small enough that the interval is wide, which is why the plan wants it in wave 2: it forces the repeats-and-variance policy.
+
+**MMLU-Pro** — 12,000 ten-choice questions, 5-shot from validation, `ANSWER: [LETTER]` extraction. Biggest generation volume on the list. Blocked on the hardcoded batch size and on the fixed 12-hour job limit.
+
+**AIME25** — 30 competition problems. Thirty. Unreadable without `repeats`. Needs an 81,920-token budget and a 7,200-second timeout.
+
+**MATH-500** — same shape, 500 problems, same budget and timeout. Do it in the same change as AIME25 or the unblocking work happens twice.
+
+### Group C — real work, highest value
+
+**BFCL v3** — the tool-calling benchmark. Seventeen subsets covering simple calls, parallel calls, multi-turn, and irrelevance (does the model correctly decline?). Rolls up to `overall_acc` plus three group scores. Three obstacles, all covered in Section 9.
+
+### Group D — needs a second model
+
+**ACEBench**, the **τ³ family** (`tau2_retail`, `tau2_telecom`, `tau3_banking`, `tau2_airline`), and **ToolSandbox**. All blocked on Section 5. Also worth noting **ToolSandbox reports `similarity`, not accuracy** — the storage constraint of 0..1 is satisfied, but the leaderboard must not put it in the same visual column as an accuracy without saying so.
+
+### Group E — genuinely hard
+
+**multi_if** — 4,501 samples × 3 turns × 11 languages. Nothing conceptually hard, just the largest workload in the suite; do not point it at a new system.
+
+**LiveCodeBench** — executes generated code. The tool-call repo runs it with the sandbox off because their compute nodes have no Docker. We run the harness in a container on the control plane, which is a different security posture and needs its own think.
 
 ### Not recommended
 
-**CEval** — Chinese-language multiple choice. Fine benchmark, no row in any tool-call suite, and nothing in our roadmap says we care about Chinese-language performance. Skip until someone asks.
+**CEval** (Chinese multiple choice) — in no suite, no stated need. **`acebench_fc` / `acebench_prompt` / `tau3`** — diagnostic variants for comparing scoring channels; useful for research, and if added should be marked non-publishable so they never reach the leaderboard.
 
-**`acebench_fc` / `acebench_prompt` / `tau3`** — these are diagnostic variants of benchmarks in Group D, used to compare "same benchmark through the tool channel vs the prose channel." Useful for research, not for a leaderboard. If we add them, they should be marked as non-publishable so they never produce a leaderboard row.
+> **Tool team — build now.** Groups A and B, then C.
+>
+> **Other teams — don't block.** Two overlaps are already visible and worth planning for rather than colliding with. **MMLU-Pro is run by two teams differently** — we would take the full benchmark, medpsy takes the health category only. That is two standards over one dataset, which the schema handles fine as long as subsets are a real field (Section 9). **IFEval is run by three teams**, and medpsy already routes theirs through the tool-call repo's EvalScope, so precedent for a single canonical owner exists. One-bit-models runs IFEval through lm-eval instead, and reads the metric under a different key (`prompt_level_strict_acc,none` rather than `prompt_level_strict:mean`) — the same benchmark, two harnesses, two spellings. That is the "two IFEvals" question the plan wants to settle with real data.
 
 ---
 
-## 5. Part 2 — The serving profiles to add
+## 8. The serving profiles to add
 
-Here is the thing I did not expect to find, and it is the most actionable item in this document.
+### Import the families, but name them by what they do
 
-### First: our one profile cannot serve a tool-calling model at all
+The proposal is to import the tool-call `families.yaml` entries as profiles, prefixed with `tool` to mark them as carrying tool-calling arguments. The instinct is right — those five families are a tested, working set, and the tool-specific flags do need to be visible in the name. Two adjustments.
 
-Look at what the tool-call repo's `qwen3` family sends to vLLM:
+**Name by capability, not by owner.** `qwen3-tools` rather than `tool-qwen3`. The reason is mechanical: profiles are content-addressed, so two teams that need the same flags get the same row automatically. A team prefix in the label fights that — medpsy needing the identical config would either reuse a row labelled for another team, or create a duplicate. Naming by what the profile *does* keeps the dedupe working and still makes the tool flags obvious.
 
-```
---enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser qwen3
-```
+**Copy the flags, not the sampling.** A `families.yaml` entry mixes engine flags with things that are not engine flags at all. `reasoning_history` — whether a previous turn's thinking is replayed to the model — is a scoring protocol choice that happens to be implemented by the family, and under Section 4 it belongs with the standard. Import the vLLM flags; route the rest to its proper home.
 
-Now look at what our `qwen3` profile renders:
+### The problem this fixes
 
-```
---generation-config vllm --tensor-parallel-size 1 --pipeline-parallel-size 1
---dtype auto --gpu-memory-utilization 0.85 --max-model-len 32768
---reasoning-parser qwen3
-```
+Our one profile cannot serve a tool-calling model. The tool-call `qwen3` family sends `--enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser qwen3`. Ours renders no tool flags at all. Without them vLLM returns the function call as ordinary text and BFCL scores zero. Nothing is broken today because IFEval uses no tools — it breaks the moment we add anything from Group C or D.
 
-**The tool-call flags are simply not there.** Without `--enable-auto-tool-choice` and a tool-call parser, vLLM returns the model's function call as ordinary text and BFCL scores zero. Our profile is fine for IFEval, which uses no tools — and IFEval is all we run today, so nothing is broken right now. But the moment we add any Group C or Group D benchmark, this profile is wrong.
+Our profile is also called `qwen3`, the same name as their family, and **they are not the same thing.** Either rename ours or make it match. Making it match is better: a profile that can serve tools is strictly more useful, and IFEval does not care.
 
-There is a good escape hatch already built for exactly this: `engine_options`, a JSONB column that renders arbitrary flags. `enable-auto-tool-choice: true` and `tool-call-parser: "hermes"` are both legal there — neither is on the reserved-keys list. So we are not blocked. But see Part 4 for why I think the tool parser deserves a real column rather than living in the escape hatch forever.
+### The `as_is` hole
 
-### Second: our profile shares a name with something different
+The `as_is_needs_no_reasoning_parser` rule blocks any recipe with `think_handling: as_is` from running against a profile carrying a reasoning parser — correctly, because with the parser on, the think block never reaches the text being graded. We have one profile and it has a parser. So `as_is` is a setting the schema accepts and the system can never satisfy. No standard uses it yet; the first person to write one gets a submit-time error with no obvious fix. One no-parser profile closes it.
 
-Our profile is called `qwen3`. The tool-call repo's family is also called `qwen3`. **They are not the same thing** — theirs includes the tool-call flags, ours does not. Anyone moving between the two repos will assume they match.
+### The list
 
-Either rename ours, or make it actually match. I lean towards making it match, since a profile that can serve tools is strictly more useful than one that cannot, and IFEval does not care either way.
-
-### Third: nothing we own can run a `think_handling: as_is` recipe
-
-This one is a small logical hole worth closing. The compatibility rule `as_is_needs_no_reasoning_parser` blocks any recipe with `think_handling: as_is` from running against a profile that carries a reasoning parser — correctly, because with the parser on, the think block never reaches the text the grader sees.
-
-We have exactly one profile, and it has a reasoning parser. So **`as_is` is currently a setting the schema accepts and the system can never satisfy.** No standard uses it today, so nothing is failing, but the first person to write one will get a submit-time error with no obvious fix. A single no-parser profile closes it.
-
-### The profiles I would add
-
-In priority order. All of these are `engine: vllm`, `engine_version: 0.19.0` unless noted.
-
-| # | Suggested label | What changes vs `qwen3` | Why we need it |
+| # | Label | What changes vs `qwen3` | Why |
 |---|---|---|---|
-| 1 | **`qwen3-tools`** | adds `enable-auto-tool-choice: true`, `tool-call-parser: hermes` via `engine_options` | Required for BFCL, ACEBench, τ³, ToolSandbox. Nothing else can serve them. |
-| 2 | **`qwen3-plain`** | `reasoning_parser: null` | Unblocks `think_handling: as_is`. One row, closes a whole hole. |
-| 3 | **`qwen3-longctx`** | `max_model_len` raised to fit an 81920-token budget | Required for AIME25 and MATH-500. See the warning below. |
-| 4 | **`qwen3_5`** | `tool-call-parser: qwen3_xml`, plus `language-model-only: true` and `gdn-prefill-backend: triton` | The whole Qwen3.5 catalog is served this way. Nine checkpoints in their catalog use it. |
-| 5 | **`qwen3-tp2`** | `gpus: 2`, `tensor_parallel_size: 2` | Anything above ~8B, and the self-hosted 27B user simulator. Our compatibility rule already checks `gpus == tp × pp`, so the schema is ready. |
-| 6 | **`lfm2`** | LFM2 tool parser plugin, `trust-remote-code: true` | Only if we start evaluating LiquidAI models. Blocked on the plugin-file problem below. |
-| 7 | **`minicpm5`** | MiniCPM5 tool parser plugin | Same as above. |
-| 8 | **`functiongemma`** | FunctionGemma parser plugin, **no** reasoning parser | Same as above. Also a natural second `as_is`-capable profile. |
+| 1 | **`qwen3-tools`** | `enable-auto-tool-choice`, `tool-call-parser: hermes` | Required for BFCL, ACEBench, τ³, ToolSandbox |
+| 2 | **`qwen3-plain`** | `reasoning_parser: null` | Unblocks `as_is`. One row, closes a whole hole |
+| 3 | **`qwen3-longctx`** | context raised for an 81,920-token budget | AIME25, MATH-500. See warning below |
+| 4 | **`qwen3_5-tools`** | `tool-call-parser: qwen3_xml`, `language-model-only`, `gdn-prefill-backend: triton` | The whole Qwen3.5 catalog is served this way |
+| 5 | **`qwen3-tp2`** | `gpus: 2`, `tensor_parallel_size: 2` | Anything above ~8B, and the self-hosted 27B simulator |
+| 6–8 | **`lfm2` / `minicpm5` / `functiongemma`** | tool parser plugins | Only if we evaluate those models. Blocked, see below |
 
-Profiles 6, 7 and 8 all hit the same wall: they need `--tool-parser-plugin <path-to-a-python-file>`. `engine_options` can hold the path string fine, but **the file has to exist on the compute node** when vLLM starts. The tool-call repo solves this with a `${EVAL_HOME}` variable that expands to their checkout. We have no equivalent, and no story for shipping a plugin file to the cluster. That is a real piece of design work, not a config change — which is why I put those three last.
+Profiles 6 to 8 all hit the same wall: they need `--tool-parser-plugin <path>`. JSON can hold the path, but **the file has to exist on the compute node**. The tool-call repo expands a `${EVAL_HOME}` variable pointing at their checkout; we have no equivalent and no story for shipping a plugin file to the cluster. That is design work, not config, which is why they are last.
 
-### A warning on the long-context profile
+### Warning on the long-context profile
 
-Profile 3 needs care. Our `profile_exceeds_model_context` rule refuses to start when `max_model_len` is larger than the checkpoint's own trained context length, and `Qwen3-4B-allternary-ep03`'s vLLM log shows `max_seq_len: 40960`. An 81920-token generation budget plus our 2048-token prompt allowance needs about 84k of context — roughly double what the model was trained for.
+The `profile_exceeds_model_context` rule refuses to start when the context exceeds the checkpoint's trained length, and the reference checkpoint's vLLM log shows `max_seq_len: 40960`. An 81,920-token budget plus the 2,048-token prompt allowance needs about 84k — roughly double what the model was trained for. Getting there means RoPE scaling, which is a quality trade-off and not just a bigger number. **I am not confident enough to recommend a configuration**; it should be measured against a known AIME score first. Flagging it as the open question it is.
 
-Getting there means RoPE scaling (YaRN), which is an `engine_options` entry and a quality trade-off, not just a bigger number. **I am not confident enough in the exact configuration to recommend a value here** — it should be measured against a known AIME score before we publish anything from it. Flagging it as the open question it is, rather than putting a plausible-looking number in a table.
+### What not to do
 
-### What we should *not* do
+Do not create a profile per benchmark. The point of splitting profiles from standards is that one served model answers many tests — that is where the 350-seconds-per-cold-start saving comes from. The test for "is this a new profile" is simple: **does vLLM have to restart to change it?** Tool parser, context length, GPU count — yes. Temperature, max tokens, few-shot — no, that is the sampling profile or the standard.
 
-Do not create a profile per benchmark. The whole value of splitting profiles from recipes is that one served model answers many tests. If we end up with `qwen3-for-ifeval` and `qwen3-for-gsm8k`, we have rebuilt the coupling we deliberately took apart and thrown away the endpoint reuse saving with it.
-
-The test for "should this be a new profile" is simple: **does vLLM need to be restarted to change it?** Tool parser, context length, GPU count — yes, new profile. Temperature, max tokens, few-shot count — no, that is the recipe.
+> **Tool team — build now.** Profiles 1 to 3, then 4 and 5 when the models arrive.
+>
+> **Other teams — don't block.** Medpsy needs `chat_template` and a `base`-vs-`chat` model distinction; both are JSON. Their judges need profiles of their own — CompassJudger-2-32B and gpt-oss-20b at TP=8 — which under Section 5 are just ordinary serving profiles pointed at by an auxiliary role. VLMEvalKit needs vision preprocessing (`downsample_mode`, pixel caps) and `kv_cache_dtype: fp8`, all JSON, plus something we do not have at all: **a pool of endpoints rather than one**, since they run a server per GPU and load-balance across them. That is Section 11.
 
 ---
 
-## 6. Part 3 — The four hardcoded values that block most of this
+## 9. Fitting Groups C, D and E into the new shape
 
-This is the part I would act on first, because it is small, concrete, and it is silently blocking about eight of the standards above.
+The useful test of any schema proposal is whether the hard cases fit. Here is every extra setting those groups need and where it lands.
 
-`backend/app/services/harness/task_config.py` builds the EvalScope job. Four values in it are constants that should be recipe fields:
+### Group C — BFCL v3
+
+| What it needs | Where it goes |
+|---|---|
+| 17 subsets | **`subsets` column** on the standard, hashed. Every team subsets something (Section 6) |
+| `temperature: 0.001` | standard's mandated sampling overrides (Section 4) |
+| tool-call parser | serving JSON, with an agreed key and a validation rule (Section 6) |
+| `keeps_reasoning_history: true` | hashed standard JSON — it changes the score |
+| `is_fc_model`, `underscore_to_dot` | hashed standard JSON |
+| batch size 64 | operational column, not hashed |
+
+Only one new column. Everything else is JSON or already exists.
+
+### Group D — ACEBench, τ³, ToolSandbox
+
+| What it needs | Where it goes |
+|---|---|
+| user simulator | auxiliary model (Section 5): checkpoint + sampling profile + serving profile + role, hashed |
+| ACEBench `family_modes` (normal→fc, special→prompt, agent→fc) | hashed standard JSON — it changes what the number means |
+| `max_dialog_turns: 40` | hashed standard JSON |
+| τ³ domain (retail / telecom / banking) | **`subsets`** — this is the only thing distinguishing those four standards |
+| τ³ `retrieval_config: golden_retrieval` | hashed standard JSON |
+| ToolSandbox `similarity` metric | already fine — the metrics list is per-standard, and 0..1 holds. Needs a leaderboard label |
+| pass^k via repeats | `repeats` column already exists |
+
+No new columns beyond `subsets`. The auxiliary model is the whole cost of this group.
+
+### Group E — multi_if, LiveCodeBench
+
+| What it needs | Where it goes |
+|---|---|
+| `keeps_reasoning_history: false` | same hashed standard JSON as BFCL — and the fact that two benchmarks set it opposite ways is what proves it is a real protocol setting rather than an engine detail |
+| 11 languages, 3 turns | reported as subgroups; the metrics list already handles multiple cuts |
+| LiveCodeBench `release_v6` | **`subsets`** again |
+| code execution sandbox | not a schema question — a runner and security question |
+
+### What this adds up to
+
+Across all three groups: **one new hashed column (`subsets`), three unhashed operational columns, one hashed JSON field on the standard, and the auxiliary model.** Everything else fits what exists. That is a reassuring result — it suggests the JSON-first rule is doing real work rather than just deferring the problem.
+
+> **Tool team — build now.** `subsets`, the operational columns, the hashed standard JSON. That covers Group C completely.
+>
+> **Other teams — don't block.** The same hashed JSON field absorbs medpsy's per-suite settings (`MMLU_SUBSETS`, `MEDHALLU_SPLIT`, arena battle sample size, cascade extraction on/off) and VLMEvalKit's per-benchmark judge choice. One field, four teams. The exception is medpsy's cascade evaluator, which uses a judge to *extract* an answer before rule-scoring it — that is a second, different use of an auxiliary model in the same run, and it is worth checking that the Section 5 shape allows two auxiliary roles rather than one.
+
+---
+
+## 10. The four hardcoded values
+
+Small, concrete, and quietly blocking about eight of the standards above. `backend/app/services/harness/task_config.py` builds the EvalScope job, and four of its values are constants that should be fields:
 
 ```73:77:/home/naresh/TeamRepos/evaluation-service/backend/app/services/harness/task_config.py
         "repeats": recipe.repeats,
@@ -241,98 +436,88 @@ This is the part I would act on first, because it is small, concrete, and it is 
         "work_dir": container_work_dir,
 ```
 
-Taking them one at a time.
+**`subset_list: ["default"]`** (line 50) — the worst one. Every benchmark gets exactly one subset, always named `default`. Correct for IFEval, wrong for BFCL, τ³, MMLU-Pro and LiveCodeBench. **You cannot express `tau2_retail` at all**, because the only thing distinguishing it from `tau2_telecom` is the subset. Section 9 turns this into a hashed column.
 
-**`subset_list: ["default"]`** (line 50) — the worst one. Every benchmark gets exactly one subset, always named `default`. This is correct for IFEval and completely wrong for BFCL (17 subsets), τ³ (one domain per job — that is *how* `tau2_retail` and `tau2_telecom` differ from each other), MMLU-Pro, and LiveCodeBench (which pins `release_v6`). **You cannot express `tau2_retail` at all** under the current schema, because the only thing distinguishing it from `tau2_telecom` is the subset. This needs to become a recipe field, and since it changes what is measured, it needs to be in the recipe hash.
+**`eval_batch_size: 32`** (line 76) — how many requests are in flight. The tool-call team measured this and their numbers are worth copying rather than re-deriving: MMLU-Pro went 2,179 tokens/sec at batch 32 to 3,950 at 128, and at 32 the client sets the pace while the GPU idles. Meanwhile ACEBench and BFCL's multi-turn subsets want *16*, because there the bottleneck is Python in the worker, not the endpoint. So 32 is wrong in both directions. Does not change what is measured, so it stays out of the hash.
 
-**`eval_batch_size: 32`** (line 76) — how many requests are in flight at once. The tool-call team measured this properly and their numbers are worth copying rather than re-deriving: MMLU-Pro went from 2,179 tokens/sec at batch 32 to 3,950 at 128, and their conclusion was that at 32 the client is setting the pace and the GPU sits idle. Meanwhile ACEBench and BFCL's multi-turn subsets want *16*, because the bottleneck there is Python running in the worker process, not the endpoint.
+**`timeout: 1800`** (line 71) — half an hour per request, where AIME25 and MATH-500 need two hours. One generation outliving the client fails the whole task, so this is not a knob to leave at a default and hope.
 
-So 32 is wrong in both directions depending on the benchmark. Note this one does **not** change what is measured, only how fast — so it should be a recipe column that stays *out* of the hash. Two runs at different batch sizes are still comparable.
+**`seed: 42`** (line 74) — the comment says it is "inert while v1 runs greedy," which stops being true the moment a thinking standard samples at 0.6, and `ifeval/v1-think` already does. Low urgency, but it should be real before we publish any non-greedy number.
 
-**`timeout: 1800`** (line 71) — half an hour per request, where AIME25 and MATH-500 need two hours (they set 7200). If one generation outlives the client, the whole task fails, so this is not a tuning knob you can leave at a default and hope. The tool-call repo handles it with a tiered rule — 1800 normally, 3600 once the token budget passes 8192 — which is a reasonable pattern to copy, though a plain per-recipe field is simpler and I would start there.
-
-**`seed: 42`** (line 74) — the comment says it is "inert while v1 runs greedy," which is true today and stops being true the moment we add a thinking standard with temperature 0.6. `ifeval/v1-think` already samples at 0.6. So it is arguably not inert *right now*. Low urgency, but it should be a real field before we publish any non-greedy number, because reproducibility is the entire pitch of this service.
-
-There is also **no per-benchmark SLURM time limit.** Cluster settings live in environment variables by decision D9, which is fine for a single global default and not fine for MMLU-Pro's 24 hours. Their note on this is worth quoting because it is a real scar: they raised it "rather than tuned down, because the alternative is dying at 49% with nothing to show, which is how the old stack lost job 165026."
-
-### Summary of the four
+There is also **no per-benchmark job time limit.** Cluster settings live in environment variables by decision D9, fine for one global default and not fine for MMLU-Pro's 24 hours. The tool-call note on this is a real scar worth quoting: they raised it "rather than tuned down, because the alternative is dying at 49% with nothing to show, which is how the old stack lost job 165026."
 
 | Value | Line | In the hash? | Blocks |
 |---|---|---|---|
-| `subset_list` | 50 | **Yes** — changes what is measured | BFCL, all τ³, MMLU-Pro, LiveCodeBench |
-| `eval_batch_size` | 76 | **No** — only affects speed | MMLU-Pro, ACEBench, BFCL (all mis-sized today) |
+| `subset_list` | 50 | **Yes** | BFCL, all τ³, MMLU-Pro, LiveCodeBench |
+| `eval_batch_size` | 76 | No | MMLU-Pro, ACEBench, BFCL (all mis-sized today) |
 | `timeout` | 71 | No | AIME25, MATH-500 |
 | `seed` | 74 | Probably yes | Reproducibility of any non-greedy run |
 
----
-
-## 7. Part 4 — Bigger gaps that need a decision, not just a column
-
-Four things that are not bugs and not quick fixes. Each needs someone to decide something.
-
-### 7.1 The tool-call parser has no column
-
-Our serving profile gives `reasoning_parser` a real, structured column. The tool-call parser gets nothing, and would have to live in `engine_options`.
-
-The argument for giving it a column is the same argument that justified the reasoning parser having one. We have a compatibility rule — `strip_needs_reasoning_parser` — that catches "this recipe says strip the think block, but the profile has no parser to strip it with." That rule can only exist because the parser is a column the validator can read.
-
-There is an exactly parallel failure waiting for tools: a BFCL recipe against a profile with no tool parser scores zero, and looks like a genuinely bad model rather than a misconfiguration. That is the worst kind of bug this service can have — a wrong number that nobody questions. Catching it needs a `tool_call_parser` column and a rule that reads it.
-
-Given that waves 3 and 5 of the roadmap are *entirely* tool-use benchmarks, I think this column earns its place.
-
-### 7.2 There is no home for a user simulator
-
-Seven-plus benchmarks in Group D need a second model to play the user. Nothing in the v1 schema can hold one. The pieces needed are roughly: which model, at what URL, with what token budget for a turn, and — critically — whether it is a shared remote endpoint or a private one launched alongside the model under test.
-
-The reason it matters for correctness rather than just plumbing: the tool-call repo's own config note says one shared instance "keeps the user's behaviour fixed across every model compared against it. That is the whole point — a simulator that drifts makes two models' agent scores incomparable." If the simulator is part of what determines a score, it belongs in the recipe hash, the same way the framework image is.
-
-There is also a resourcing consequence. A self-hosted simulator needs two extra GPUs *added to the same job* as the model under test. Our endpoint and serve-job machinery assumes one model per job.
-
-### 7.3 `keeps_reasoning_history` has nowhere to go
-
-Multi-turn benchmarks have to decide whether the model sees its own thinking from the previous turn when it takes the next one. BFCL says yes, multi_if says no. That is a genuine protocol choice that changes the score, so it is Layer 1 — but `StandardDocument` has `extra="forbid"` and no such field, so a YAML that sets it is rejected outright.
-
-It is entangled with the serving profile too, because *how* the history gets replayed depends on the family: Qwen3.5's chat template reads a `reasoning_content` field, while LFM2's ignores that field and needs the thinking inlined as `<think>` tags in the message content. So it is one recipe field plus one profile field, not one field.
-
-Not urgent — it only bites at BFCL and beyond — but it should be designed alongside BFCL rather than bolted on after.
-
-### 7.4 The IFEval reference score was produced under different serving conditions
-
-Worth knowing, though not worth panicking about.
-
-Our IFEval standard cites `prompt_level_strict = 0.7412` from tool-call run 270187. That run served the model with `--tool-call-parser hermes`, no explicit `--max-model-len` (so vLLM took 40960 from the checkpoint config), and no explicit `--gpu-memory-utilization`. Our `qwen3` profile has no tool parser, pins `max_model_len` to 32768, and sets memory utilisation to 0.85.
-
-For IFEval specifically this almost certainly does not matter — no tools are involved, and IFEval prompts and answers are nowhere near 32k. But "the reference number was produced on a different serving configuration than the one we reproduce it with" is exactly the kind of footnote that should be written down before someone spends a day chasing a 0.5-point gap.
-
-The cleanest fix is recommendation #1 from Part 2: make our `qwen3` profile actually match the family it is named after.
+> **Tool team — build now.** All four. This is the highest ratio of unblocked-work to effort in the document.
+>
+> **Other teams — don't block.** All four are universal, so nothing here is tool-specific. Note one-bit-models pins `seed=0` in their model arguments and medpsy runs closed-ended benchmarks three times by default — so `seed` and `repeats` are settings other teams already treat as real, which supports promoting them properly rather than leaving them constant.
 
 ---
 
-## 8. Suggested order of work
+## 11. What the other teams break that nothing here fixes
 
-Roughly cheapest-and-most-unblocking first.
+Everything above is a schema change. These four are not, and they should be named now so nobody promises a team something the architecture cannot do.
 
-**Step 1 — Unblock the harness builder.** Turn `subset_list`, `eval_batch_size` and `timeout` into recipe fields; decide whether `seed` joins them. Small, self-contained, and it is the prerequisite for most of what follows. Nothing user-visible changes.
+### 11.1 Two of five teams never start a server
 
-**Step 2 — Write IFBench and GSM8K.** Two benchmarks, four YAML files, no new infrastructure. This is the change that proves the registry is not quietly hardcoded around IFEval — which is the actual point of wave 1 in the plan, more than the benchmarks themselves.
+We assume the harness talks HTTP to a running model. The `eval_type` is `openai_api`, and a run without an endpoint is not really expressible.
 
-**Step 3 — Fix the serving profile inventory.** Add the tool-call flags to `qwen3` (or rename it and add `qwen3-tools`), and add the no-reasoning-parser profile. Two rows. Closes the `as_is` hole and makes every tool-use benchmark downstream possible.
+**One-bit-models loads the model inside the harness process.** Their entire flow is `python -m lm_eval --model vllm --model_args "pretrained=...,dtype=bfloat16,data_parallel_size=8,..."`. There is no server, no URL, no port. Their equivalent of a serving profile is a comma-separated argument string, and their equivalent of tensor parallelism is `data_parallel_size=8` with eight lm-eval shards.
 
-**Step 4 — GPQA-Diamond and MMLU-Pro.** Needs the batch size fix from step 1, plus a per-benchmark SLURM time limit for MMLU-Pro, plus the repeats-and-variance policy that GPQA forces us to write down.
+**VisionPsy's llama.cpp path is a command-line tool.** They build only `llama-mtmd-cli` and never run `llama-server`, so there is no HTTP endpoint at all — and the model is *two* GGUF files with different quantizations (a Q4_0 language model plus a Q8 vision projector), controlled by `-ngl` layer counts rather than a memory fraction.
 
-**Step 5 — Decide on the tool-call parser column, then do BFCL v3.** The highest-value benchmark for this team. Do the column first so the compatibility rule exists before the first wrong-scoring run, not after.
+This is not a JSON field. It is a second execution mode, and it touches the endpoint table, the reuse logic, the worker, and the compatibility rules. Worth deciding early whether the service supports it or explicitly does not.
 
-**Step 6 — Design the user simulator.** Before writing any ACEBench or τ³ YAML. Its output is a schema decision and probably a table, not a standards file.
+### 11.2 One team needs many endpoints, not one
 
-**Step 7 — Everything else,** in roughly the plan's existing wave order.
+VLMEvalKit starts one vLLM per GPU across all nodes and load-balances across the pool, then repurposes the freed GPUs as judge replicas once inference finishes. Our `endpoint` table holds a single URL per row. A pool is not a bigger endpoint; it is a different thing, with its own health, its own concurrency, and a two-phase lifecycle.
 
-AIME25 and MATH-500 sit slightly outside this sequence. They are cheap once the timeout is a field, but they need the long-context profile, and that needs the RoPE scaling question answered with a measurement. Slot them in whenever someone has time to do that properly.
+### 11.3 Quantization is sometimes a property of the weights, not the server
+
+For one-bit-models, ternary quantization is baked into the checkpoint by a materialization step *before* evaluation, and vLLM then loads it as ordinary bfloat16 with `quantization=None`. So a serving profile saying `quantization: null` is simultaneously accurate and completely misleading about what is being measured.
+
+We have a `quantization` column on the checkpoint as well as on the profile, and a rule that warns when they disagree. That is the right instinct. But for a team whose entire purpose is comparing quantized models against full-precision baselines, "which quantization" and "compared to which baseline" are the primary axis of the leaderboard, not a footnote. Their manifests carry `tier` and `group` fields for exactly this.
+
+### 11.4 Not every score is between 0 and 1, or higher-is-better
+
+Our `metric.value` is constrained to 0..1. Two real counterexamples: VLMEvalKit's **OmniDocBench reports edit distance, where lower is better**, and MME reports a summed perception-plus-reasoning score that is not a fraction at all. Medpsy's MedSafety reports mean harmfulness, also lower-is-better. We do have `higher_is_better` per metric, which is the important half — but the 0..1 storage constraint would need revisiting before a vision or safety suite lands.
+
+> **Tool team — build now.** Nothing. None of these four affect any tool-call benchmark.
+>
+> **Other teams — don't block.** These are the four to raise with each team before promising them anything. My honest read: 11.1 is the one that decides whether this is a service for all five repos or for the three that serve over HTTP, and it is worth a deliberate decision rather than a drift.
 
 ---
 
-## 9. Appendix — reference tables
+## 12. Suggested order of work
 
-### 9.1 All 20 tool-call benchmarks, and what each would cost us
+**Step 1 — Unblock the harness builder.** Turn `subset_list`, `eval_batch_size` and `timeout` into fields; decide `seed`. Small, self-contained, prerequisite for most of what follows.
+
+**Step 2 — IFBench and GSM8K.** Two benchmarks, no new infrastructure. Proves the registry is not hardcoded around IFEval, which is the real point of wave 1.
+
+**Step 3 — Fix the serving profile inventory.** Add tool flags to `qwen3` (or rename and add `qwen3-tools`), add the no-parser profile. Two rows, closes the `as_is` hole and unblocks every tool-use benchmark.
+
+**Step 4 — Decide on the recipe split.** Section 4. Do it before there are twenty standards to migrate, not after. The migration is mechanical now and gets worse every standard we add — which is a good argument for doing it before step 5 rather than after.
+
+**Step 5 — GPQA-Diamond and MMLU-Pro.** Needs step 1, plus a per-benchmark job time limit, plus the repeats-and-variance policy GPQA forces.
+
+**Step 6 — BFCL v3.** Agree the `engine_options` key names and write the validation rule first, so the rule exists before the first silently-zero run rather than after.
+
+**Step 7 — Design the auxiliary model.** Section 5. Before any ACEBench or τ³ YAML. Its output is a schema decision, not a standards file. This is also the step that unblocks medpsy, so it is worth doing properly rather than tool-team-shaped.
+
+**Step 8 — Everything else**, roughly in the plan's existing wave order.
+
+AIME25 and MATH-500 sit outside this sequence — cheap once the timeout is a field, but they need the long-context profile and that needs the RoPE question answered with a measurement.
+
+---
+
+## 13. Appendix — reference tables
+
+### 13.1 All 20 tool-call benchmarks
 
 | Benchmark | Group | Primary metric | What blocks it today |
 |---|---|---|---|
@@ -340,43 +525,44 @@ AIME25 and MATH-500 sit slightly outside this sequence. They are cheap once the 
 | `ifbench` | A | `prompt_level_strict` | Nothing |
 | `gsm8k` | A | `accuracy` | Nothing (first real extraction step) |
 | `gpqa_diamond` | B | `accuracy` | Repeats/variance policy |
-| `mmlu_pro` | B | `accuracy` | Batch size; 24h SLURM limit |
+| `mmlu_pro` | B | `accuracy` | Batch size; 24h job limit |
 | `aime25` | B | `accuracy` | Timeout; long-context profile |
 | `math_500` | B | `accuracy` | Timeout; long-context profile |
 | `bfcl_v3` | C | `overall_acc` | Subsets; tool parser; reasoning history |
-| `acebench` | D | `overall_acc` | User simulator; per-family fc/prompt modes |
-| `acebench_fc` | Not rec. | `overall_acc` | Diagnostic variant |
-| `acebench_prompt` | Not rec. | `overall_acc` | Diagnostic variant |
-| `tau2_retail` | D | `accuracy` | User simulator; **subsets** |
-| `tau2_telecom` | D | `accuracy` | User simulator; **subsets** |
-| `tau3_banking` | D | `accuracy` | User simulator; **subsets** |
-| `tau2_airline` | D | `accuracy` | User simulator; **subsets** |
-| `tau3` | Not rec. | `accuracy` | All three domains as one job |
-| `tool_sandbox` | D | `similarity` | User simulator; non-accuracy metric |
+| `acebench` | D | `overall_acc` | Auxiliary model; per-family modes |
+| `acebench_fc` / `acebench_prompt` | not rec. | `overall_acc` | Diagnostic variants |
+| `tau2_retail` / `tau2_telecom` / `tau3_banking` / `tau2_airline` | D | `accuracy` | Auxiliary model; **subsets** |
+| `tau3` | not rec. | `accuracy` | Three domains as one job |
+| `tool_sandbox` | D | `similarity` | Auxiliary model; non-accuracy metric |
 | `multi_if` | E | `overall_avg` | Size; reasoning history |
-| `live_code_bench` | E | `accuracy` (pass@1) | Code execution sandbox; subsets |
-| `ceval` | Skip | `accuracy` | No stated need |
+| `live_code_bench` | E | `accuracy` (pass@1) | Code execution; subsets |
+| `ceval` | skip | `accuracy` | No stated need |
 
-### 9.2 Serving flags used over there, and where they would live over here
+### 13.2 Serving flags used across teams
 
-| vLLM flag | tool-call families using it | Our home for it |
+| Flag | Who uses it | Home under Section 6 |
 |---|---|---|
-| `--reasoning-parser` | all except functiongemma | structured column ✅ |
-| `--enable-auto-tool-choice` | all five | `engine_options` (works) |
-| `--tool-call-parser` | all five | `engine_options` — **should be a column** |
-| `--tool-parser-plugin` | lfm2, minicpm5, functiongemma | `engine_options` holds the path, but **nothing ships the file** |
-| `--trust-remote-code` | lfm2 | `engine_options` ✅ |
-| `--language-model-only` | qwen3_5 | `engine_options` ✅ |
-| `--gdn-prefill-backend triton` | qwen3_5 | `engine_options` ✅ |
-| `--tensor-parallel-size` | user sim (2) | structured column ✅ |
-| `--max-num-seqs` | global default 128 | **no home** |
-| `--default-chat-template-kwargs` (thinking) | per-model | we do this per-request in the recipe instead |
+| `--reasoning-parser` | tool-call, medpsy, VLMEvalKit | column ✅ |
+| `--tensor-parallel-size` | all vLLM teams | column ✅ |
+| `--max-model-len` | all | column ✅ |
+| `--dtype` | all | column ✅ |
+| `--gpu-memory-utilization` | vLLM teams only | column today; no llama.cpp equivalent |
+| `--enable-auto-tool-choice` | tool-call | JSON |
+| `--tool-call-parser` | tool-call | JSON, agreed key, validated |
+| `--tool-parser-plugin` | tool-call (3 families) | JSON — but **nothing ships the file** |
+| `--trust-remote-code` | tool-call, medpsy | JSON |
+| `--language-model-only` | tool-call, medpsy | JSON |
+| `--chat-template` | medpsy, VLMEvalKit | JSON |
+| `--mm-processor-kwargs` (pixel caps, downsample) | VLMEvalKit | JSON |
+| `--kv-cache-dtype fp8` | VLMEvalKit judge | JSON |
+| `--max-num-seqs` | tool-call, one-bit | **no home today** |
+| `-ngl`, `--mmproj`, `MTMD_NO_UPSCALE` | visionpsy llama.cpp | JSON — but see Section 11.1 |
 
-### 9.3 Their sampling profiles vs ours
+### 13.3 Sampling profiles to import
 
-They keep sampling in a model catalog; we keep it in the recipe. Their profiles map onto our Layer 2 block directly, so these are useful starting values for any new standard:
+Directly usable as the first `sampling_profile` rows. Our two IFEval standards already match `greedy` and `qwen3_think` exactly, which suggests we copied the right thing the first time.
 
-| Their profile | temp | top_p | top_k | other | max_tokens |
+| Profile | temp | top_p | top_k | other | max_tokens |
 |---|---|---|---|---|---|
 | `greedy` | 0.0 | — | — | — | 8192 |
 | `qwen3_think` | 0.6 | 0.95 | 20 | — | 16384 |
@@ -386,8 +572,19 @@ They keep sampling in a model catalog; we keep it in the recipe. Their profiles 
 | `minicpm5_instruct` | 0.7 | 0.95 | — | — | 8192 |
 | `minicpm5_think` | 0.9 | 0.95 | — | — | 16384 |
 
-Our two IFEval standards already match `greedy` and `qwen3_think` exactly, which is a good sign — it means we copied the right thing the first time.
+A note on `presence_penalty: 1.5` in `qwen3_5_think`, because it is easy to think this is blocked and it is not. Their comment says it curbs a repetition loop the small models fall into and is "what makes generation terminate at all" — a real constraint, not a preference. Our builder does forward `presence_penalty`, so it works as intended.
 
-Note the `presence_penalty: 1.5` on `qwen3_5_think`. Their comment explains it curbs a repetition loop the small models fall into, and that it is "what makes generation terminate at all" — a real constraint rather than a preference. Good news: our harness builder does forward `presence_penalty` to EvalScope, so that setting would work as intended if we ever evaluate a Qwen3.5 thinking model.
+The related confusion is worth clearing up: the comment column in our IFEval YAML wraps across lines and reads as though decision D4 forces `presence_penalty` to `0.0`. It does not. **D4 is about `min_p` and only `min_p`** — the sole entry in `FRAMEWORK_UNSUPPORTED_SAMPLING_FIELDS`, because EvalScope's `openai_api` path drops it silently. The neighbouring `presence_penalty: 0.0` is just our own neutral default. And none of the seven profiles above sets a non-zero `min_p`, so importing them all would not trip the D4 warning once.
 
-Worth clearing up a related point, because the comment column in our IFEval YAML reads ambiguously if you skim it. **Decision D4 is about `min_p` and only `min_p`** — it is the sole entry in `FRAMEWORK_UNSUPPORTED_SAMPLING_FIELDS`, because EvalScope's `openai_api` path drops it silently. The neighbouring `presence_penalty: 0.0` in our standards is just our own neutral default, not a D4 restriction. And none of their seven sampling profiles sets a non-zero `min_p`, so adopting any of them would not trip the D4 warning at all.
+### 13.4 Auxiliary models across teams
+
+| Team | Role | Model | Sampling | Serving |
+|---|---|---|---|---|
+| tool-call | user simulator | GLM-5.2 (remote) | max_tokens 1000, thinking off | remote API, key from env |
+| tool-call | user simulator | Qwen3.8-27B | max_tokens 1000, thinking off | TP=2, +2 GPUs on the same job |
+| medpsy | judge (generic) | CompassJudger-2-32B | **temperature 0.01** | second vLLM, eval phase only |
+| medpsy | judge (HealthBench) | per suite | **temperature 0.5** | as above |
+| medpsy | judge (arena) | gpt-oss-20b | **temperature 0** | as above |
+| VLMEvalKit | judge | Qwen3.6-27B-FP8 as `gpt-4o-mini` | temperature 0, thinking off | one replica per freed GPU, TP=1, kv-cache fp8 |
+
+Three teams, three names, one shape: a checkpoint, a sampling profile, a serving profile, and a role. That is the argument of Section 5 in one table.
