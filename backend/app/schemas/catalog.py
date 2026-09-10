@@ -30,6 +30,15 @@ class CatalogDocument(BaseModel):
         """
         raise NotImplementedError
 
+    def as_unhashed_dict(self) -> dict[str, Any]:
+        """Fields stored on the row that deliberately do **not**
+        participate in its identity hash (S-D7) -- e.g. `standard`'s
+        `eval_batch_size`, which changes how fast a benchmark runs, never
+        what it measures. Defaults to `{}`: most catalogs have no such
+        fields, so only a document with one overrides this.
+        """
+        return {}
+
 
 CatalogEntryState = Literal["loaded", "new", "conflicting", "orphaned", "ad_hoc", "invalid"]
 

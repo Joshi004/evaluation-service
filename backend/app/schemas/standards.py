@@ -76,6 +76,25 @@ class StandardDocument(CatalogDocument):
     # sampling, merged ahead of a run's own sampling profile pick
     # (S-D4). Defaults to {} -- most standards mandate nothing.
     sampling_overrides: dict[str, Any] = {}
+    # Which samples run. Required, no default: an omitted or empty list
+    # is not "all subsets," it's a standard that says nothing, and
+    # EvalScope would silently substitute its own registered default
+    # for a missing subset_list (S-T19) -- the validator below rejects
+    # empty explicitly since Pydantic's `list[str]` alone would accept it.
+    subsets: list[str]
+    # Operational -- not hashed (S-D7; see as_unhashed_dict below).
+    eval_batch_size: int
+    request_timeout_seconds: int
+
+    @field_validator("subsets")
+    @classmethod
+    def _subsets_must_not_be_empty(cls, value: list[str]) -> list[str]:
+        if not value:
+            raise ValueError(
+                "subsets must not be empty -- an empty list silently falls back to EvalScope's "
+                "own registered default subset instead of naming one explicitly (S-T19)"
+            )
+        return value
 
     @field_validator("sampling_overrides")
     @classmethod
@@ -127,6 +146,21 @@ class StandardDocument(CatalogDocument):
             "sample_limit": self.sample_limit,
             "think_handling": self.think_handling,
             "sampling_overrides": self.sampling_overrides,
+            "subsets": self.subsets,
+        }
+
+    def as_unhashed_dict(self) -> dict[str, Any]:
+        """`eval_batch_size` and `request_timeout_seconds` (S-D7): stored
+        on the row but never part of `standard.hash`, because neither can
+        change what gets measured -- only how fast or how patiently the
+        measurement runs. The catalog loader's `sync_unhashed_columns`
+        writes these back onto an existing row even when the hash already
+        matched, which is how editing one in the YAML and reloading
+        updates the row in place instead of doing nothing.
+        """
+        return {
+            "eval_batch_size": self.eval_batch_size,
+            "request_timeout_seconds": self.request_timeout_seconds,
         }
 
 
@@ -175,6 +209,9 @@ class StandardSummary(BaseModel):
     sample_limit: int | None
     think_handling: str
     sampling_overrides: dict[str, Any]
+    subsets: list[str]
+    eval_batch_size: int
+    request_timeout_seconds: int
     created_at: datetime
     warnings: list[SamplingFieldWarning]
     source_yaml: str | None

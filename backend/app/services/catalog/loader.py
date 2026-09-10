@@ -86,6 +86,12 @@ async def _load_one(db: AsyncSession, path: Path, repository: CatalogRepository[
     `yaml.safe_load()` dict is also what makes a field typed `float`
     coerce an int YAML value (`temperature: 0`) to `0.0`, so it hashes
     identically to `temperature: 0.0` (S-T2).
+
+    A hash *hit* is not necessarily a no-op: `sync_unhashed_columns`
+    still runs, because an operational field (S-D7, e.g. standard's
+    `eval_batch_size`) can change in the YAML without changing the
+    content hash, and the file is that field's source of truth even
+    though it doesn't participate in identity.
     """
     raw_document = yaml.safe_load(path.read_text())
     document = repository.document_model.model_validate(raw_document)
@@ -95,6 +101,7 @@ async def _load_one(db: AsyncSession, path: Path, repository: CatalogRepository[
 
     existing = await repository.get_by_hash(db, hash_value)
     if existing is not None:
+        await repository.sync_unhashed_columns(db, existing, document.as_unhashed_dict())
         return existing
 
     # An explicit lookup, not a caught IntegrityError (S-T3): this gives
@@ -110,7 +117,8 @@ async def _load_one(db: AsyncSession, path: Path, repository: CatalogRepository[
             new_hash=hash_value,
         )
 
-    return await repository.insert(db, hashable, hash_value, document.label)
+    config = hashable | document.as_unhashed_dict()
+    return await repository.insert(db, config, hash_value, document.label)
 
 
 async def catalog_status(

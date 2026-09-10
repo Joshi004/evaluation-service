@@ -147,6 +147,9 @@ def _to_run_standard_detail(standard: Standard) -> RunStandardDetail:
         sample_limit=standard.sample_limit,
         think_handling=standard.think_handling,
         sampling_overrides=standard.sampling_overrides,
+        subsets=standard.subsets,
+        eval_batch_size=standard.eval_batch_size,
+        request_timeout_seconds=standard.request_timeout_seconds,
         created_at=standard.created_at,
     )
 

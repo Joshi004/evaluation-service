@@ -44,6 +44,15 @@ class SamplingProfilesRepository:
             db, validated_config, hash_value, label
         )
 
+    async def sync_unhashed_columns(
+        self, db: AsyncSession, row: SamplingProfile, unhashed_config: dict[str, Any]
+    ) -> None:
+        """No-op: every `sampling_profile` column is part of the hash
+        (S-D7 carves out no exception here), so a hash hit already means
+        nothing on this row needs to change.
+        """
+        return None
+
 
 # One instance, imported directly by callers -- no factory function
 # needed, because there is no second implementation to choose between.

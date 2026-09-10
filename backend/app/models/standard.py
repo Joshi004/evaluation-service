@@ -28,11 +28,12 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     Identity,
+    Integer,
     SmallInteger,
     Text,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -96,6 +97,27 @@ class Standard(Base):
         JSONB, server_default=text("'{}'::jsonb")
     )
 
+    # Which samples run -- e.g. tau2's ['retail'] versus ['telecom'] is
+    # the *only* field distinguishing those two standards (Phase 4,
+    # RESEARCH §12). Hashed: it changes what was measured. Non-empty is
+    # enforced at load time (S-T19) -- EvalScope silently falls back to
+    # its own registered default for an empty/missing subset_list, which
+    # is how a wrong number gets published looking normal.
+    subsets: Mapped[list[str]] = mapped_column(ARRAY(Text))
+
+    # Operational, not hashed (S-D7): neither field can change what a
+    # benchmark measures, only how fast or how patiently it's run, so
+    # editing either in the YAML updates this row in place instead of
+    # minting a new standard (see the catalog loader's
+    # sync_unhashed_columns).
+    eval_batch_size: Mapped[int] = mapped_column(SmallInteger, server_default="32")
+    # EvalScope's own field is the bare, overloaded `timeout` (S-D26) --
+    # renamed on the way in because this system already has three other
+    # timeouts (slurm_walltime_seconds, the SSH connector's 60s command
+    # timeout) and the unqualified name is the one that invites editing
+    # the wrong one.
+    request_timeout_seconds: Mapped[int] = mapped_column(Integer, server_default="1800")
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     def as_hashable_dict(self) -> dict[str, Any]:
@@ -108,6 +130,11 @@ class Standard(Base):
         measures, so those must never affect the hash. See
         docs/STANDARDS_AND_PROFILES_PHASES.md Section 0.5 for the exact
         key set.
+
+        Also excludes `eval_batch_size` and `request_timeout_seconds`
+        (S-D7): neither can change what gets measured, only how fast or
+        how patiently the measurement runs, so editing either updates
+        this row in place instead of minting a new standard.
         """
         return {
             "benchmark": self.benchmark,
@@ -125,4 +152,5 @@ class Standard(Base):
             "sample_limit": self.sample_limit,
             "think_handling": self.think_handling,
             "sampling_overrides": self.sampling_overrides,
+            "subsets": self.subsets,
         }

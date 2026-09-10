@@ -92,6 +92,35 @@ sampling_overrides: {}
 # the instruct/think distinction that used to be two separate standards
 # is now just which sampling profile a submit picks.
 
+# --- Operational -------------------------------------------------------------
+
+subsets: ["default"]
+# IFEval registers one subset under EvalScope, named literally "default" --
+# unlike BFCL or tau2, there is no real split to name here. Hashed (Phase 4):
+# this is the field that makes which samples ran part of the standard's
+# identity, so a standard with a real subset list (e.g. tau2_retail vs
+# tau2_telecom) is expressible at all. The list is passed to EvalScope
+# verbatim and in the order written, not sorted -- reordering it is a
+# content change and therefore a new hash, same as any other field here.
+
+eval_batch_size: 32
+# Requests in flight, not hashed (S-D7) -- purely a throughput knob, never
+# part of what's measured. 32 is right-sized for IFEval specifically: the
+# tool-call team's own measurement (RESEARCH §13) found it leaves the GPU
+# idle on a benchmark like MMLU-Pro (2,179 tok/s at batch 32 vs. 3,950 at
+# 128) and is too high for BFCL/ACEBench's multi-turn subsets, where the
+# bottleneck is Python in the worker rather than the GPU -- which is exactly
+# why this is a per-standard column instead of one global constant.
+
+request_timeout_seconds: 1800
+# Per-request timeout, not hashed (S-D7). EvalScope's own field is the bare
+# "timeout"; renamed on the way into this schema (S-D26) because the system
+# already has two other timeouts (slurm_walltime_seconds, the SSH
+# connector's 60s command timeout) and the unqualified name invites editing
+# the wrong one. 30 minutes is ample for IFEval's short, single-turn
+# prompts -- long-form benchmarks like AIME25 or MATH-500 will need theirs
+# set far higher when they're added.
+
 # --- Provenance --------------------------------------------------------------
 # Was two files, ifeval-v1-instruct.yaml (label ifeval/v1-instruct) and
 # ifeval-v1-think.yaml (label ifeval/v1-think), collapsed into this one

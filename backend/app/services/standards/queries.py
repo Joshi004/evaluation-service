@@ -66,14 +66,33 @@ async def get_standard(db: AsyncSession, standard_id: int) -> Standard | None:
 async def insert_standard(
     db: AsyncSession, config: dict[str, Any], hash_value: str, label: str | None
 ) -> Standard:
-    """Insert a new, immutable standard row. `config` must be exactly
-    the key set `Standard.as_hashable_dict()` produces -- built via
-    `**config` so any drift between a caller's dict and the model's
-    actual columns fails loudly (TypeError) rather than silently hashing
-    the wrong thing.
+    """Insert a new, immutable standard row. `config` holds every column
+    `Standard.__init__` needs besides `hash` and `label`: the hashed
+    fields (`Standard.as_hashable_dict()`'s key set) plus the unhashed
+    operational ones (`eval_batch_size`, `request_timeout_seconds`,
+    S-D7) that a hash alone says nothing about. Built via `**config` so
+    any drift between a caller's dict and the model's actual columns
+    fails loudly (TypeError) rather than silently hashing the wrong
+    thing.
     """
     standard = Standard(**config, hash=hash_value, label=label)
     db.add(standard)
     await db.flush()  # populates standard.id via Postgres RETURNING
     await db.commit()
     return standard
+
+
+async def update_standard_columns(
+    db: AsyncSession, standard: Standard, columns: dict[str, Any]
+) -> None:
+    """Write an unhashed operational field back onto an existing,
+    otherwise-immutable row -- S-D7's narrow exception in practice, used
+    only by the catalog loader's `sync_unhashed_columns` when a YAML
+    edit changes `eval_batch_size` or `request_timeout_seconds` without
+    changing the row's hash. Never call this for a hashed field: that
+    would silently rewrite what a standard measures on a row every other
+    caller still treats as permanent.
+    """
+    for column, value in columns.items():
+        setattr(standard, column, value)
+    await db.commit()

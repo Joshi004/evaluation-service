@@ -322,6 +322,13 @@ export interface StandardSummary {
   // of SamplingProfileConfig's nine keys, validated against that same
   // field set at load time (S-D22).
   sampling_overrides: Record<string, unknown>
+  // Which samples run -- hashed, so a standard like tau2_retail is
+  // distinguished from tau2_telecom by this field alone (Phase 4).
+  subsets: string[]
+  // Operational, not hashed (S-D7): throughput and per-request timeout,
+  // never part of what the standard measures.
+  eval_batch_size: number
+  request_timeout_seconds: number
   created_at: string
   warnings: SamplingFieldWarning[]
   source_yaml: string | null
@@ -551,6 +558,9 @@ export interface RunStandardDetail {
   sample_limit: number | null
   think_handling: string
   sampling_overrides: Record<string, unknown>
+  subsets: string[]
+  eval_batch_size: number
+  request_timeout_seconds: number
   created_at: string
 }
 

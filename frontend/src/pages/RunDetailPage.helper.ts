@@ -49,6 +49,9 @@ export function standardFieldRows(standard: RunStandardDetail): FieldRow[] {
     { label: 'Repeats', value: displayOrDash(standard.repeats) },
     { label: 'Sample limit', value: displayOrDash(standard.sample_limit) },
     { label: 'Think handling', value: standard.think_handling },
+    { label: 'Subsets', value: standard.subsets.join(', ') },
+    { label: 'Eval batch size', value: displayOrDash(standard.eval_batch_size) },
+    { label: 'Request timeout (s)', value: displayOrDash(standard.request_timeout_seconds) },
   ]
 }
 

@@ -21,4 +21,16 @@ async def resolve_standard(db: AsyncSession, base: Standard, overrides: dict[str
     existing = await standards_queries.get_standard_by_hash(db, hash_value)
     if existing:
         return existing
-    return await standards_queries.insert_standard(db, config, hash_value, label=None)
+    # eval_batch_size / request_timeout_seconds are never part of
+    # `overrides` (a submit only overrides hashed protocol fields, per
+    # StandardOverrides) and never part of the hash, so there is nothing
+    # for an override to say about them. The new row inherits the base
+    # standard's current operational values rather than silently
+    # falling back to insert_standard's column defaults.
+    unhashed_config = {
+        "eval_batch_size": base.eval_batch_size,
+        "request_timeout_seconds": base.request_timeout_seconds,
+    }
+    return await standards_queries.insert_standard(
+        db, config | unhashed_config, hash_value, label=None
+    )

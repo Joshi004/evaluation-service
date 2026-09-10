@@ -294,6 +294,9 @@ class RunStandardDetail(BaseModel):
     sample_limit: int | None
     think_handling: str
     sampling_overrides: dict[str, Any]
+    subsets: list[str]
+    eval_batch_size: int
+    request_timeout_seconds: int
     created_at: datetime
 
 

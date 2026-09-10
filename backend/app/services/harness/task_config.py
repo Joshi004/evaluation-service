@@ -75,6 +75,14 @@ def build_task_config(
       into `sampling_profile` before this function was called (S-D4), so
       every value it mandates already appears below under the sampling
       profile's own fields.
+    - `subsets`: `dataset_args.<task>.subset_list`, via `_dataset_args` --
+      Phase 4, replacing what used to be a hardcoded `["default"]`.
+    - `eval_batch_size`: `eval_batch_size`, replacing a hardcoded `32`.
+      Not part of `Standard.as_hashable_dict()` (S-D7) -- it changes how
+      fast the benchmark runs, never what it measures.
+    - `request_timeout_seconds`: `generation_config.timeout`, under
+      EvalScope's own field name -- replacing a hardcoded `1800`. Also
+      not hashed, for the same S-D7 reason as `eval_batch_size`.
 
     From the sampling profile:
     - `temperature`, `top_p`, `top_k`, `presence_penalty`,
@@ -126,12 +134,12 @@ def build_task_config(
             "extra_body": {
                 "chat_template_kwargs": {"enable_thinking": sampling_profile.enable_thinking}
             },
-            "timeout": 1800,
+            "timeout": standard.request_timeout_seconds,
         },
         "repeats": standard.repeats,
         "seed": sampling_profile.seed,
         "limit": standard.sample_limit,
-        "eval_batch_size": 32,
+        "eval_batch_size": standard.eval_batch_size,
         "work_dir": container_work_dir,
         "no_timestamp": True,
         # One bad sample shouldn't cost the whole run; truncation_rate
@@ -158,7 +166,7 @@ def _dataset_args(standard: Standard) -> dict[str, Any]:
     """
     args: dict[str, Any] = {
         "dataset_id": standard.dataset_name,
-        "subset_list": ["default"],
+        "subset_list": standard.subsets,
         "few_shot_num": standard.few_shot,
         "prompt_template": standard.prompt_template,
         "metric_list": _metric_names(standard.metrics),

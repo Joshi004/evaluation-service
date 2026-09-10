@@ -57,3 +57,16 @@ class CatalogRepository(Protocol[RowT]):
     async def insert(
         self, db: AsyncSession, config: dict[str, Any], hash_value: str, label: str
     ) -> RowT: ...
+
+    async def sync_unhashed_columns(
+        self, db: AsyncSession, row: RowT, unhashed_config: dict[str, Any]
+    ) -> None:
+        """A hash *hit* can still mean an unhashed operational column
+        (S-D7, e.g. standard's `eval_batch_size`) drifted in the YAML --
+        the file stays that field's source of truth even though it isn't
+        part of identity. Most catalogs have no such column, so a no-op
+        implementation is correct there (see
+        `app.services.sampling_profiles.repository`,
+        `app.services.serving_profiles.repository`).
+        """
+        ...

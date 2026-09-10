@@ -6,6 +6,7 @@ through this class; it never imports `app.services.standards.queries`
 directly.
 """
 
+import logging
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Standard
 from app.schemas.standards import StandardDocument
 from app.services.standards import queries as standards_queries
+
+logger = logging.getLogger(__name__)
 
 
 class StandardsRepository:
@@ -39,6 +42,32 @@ class StandardsRepository:
         self, db: AsyncSession, config: dict[str, Any], hash_value: str, label: str
     ) -> Standard:
         return await standards_queries.insert_standard(db, config, hash_value, label)
+
+    async def sync_unhashed_columns(
+        self, db: AsyncSession, row: Standard, unhashed_config: dict[str, Any]
+    ) -> None:
+        """Phase 4's S-D7 exception in practice: `eval_batch_size` and
+        `request_timeout_seconds` can change in the YAML without
+        changing `standard.hash`, so a hash hit alone must not be read
+        as "nothing to do" here. Only the columns that actually differ
+        are written (and logged) -- a reload that changes nothing must
+        not spam the log on every startup.
+        """
+        changed = {
+            column: new_value
+            for column, new_value in unhashed_config.items()
+            if getattr(row, column) != new_value
+        }
+        if not changed:
+            return
+        old_values = {column: getattr(row, column) for column in changed}
+        await standards_queries.update_standard_columns(db, row, changed)
+        logger.info(
+            "standard %r: updated operational field(s) %s -> %s (hash unchanged)",
+            row.label,
+            old_values,
+            changed,
+        )
 
 
 # One instance, imported directly by callers -- no factory function

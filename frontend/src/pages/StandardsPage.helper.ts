@@ -69,6 +69,9 @@ export function buildFieldRows(standard: StandardSummary): StandardFieldRow[] {
     ['repeats', 'Repeats', String(standard.repeats)],
     ['sample_limit', 'Sample limit', standard.sample_limit === null ? 'full dataset' : String(standard.sample_limit)],
     ['think_handling', 'Think handling', standard.think_handling],
+    ['subsets', 'Subsets', standard.subsets.join(', ')],
+    ['eval_batch_size', 'Eval batch size', String(standard.eval_batch_size)],
+    ['request_timeout_seconds', 'Request timeout (s)', String(standard.request_timeout_seconds)],
   ]
 
   const protocolRows: StandardFieldRow[] = protocolFields.map(([field, label, value]) => ({
