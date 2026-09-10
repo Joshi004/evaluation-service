@@ -1,5 +1,5 @@
 """Turns a finished harness run's output tree into `results_json`, one
-`ParsedMetric` per `recipe.metrics` entry, and a `truncation_rate`.
+`ParsedMetric` per `standard.metrics` entry, and a `truncation_rate`.
 
 Pure functions only: files in, dataclasses out, no DB session and no
 EvalScope import (see the package docstring). That's what lets a
@@ -13,7 +13,7 @@ top level is a flat `metrics` list; each entry carries an `identity`
 dict (`name` + `aggregation`, e.g. "prompt_level_strict" + "mean") in
 place of a single combined key, plus `score` and `num` directly on the
 entry. `_harness_key` below reconstructs the "name:aggregation" string
-so `recipe.metrics[i]["harness_key"]` still matches something.
+so `standard.metrics[i]["harness_key"]` still matches something.
 """
 
 import json
@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from app.models import Recipe
+from app.models import SamplingProfile, Standard
 
 logger = logging.getLogger(__name__)
 
@@ -46,20 +46,20 @@ class ParsedReport:
     metrics: list[ParsedMetric]
 
 
-def parse_report(run_dir: Path, recipe: Recipe, served_model_name: str) -> ParsedReport:
-    """Reads `reports/<served_model_name>/<recipe.task_name>.json`.
+def parse_report(run_dir: Path, standard: Standard, served_model_name: str) -> ParsedReport:
+    """Reads `reports/<served_model_name>/<standard.task_name>.json`.
 
     `served_model_name` must be the exact value passed as the
     `TaskConfig.model` this run used (Trap T3) -- never reconstructed
     from a checkpoint path, because that is not what EvalScope names
     the directory after.
     """
-    report_path = run_dir / "reports" / served_model_name / f"{recipe.task_name}.json"
+    report_path = run_dir / "reports" / served_model_name / f"{standard.task_name}.json"
     report = json.loads(report_path.read_text())
 
     # The whole file, verbatim, goes to results_json: it's the receipt
     # that lets a wrong parse be re-parsed instead of re-run.
-    metrics = [_extract_metric(report, metric_spec) for metric_spec in recipe.metrics]
+    metrics = [_extract_metric(report, metric_spec) for metric_spec in standard.metrics]
     return ParsedReport(results_json=report, metrics=metrics)
 
 
@@ -74,12 +74,12 @@ def _extract_metric(report: dict[str, Any], metric_spec: dict[str, Any]) -> Pars
             break
 
     if matching_entry is None:
-        # A mismatch belongs in the recipe YAML, not papered over here
+        # A mismatch belongs in the standard YAML, not papered over here
         # -- so the error names both the key we wanted and the keys
         # the report actually had.
         found_keys = [_harness_key(report_metric) for report_metric in report_metrics]
         raise KeyError(
-            f"recipe metric harness_key {harness_key!r} not found in report; "
+            f"standard metric harness_key {harness_key!r} not found in report; "
             f"report has: {found_keys}"
         )
 
@@ -93,10 +93,10 @@ def _extract_metric(report: dict[str, Any], metric_spec: dict[str, Any]) -> Pars
 
 def _harness_key(report_metric: dict[str, Any]) -> str:
     """Renders "name:aggregation", e.g. "prompt_level_strict:mean" --
-    the same string recipe.metrics stores in harness_key, reconstructed from a
-    report metric's `identity` block. task_config.py's `_metric_names`
-    splits this same convention apart for the opposite reason (building
-    the request rather than reading the response).
+    the same string standard.metrics stores in harness_key, reconstructed
+    from a report metric's `identity` block. task_config.py's
+    `_metric_names` splits this same convention apart for the opposite
+    reason (building the request rather than reading the response).
     """
     identity = report_metric["identity"]
     return f"{identity['name']}:{identity['aggregation']}"
@@ -111,9 +111,18 @@ def _normalize_score(score: float) -> float:
     return score / 100 if score > 1.0 else score
 
 
-def compute_truncation_rate(run_dir: Path, recipe: Recipe, served_model_name: str) -> float | None:
+def compute_truncation_rate(
+    run_dir: Path,
+    standard: Standard,
+    sampling_profile: SamplingProfile,
+    served_model_name: str,
+) -> float | None:
     """The fraction of `predictions/<served_model_name>/<task>_default.jsonl`
-    records that hit `recipe.max_tokens` before finishing.
+    records that hit `sampling_profile.max_tokens` before finishing.
+    `max_tokens` moved to `sampling_profile` in Phase 3 (it depends on
+    the checkpoint, not the benchmark), so this now needs both rows:
+    `standard` for the task_name that names the predictions file,
+    `sampling_profile` for the token budget itself.
 
     Returns None if the predictions file is missing or empty (a
     harness failure) rather than 0.0 -- a run that produced no data
@@ -123,7 +132,7 @@ def compute_truncation_rate(run_dir: Path, recipe: Recipe, served_model_name: st
     docs/IMPLEMENTATION_PHASES.md).
     """
     predictions_path = (
-        run_dir / "predictions" / served_model_name / f"{recipe.task_name}_default.jsonl"
+        run_dir / "predictions" / served_model_name / f"{standard.task_name}_default.jsonl"
     )
     if not predictions_path.exists():
         return None
@@ -144,7 +153,7 @@ def compute_truncation_rate(run_dir: Path, recipe: Recipe, served_model_name: st
     if use_token_count_fallback:
         logger.warning(
             "no prediction record had model_output.choices[0].stop_reason; "
-            "falling back to output_tokens == recipe.max_tokens. "
+            "falling back to output_tokens == sampling_profile.max_tokens. "
             "model_output keys seen: %s",
             sorted(records[0].get("model_output", {}).keys()),
         )
@@ -152,7 +161,7 @@ def compute_truncation_rate(run_dir: Path, recipe: Recipe, served_model_name: st
     truncated_count = 0
     for record in records:
         if use_token_count_fallback:
-            hit_max_tokens = _output_tokens(record) == recipe.max_tokens
+            hit_max_tokens = _output_tokens(record) == sampling_profile.max_tokens
         else:
             hit_max_tokens = _stop_reason(record) == "max_tokens"
         if hit_max_tokens:

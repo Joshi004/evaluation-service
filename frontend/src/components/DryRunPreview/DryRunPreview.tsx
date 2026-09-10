@@ -1,4 +1,11 @@
-import type { RunPreview, StandardRecipe } from '../../api/client'
+import type {
+  CheckpointListItem,
+  FieldChange,
+  ResolvedSamplingPreview,
+  ResolvedStandardPreview,
+  RunPreview,
+  StandardSummary,
+} from '../../api/client'
 import { formatPreviewValue, groupFindingsByCode, type GroupedFinding } from './DryRunPreview.helper'
 
 interface DryRunPreviewProps {
@@ -6,7 +13,8 @@ interface DryRunPreviewProps {
   isLoading: boolean
   isError: boolean
   error: unknown
-  recipesById: Map<number, StandardRecipe>
+  standardsById: Map<number, StandardSummary>
+  checkpointsById: Map<number, CheckpointListItem>
 }
 
 interface FindingGroupItemProps {
@@ -39,15 +47,123 @@ function FindingGroupItem({ finding, textClassName }: FindingGroupItemProps) {
   )
 }
 
+// The before/after table shared by a resolved standard's card and a
+// resolved sampling profile's card below -- both are just "a base
+// config, merged with overrides" (FieldChange, app/schemas/runs.py).
+function ChangedFieldsTable({ changedFields }: { changedFields: FieldChange[] }) {
+  if (changedFields.length === 0) {
+    return null
+  }
+  return (
+    <table className="mt-2 w-full border-collapse text-xs">
+      <tbody>
+        {changedFields.map((change) => (
+          <tr key={change.field}>
+            <td className="py-0.5 pr-2 text-slate-500">{change.field}</td>
+            <td className="py-0.5 pr-2 font-mono text-slate-500 line-through">
+              {formatPreviewValue(change.base_value)}
+            </td>
+            <td className="py-0.5 font-mono text-slate-200">{formatPreviewValue(change.override_value)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
+interface ResolvedStandardCardProps {
+  resolved: ResolvedStandardPreview
+  standardsById: Map<number, StandardSummary>
+}
+
+// What resolve_standard would actually insert (or reuse) for one base
+// standard plus the submit's protocol overrides -- one card per
+// selected standard, independent of which checkpoints are selected.
+function ResolvedStandardCard({ resolved, standardsById }: ResolvedStandardCardProps) {
+  const baseStandard = standardsById.get(resolved.base_standard_id)
+  return (
+    <div className="rounded border border-slate-800 bg-slate-950 p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm text-slate-200">{baseStandard?.label ?? resolved.base_standard_id}</span>
+        <span className="font-mono text-xs text-slate-500">→ {resolved.hash}</span>
+        <span
+          className={
+            resolved.is_new_standard
+              ? 'rounded bg-amber-500/10 px-1.5 py-0.5 text-xs text-amber-300'
+              : 'rounded bg-slate-800 px-1.5 py-0.5 text-xs text-slate-400'
+          }
+        >
+          {resolved.is_new_standard ? 'new standard, no label' : 'reuses existing standard'}
+        </span>
+      </div>
+      <ChangedFieldsTable changedFields={resolved.changed_fields} />
+    </div>
+  )
+}
+
+interface ResolvedSamplingCardProps {
+  resolved: ResolvedSamplingPreview
+  standardsById: Map<number, StandardSummary>
+  checkpointsById: Map<number, CheckpointListItem>
+}
+
+// What resolve_sampling_profile would actually insert (or reuse) for
+// one (checkpoint, standard) pair -- one card per pair, since S-D4's
+// merge depends on both the checkpoint's own default sampling profile
+// and the standard's sampling_overrides, so the same submit-level
+// override can resolve to a different profile for every cell of the
+// grid.
+function ResolvedSamplingCard({ resolved, standardsById, checkpointsById }: ResolvedSamplingCardProps) {
+  const checkpoint = checkpointsById.get(resolved.checkpoint_id)
+  const standard = standardsById.get(resolved.standard_id)
+  return (
+    <div className="rounded border border-slate-800 bg-slate-950 p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm text-slate-200">
+          {checkpoint?.name ?? resolved.checkpoint_id} × {standard?.label ?? resolved.standard_id}
+        </span>
+        <span className="font-mono text-xs text-slate-500">→ {resolved.hash}</span>
+        <span
+          className={
+            resolved.is_new_sampling_profile
+              ? 'rounded bg-amber-500/10 px-1.5 py-0.5 text-xs text-amber-300'
+              : 'rounded bg-slate-800 px-1.5 py-0.5 text-xs text-slate-400'
+          }
+        >
+          {resolved.is_new_sampling_profile ? 'new sampling profile, no label' : 'reuses existing sampling profile'}
+        </span>
+      </div>
+      <ChangedFieldsTable changedFields={resolved.changed_fields} />
+      {resolved.warnings.length > 0 && (
+        <ul className="mt-2 space-y-0.5">
+          {resolved.warnings.map((warning) => (
+            <li key={warning.field} className="text-xs text-amber-400">
+              {warning.field}: {warning.message}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 // Everything Submit needs to show before anything POSTs: how many runs
 // and GPUs (Trap T1 -- GPUs are per distinct checkpoint, not per run,
 // so this is the one number a human will actually act on), which
 // findings block or merely warn and why, and what each selected
-// recipe's overrides would actually resolve to. All of it comes
-// straight from POST /runs/preview (backend/app/services/runs/preview.py)
-// -- this component never recomputes any of it, so Submit and the
-// Standards page can never disagree about what a value does.
-export function DryRunPreview({ preview, isLoading, isError, error, recipesById }: DryRunPreviewProps) {
+// standard and each resolved sampling profile would actually resolve
+// to. All of it comes straight from POST /runs/preview
+// (backend/app/services/runs/preview.py) -- this component never
+// recomputes any of it, so Submit and the Standards page can never
+// disagree about what a value does.
+export function DryRunPreview({
+  preview,
+  isLoading,
+  isError,
+  error,
+  standardsById,
+  checkpointsById,
+}: DryRunPreviewProps) {
   if (isLoading) {
     return <p className="text-sm text-slate-500">Checking…</p>
   }
@@ -57,7 +173,7 @@ export function DryRunPreview({ preview, isLoading, isError, error, recipesById 
   }
 
   if (!preview) {
-    return <p className="text-sm text-slate-500">Select at least one checkpoint and one recipe.</p>
+    return <p className="text-sm text-slate-500">Select at least one checkpoint and one standard.</p>
   }
 
   const groupedErrors = groupFindingsByCode(preview.pairs, 'errors')
@@ -71,7 +187,7 @@ export function DryRunPreview({ preview, isLoading, isError, error, recipesById 
         {preview.gpu_count === 1 ? '' : 's'}
       </p>
       <p className="mt-1 text-xs text-slate-500">
-        GPUs are counted per distinct checkpoint -- benchmarks against one checkpoint share one server.
+        GPUs are counted per distinct checkpoint -- standards against one checkpoint share one server.
       </p>
 
       {groupedErrors.length > 0 && (
@@ -110,47 +226,26 @@ export function DryRunPreview({ preview, isLoading, isError, error, recipesById 
       )}
 
       <div className="mt-4 space-y-3">
-        {preview.resolved_recipes.map((resolved) => {
-          const baseRecipe = recipesById.get(resolved.base_recipe_id)
-          return (
-            <div
-              key={resolved.base_recipe_id}
-              className="rounded border border-slate-800 bg-slate-950 p-3"
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm text-slate-200">{baseRecipe?.label ?? resolved.base_recipe_id}</span>
-                <span className="font-mono text-xs text-slate-500">→ {resolved.hash}</span>
-                <span
-                  className={
-                    resolved.is_new_recipe
-                      ? 'rounded bg-amber-500/10 px-1.5 py-0.5 text-xs text-amber-300'
-                      : 'rounded bg-slate-800 px-1.5 py-0.5 text-xs text-slate-400'
-                  }
-                >
-                  {resolved.is_new_recipe ? 'new recipe, no label' : 'reuses existing recipe'}
-                </span>
-              </div>
+        <h3 className="text-xs font-medium text-slate-400">Resolved standards</h3>
+        {preview.resolved_standards.map((resolved) => (
+          <ResolvedStandardCard
+            key={resolved.base_standard_id}
+            resolved={resolved}
+            standardsById={standardsById}
+          />
+        ))}
+      </div>
 
-              {resolved.changed_fields.length > 0 && (
-                <table className="mt-2 w-full border-collapse text-xs">
-                  <tbody>
-                    {resolved.changed_fields.map((change) => (
-                      <tr key={change.field}>
-                        <td className="py-0.5 pr-2 text-slate-500">{change.field}</td>
-                        <td className="py-0.5 pr-2 font-mono text-slate-500 line-through">
-                          {formatPreviewValue(change.base_value)}
-                        </td>
-                        <td className="py-0.5 font-mono text-slate-200">
-                          {formatPreviewValue(change.override_value)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          )
-        })}
+      <div className="mt-4 space-y-3">
+        <h3 className="text-xs font-medium text-slate-400">Resolved sampling</h3>
+        {preview.resolved_sampling.map((resolved) => (
+          <ResolvedSamplingCard
+            key={`${resolved.checkpoint_id}-${resolved.standard_id}`}
+            resolved={resolved}
+            standardsById={standardsById}
+            checkpointsById={checkpointsById}
+          />
+        ))}
       </div>
     </div>
   )

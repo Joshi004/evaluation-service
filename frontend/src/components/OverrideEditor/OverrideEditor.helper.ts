@@ -1,21 +1,30 @@
 // Non-DOM logic for OverrideEditor.tsx: its draft form state (every
 // field kept as a plain string, since that's what <input>/<select>
-// bind to) and the conversion into the sparse RecipeOverrides the
-// backend expects.
+// bind to) and the conversion into the sparse StandardOverrides /
+// SamplingOverrides pair the backend expects.
 //
 // A field left blank in the draft must end up entirely absent from the
-// resulting RecipeOverrides, not present with some default value --
-// see app/schemas/runs.py's RecipeOverrides docstring on why the
-// backend (Pydantic's exclude_unset) needs "the key is absent" and "the
-// key is present" to stay distinguishable. Both selects use '' the same
-// way, for the same reason.
+// resulting overrides object, not present with some default value --
+// see app/schemas/runs.py's StandardOverrides/SamplingOverrides
+// docstrings on why the backend (Pydantic's exclude_unset) needs "the
+// key is absent" and "the key is present" to stay distinguishable.
+// Every select uses '' the same way, for the same reason.
+//
+// Split into `standard` and `sampling` groups, mirroring
+// docs/STANDARDS_AND_PROFILES_PHASES.md Phase 3's split of the same
+// fields across two tables -- think_handling moved into `standard`
+// alongside it, since it's a protocol field, not a sampling one.
 
-import type { RecipeOverrides } from '../../api/client'
+import type { SamplingOverrides, StandardOverrides } from '../../api/client'
 
-export interface OverrideDraft {
+export interface StandardOverrideDraft {
   sample_limit: string
   few_shot: string
   repeats: string
+  think_handling: '' | 'strip' | 'as_is'
+}
+
+export interface SamplingOverrideDraft {
   temperature: string
   top_p: string
   top_k: string
@@ -24,22 +33,30 @@ export interface OverrideDraft {
   repetition_penalty: string
   max_tokens: string
   enable_thinking: '' | 'true' | 'false'
-  think_handling: '' | 'strip' | 'as_is'
+}
+
+export interface OverrideDraft {
+  standard: StandardOverrideDraft
+  sampling: SamplingOverrideDraft
 }
 
 export const EMPTY_OVERRIDE_DRAFT: OverrideDraft = {
-  sample_limit: '',
-  few_shot: '',
-  repeats: '',
-  temperature: '',
-  top_p: '',
-  top_k: '',
-  min_p: '',
-  presence_penalty: '',
-  repetition_penalty: '',
-  max_tokens: '',
-  enable_thinking: '',
-  think_handling: '',
+  standard: {
+    sample_limit: '',
+    few_shot: '',
+    repeats: '',
+    think_handling: '',
+  },
+  sampling: {
+    temperature: '',
+    top_p: '',
+    top_k: '',
+    min_p: '',
+    presence_penalty: '',
+    repetition_penalty: '',
+    max_tokens: '',
+    enable_thinking: '',
+  },
 }
 
 function parseOptionalInt(raw: string): number | undefined {
@@ -52,11 +69,11 @@ function parseOptionalFloat(raw: string): number | undefined {
 
 // Only a field the user actually typed into ends up as a key here.
 // Written as one block per field rather than a generic loop over
-// `keyof OverrideDraft` -- a loop would need a cast to assign a plain
-// `string` onto the two select fields' narrower literal-union types,
-// and this is only 12 fields.
-export function buildOverridesFromDraft(draft: OverrideDraft): RecipeOverrides {
-  const overrides: RecipeOverrides = {}
+// `keyof StandardOverrideDraft` -- a loop would need a cast to assign a
+// plain `string` onto the select field's narrower literal-union type,
+// and this is only four fields.
+function buildStandardOverrides(draft: StandardOverrideDraft): StandardOverrides {
+  const overrides: StandardOverrides = {}
 
   const sampleLimit = parseOptionalInt(draft.sample_limit)
   if (sampleLimit !== undefined) {
@@ -70,6 +87,18 @@ export function buildOverridesFromDraft(draft: OverrideDraft): RecipeOverrides {
   if (repeats !== undefined) {
     overrides.repeats = repeats
   }
+  if (draft.think_handling !== '') {
+    overrides.think_handling = draft.think_handling
+  }
+
+  return overrides
+}
+
+// Same reasoning as buildStandardOverrides above, over the eight
+// sampling fields.
+function buildSamplingOverrides(draft: SamplingOverrideDraft): SamplingOverrides {
+  const overrides: SamplingOverrides = {}
+
   const temperature = parseOptionalFloat(draft.temperature)
   if (temperature !== undefined) {
     overrides.temperature = temperature
@@ -101,9 +130,18 @@ export function buildOverridesFromDraft(draft: OverrideDraft): RecipeOverrides {
   if (draft.enable_thinking !== '') {
     overrides.enable_thinking = draft.enable_thinking === 'true'
   }
-  if (draft.think_handling !== '') {
-    overrides.think_handling = draft.think_handling
-  }
 
   return overrides
+}
+
+export interface DraftOverrides {
+  standardOverrides: StandardOverrides
+  samplingOverrides: SamplingOverrides
+}
+
+export function buildOverridesFromDraft(draft: OverrideDraft): DraftOverrides {
+  return {
+    standardOverrides: buildStandardOverrides(draft.standard),
+    samplingOverrides: buildSamplingOverrides(draft.sampling),
+  }
 }

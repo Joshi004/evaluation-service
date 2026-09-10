@@ -35,12 +35,20 @@ function NumberField({ label, step, value, onValueChange }: NumberFieldProps) {
   )
 }
 
-// Overrides apply uniformly to every selected recipe (CreateRunsRequest
-// carries one `overrides` object for the whole grid, not one per
-// recipe -- app/schemas/runs.py), so this editor has no notion of a
-// "current value" to show: each selected recipe may already differ on
-// any of these fields. DryRunPreview is where the actual before/after
-// per recipe shows up, from the backend's own diff.
+// Overrides apply uniformly to every selected standard (CreateRunsRequest
+// carries one `standard_overrides` and one `sampling_overrides` object
+// for the whole grid, not one per standard -- app/schemas/runs.py), so
+// this editor has no notion of a "current value" to show: each selected
+// standard may already differ on any of these fields. DryRunPreview is
+// where the actual before/after per standard (and per resolved sampling
+// profile) shows up, from the backend's own diff.
+//
+// The two groups below mirror docs/STANDARDS_AND_PROFILES_PHASES.md
+// Phase 3's split of these same fields across the `standard` and
+// `sampling_profile` tables -- "Evaluation shape" is every field that
+// stayed on the standard (including think_handling, a protocol field,
+// not a sampling one), "Sampling" is every field that moved to the
+// sampling profile.
 export function OverrideEditor({ draft, onChange }: OverrideEditorProps) {
   return (
     <div className="space-y-6">
@@ -50,21 +58,48 @@ export function OverrideEditor({ draft, onChange }: OverrideEditorProps) {
           <NumberField
             label="Sample limit"
             step="1"
-            value={draft.sample_limit}
-            onValueChange={(value) => onChange({ ...draft, sample_limit: value })}
+            value={draft.standard.sample_limit}
+            onValueChange={(value) =>
+              onChange({ ...draft, standard: { ...draft.standard, sample_limit: value } })
+            }
           />
           <NumberField
             label="Few-shot"
             step="1"
-            value={draft.few_shot}
-            onValueChange={(value) => onChange({ ...draft, few_shot: value })}
+            value={draft.standard.few_shot}
+            onValueChange={(value) =>
+              onChange({ ...draft, standard: { ...draft.standard, few_shot: value } })
+            }
           />
           <NumberField
             label="Repeats"
             step="1"
-            value={draft.repeats}
-            onValueChange={(value) => onChange({ ...draft, repeats: value })}
+            value={draft.standard.repeats}
+            onValueChange={(value) =>
+              onChange({ ...draft, standard: { ...draft.standard, repeats: value } })
+            }
           />
+
+          <label className="block">
+            <span className="text-xs text-slate-500">Think handling</span>
+            <select
+              value={draft.standard.think_handling}
+              onChange={(event) =>
+                onChange({
+                  ...draft,
+                  standard: {
+                    ...draft.standard,
+                    think_handling: event.target.value as OverrideDraft['standard']['think_handling'],
+                  },
+                })
+              }
+              className={INPUT_CLASS_NAME}
+            >
+              <option value="">unchanged</option>
+              <option value="strip">strip</option>
+              <option value="as_is">as_is</option>
+            </select>
+          </label>
         </div>
       </div>
 
@@ -74,54 +109,65 @@ export function OverrideEditor({ draft, onChange }: OverrideEditorProps) {
           <NumberField
             label="Temperature"
             step="0.01"
-            value={draft.temperature}
-            onValueChange={(value) => onChange({ ...draft, temperature: value })}
+            value={draft.sampling.temperature}
+            onValueChange={(value) =>
+              onChange({ ...draft, sampling: { ...draft.sampling, temperature: value } })
+            }
           />
           <NumberField
             label="Top-p"
             step="0.01"
-            value={draft.top_p}
-            onValueChange={(value) => onChange({ ...draft, top_p: value })}
+            value={draft.sampling.top_p}
+            onValueChange={(value) => onChange({ ...draft, sampling: { ...draft.sampling, top_p: value } })}
           />
           <NumberField
             label="Top-k"
             step="1"
-            value={draft.top_k}
-            onValueChange={(value) => onChange({ ...draft, top_k: value })}
+            value={draft.sampling.top_k}
+            onValueChange={(value) => onChange({ ...draft, sampling: { ...draft.sampling, top_k: value } })}
           />
           <NumberField
             label="Min-p"
             step="0.01"
-            value={draft.min_p}
-            onValueChange={(value) => onChange({ ...draft, min_p: value })}
+            value={draft.sampling.min_p}
+            onValueChange={(value) => onChange({ ...draft, sampling: { ...draft.sampling, min_p: value } })}
           />
           <NumberField
             label="Presence penalty"
             step="0.01"
-            value={draft.presence_penalty}
-            onValueChange={(value) => onChange({ ...draft, presence_penalty: value })}
+            value={draft.sampling.presence_penalty}
+            onValueChange={(value) =>
+              onChange({ ...draft, sampling: { ...draft.sampling, presence_penalty: value } })
+            }
           />
           <NumberField
             label="Repetition penalty"
             step="0.01"
-            value={draft.repetition_penalty}
-            onValueChange={(value) => onChange({ ...draft, repetition_penalty: value })}
+            value={draft.sampling.repetition_penalty}
+            onValueChange={(value) =>
+              onChange({ ...draft, sampling: { ...draft.sampling, repetition_penalty: value } })
+            }
           />
           <NumberField
             label="Max tokens"
             step="1"
-            value={draft.max_tokens}
-            onValueChange={(value) => onChange({ ...draft, max_tokens: value })}
+            value={draft.sampling.max_tokens}
+            onValueChange={(value) =>
+              onChange({ ...draft, sampling: { ...draft.sampling, max_tokens: value } })
+            }
           />
 
           <label className="block">
             <span className="text-xs text-slate-500">Enable thinking</span>
             <select
-              value={draft.enable_thinking}
+              value={draft.sampling.enable_thinking}
               onChange={(event) =>
                 onChange({
                   ...draft,
-                  enable_thinking: event.target.value as OverrideDraft['enable_thinking'],
+                  sampling: {
+                    ...draft.sampling,
+                    enable_thinking: event.target.value as OverrideDraft['sampling']['enable_thinking'],
+                  },
                 })
               }
               className={INPUT_CLASS_NAME}
@@ -129,24 +175,6 @@ export function OverrideEditor({ draft, onChange }: OverrideEditorProps) {
               <option value="">unchanged</option>
               <option value="true">Yes</option>
               <option value="false">No</option>
-            </select>
-          </label>
-
-          <label className="block">
-            <span className="text-xs text-slate-500">Think handling</span>
-            <select
-              value={draft.think_handling}
-              onChange={(event) =>
-                onChange({
-                  ...draft,
-                  think_handling: event.target.value as OverrideDraft['think_handling'],
-                })
-              }
-              className={INPUT_CLASS_NAME}
-            >
-              <option value="">unchanged</option>
-              <option value="strip">strip</option>
-              <option value="as_is">as_is</option>
             </select>
           </label>
         </div>

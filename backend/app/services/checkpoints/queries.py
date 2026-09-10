@@ -141,7 +141,7 @@ async def get_checkpoint_with_runs(db: AsyncSession, checkpoint_id: int) -> Chec
         runs=[
             CheckpointRunSummary(
                 id=run.id,
-                recipe_id=run.recipe_id,
+                standard_id=run.standard_id,
                 status=run.status,
                 created_at=run.created_at,
                 finished_at=run.finished_at,

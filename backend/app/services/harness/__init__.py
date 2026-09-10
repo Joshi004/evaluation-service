@@ -8,8 +8,9 @@ process (decision D2 keeps its dependency tree out of the API process)
 only place `from evalscope import TaskConfig, run_task` actually runs.
 
 - `task_config.py` -- builds the EvalScope task config as a plain dict
-  (recipe + checkpoint + endpoint -> dict), since the real `TaskConfig`
-  class lives on the other side of the docker socket.
+  (standard + sampling profile + checkpoint + endpoint -> dict), since
+  the real `TaskConfig` class lives on the other side of the docker
+  socket.
 - `runner.py` -- writes that dict to the run directory and spawns the
   harness container that consumes it.
 - `parser.py` -- pure functions turning the container's output tree

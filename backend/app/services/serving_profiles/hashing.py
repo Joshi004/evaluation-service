@@ -1,10 +1,10 @@
 """The serving-profile hash. Reuses the canonical-JSON algorithm in
-`app.services.content_hash` -- the same one `recipe_hash`
-(app/services/recipes/hashing.py) delegates to -- rather than a second,
-separately maintained definition: two hash definitions that are meant to
-be identical and aren't kept in one place will drift, and a drifted
-hash looks authoritative while silently splitting populations that
-should have compared equal.
+`app.services.content_hash` -- the same one `standard_hash`
+(app/services/standards/hashing.py) delegates to -- rather than a
+second, separately maintained definition: two hash definitions that are
+meant to be identical and aren't kept in one place will drift, and a
+drifted hash looks authoritative while silently splitting populations
+that should have compared equal.
 """
 
 from typing import Any

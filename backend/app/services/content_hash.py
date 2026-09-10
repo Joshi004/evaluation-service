@@ -1,12 +1,12 @@
 """The canonical-JSON content hash shared by every content-addressed
-table (`recipe`, `serving_profile`, `sampling_profile`): canonical JSON
-(sorted keys, no whitespace, UTF-8, floats rounded to 6 decimal
+table (`standard`, `serving_profile`, `sampling_profile`): canonical
+JSON (sorted keys, no whitespace, UTF-8, floats rounded to 6 decimal
 places), SHA-256, first 16 hex characters.
 
 A hash whose definition drifts is worse than no hash -- it looks
 authoritative while silently splitting or merging populations that
-should have compared equal. `recipe_hash()`
-(app/services/recipes/hashing.py), `serving_profile_hash()`
+should have compared equal. `standard_hash()`
+(app/services/standards/hashing.py), `serving_profile_hash()`
 (app/services/serving_profiles/hashing.py), and `sampling_profile_hash()`
 (app/services/sampling_profiles/hashing.py) all delegate to
 `content_hash()` below rather than each defining their own, so no two
@@ -38,7 +38,8 @@ def _round_floats(value: Any) -> Any:
 
 def content_hash(config: dict[str, Any]) -> str:
     """Hash a content-addressed row's hashable dict (see
-    `Recipe.as_hashable_dict` / `ServingProfile.as_hashable_dict`).
+    `Standard.as_hashable_dict` / `ServingProfile.as_hashable_dict` /
+    `SamplingProfile.as_hashable_dict`).
 
     Two dicts that are equal after float-rounding always produce the
     same hash, regardless of key insertion order, because `sort_keys`

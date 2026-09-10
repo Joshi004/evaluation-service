@@ -1,5 +1,6 @@
-"""Builds the EvalScope task config from a resolved `recipe` row, a
-`checkpoint` row, and a live `endpoint` row.
+"""Builds the EvalScope task config from a resolved `standard` row, a
+resolved `sampling_profile` row, a `checkpoint` row, and a live
+`endpoint` row.
 
 Returns a plain dict, not a real `TaskConfig` -- decision D2 keeps
 EvalScope's dependency tree out of the API process, so
@@ -13,18 +14,23 @@ object is just constructed in a different process.
 
 from typing import Any
 
-from app.models import Checkpoint, Endpoint, Recipe
+from app.models import Checkpoint, Endpoint, SamplingProfile, Standard
 
 
 def build_task_config(
-    recipe: Recipe, checkpoint: Checkpoint, endpoint: Endpoint, container_work_dir: str
+    standard: Standard,
+    sampling_profile: SamplingProfile,
+    checkpoint: Checkpoint,
+    endpoint: Endpoint,
+    container_work_dir: str,
 ) -> dict[str, Any]:
     """Every field a real `TaskConfig`/`GenerateConfig` accepts, passed
     explicitly -- even where it currently matches EvalScope's own
-    registered default. That's deliberate: it's what makes the recipe
-    hash a verification tool rather than a label. If a future EvalScope
-    upgrade silently changes one of its own defaults, our number
-    doesn't move with it, because nothing here was ever implicit.
+    registered default. That's deliberate: it's what makes the standard
+    and sampling-profile hashes a verification tool rather than a
+    label. If a future EvalScope upgrade silently changes one of its own
+    defaults, our number doesn't move with it, because nothing here was
+    ever implicit.
 
     `model` is `checkpoint.name`, not `endpoint.model_tag` -- `Endpoint`
     has no such column. `serve_job.py` puts `checkpoint.name` in
@@ -38,15 +44,17 @@ def build_task_config(
     by the host Docker daemon via `runner.py`, and never sees this
     process's filesystem.
 
-    Every field in `Recipe.as_hashable_dict()` is accounted for below,
-    either by where it lands in the returned dict or by why it
-    deliberately doesn't -- a silently-dropped field is exactly how the
+    Every field in `Standard.as_hashable_dict()` and
+    `SamplingProfile.as_hashable_dict()` is accounted for below, either
+    by where it lands in the returned dict or by why it deliberately
+    doesn't -- a silently-dropped field is exactly how the
     `enable_thinking` bug shipped (see the `extra_body` comment below).
 
+    From the standard:
     - `benchmark`, `framework`: not sent -- they identify the standard to
       a human (frontend, docs), not to EvalScope.
     - `framework_image`: not sent by this function -- `runner.py` picks
-      the harness image from `settings.harness_image`, not per recipe.
+      the harness image from `settings.harness_image`, not per standard.
     - `task_name`: the `datasets` entry and the `dataset_args` key.
     - `dataset_name`: `dataset_args.<task>.dataset_id`.
     - `dataset_revision`: not sent (decision D3 -- no EvalScope knob
@@ -60,35 +68,42 @@ def build_task_config(
       `method: none`, so there is nothing yet to translate.
     - `metrics`: `dataset_args.<task>.metric_list`, via `_metric_names`.
     - `repeats`, `sample_limit`: `repeats`, `limit`.
+    - `think_handling`: not sent -- resolved at compatibility-check time
+      against the serving profile's `reasoning_parser`
+      (services/compatibility/rules.py), not something EvalScope reads.
+    - `sampling_overrides`: not sent directly -- it was already merged
+      into `sampling_profile` before this function was called (S-D4), so
+      every value it mandates already appears below under the sampling
+      profile's own fields.
+
+    From the sampling profile:
     - `temperature`, `top_p`, `top_k`, `presence_penalty`,
       `repetition_penalty`, `max_tokens`: `generation_config`.
     - `min_p`: not sent -- decision D4, see the comment inline at
       `generation_config`.
     - `enable_thinking`:
       `generation_config.extra_body.chat_template_kwargs.enable_thinking`.
-    - `think_handling`: not sent -- resolved at compatibility-check time
-      against the serving profile's `reasoning_parser`
-      (services/compatibility/rules.py), not something EvalScope reads.
+    - `seed`: `seed`, replacing what used to be a hardcoded `42`.
     """
     return {
         "model": checkpoint.name,
         "api_url": endpoint.url,
         "api_key": "EMPTY",
         "eval_type": "openai_api",  # HTTP only -- never loads the model itself
-        "datasets": [recipe.task_name],
-        "dataset_args": {recipe.task_name: _dataset_args(recipe)},
+        "datasets": [standard.task_name],
+        "dataset_args": {standard.task_name: _dataset_args(standard)},
         "generation_config": {
-            "temperature": recipe.temperature,
-            "top_p": recipe.top_p,
-            "top_k": recipe.top_k,
-            "presence_penalty": recipe.presence_penalty,
-            "repetition_penalty": recipe.repetition_penalty,
-            "max_tokens": recipe.max_tokens,
-            # min_p deliberately NOT passed -- decision D4. A recipe may
-            # record a non-zero min_p (nothing rejects that at load
-            # time), but EvalScope's openai_api path drops it silently,
-            # so passing it here would claim a control that doesn't
-            # exist. The human-visible warning lives on the
+            "temperature": sampling_profile.temperature,
+            "top_p": sampling_profile.top_p,
+            "top_k": sampling_profile.top_k,
+            "presence_penalty": sampling_profile.presence_penalty,
+            "repetition_penalty": sampling_profile.repetition_penalty,
+            "max_tokens": sampling_profile.max_tokens,
+            # min_p deliberately NOT passed -- decision D4. A sampling
+            # profile may record a non-zero min_p (nothing rejects that
+            # at load time), but EvalScope's openai_api path drops it
+            # silently, so passing it here would claim a control that
+            # doesn't exist. The human-visible warning lives on the
             # Standards/Submit pages, driven by
             # FRAMEWORK_UNSUPPORTED_SAMPLING_FIELDS
             # (services/standards/capabilities.py) -- not in this builder.
@@ -100,19 +115,22 @@ def build_task_config(
             # It has to be per-request, not a serve-time flag: one endpoint
             # is shared by every run against the same
             # (checkpoint, serving_profile), so a think and a no-think
-            # recipe can be in flight against the same server at once.
-            # Passed explicitly in both directions, per this function's own
-            # rule -- Qwen3's own default is enable_thinking=True, and
-            # leaving this out for a recipe with enable_thinking=False
-            # silently ran that recipe in thinking mode anyway (confirmed
-            # against a real run: 100% of predictions carried a <think>
-            # block under a stored enable_thinking: false recipe).
-            "extra_body": {"chat_template_kwargs": {"enable_thinking": recipe.enable_thinking}},
+            # sampling profile can be in flight against the same server at
+            # once. Passed explicitly in both directions, per this
+            # function's own rule -- Qwen3's own default is
+            # enable_thinking=True, and leaving this out for a sampling
+            # profile with enable_thinking=False silently ran that run in
+            # thinking mode anyway (confirmed against a real run: 100% of
+            # predictions carried a <think> block under a stored
+            # enable_thinking: false sampling profile).
+            "extra_body": {
+                "chat_template_kwargs": {"enable_thinking": sampling_profile.enable_thinking}
+            },
             "timeout": 1800,
         },
-        "repeats": recipe.repeats,
-        "seed": 42,  # hardcoded, and inert while v1 runs greedy (temperature 0)
-        "limit": recipe.sample_limit,
+        "repeats": standard.repeats,
+        "seed": sampling_profile.seed,
+        "limit": standard.sample_limit,
         "eval_batch_size": 32,
         "work_dir": container_work_dir,
         "no_timestamp": True,
@@ -124,7 +142,7 @@ def build_task_config(
     }
 
 
-def _dataset_args(recipe: Recipe) -> dict[str, Any]:
+def _dataset_args(standard: Standard) -> dict[str, Any]:
     """The `dataset_args.<task_name>` block EvalScope's benchmark
     registration reads -- which samples run and how they're framed, as
     opposed to `generation_config`'s job of saying how the model answers.
@@ -134,19 +152,19 @@ def _dataset_args(recipe: Recipe) -> dict[str, Any]:
     attribute only when `hasattr` already agrees, and silently drops
     anything else, so the wrong name here would look like it worked while
     actually falling through to EvalScope's own registered default.
-    Omitted entirely when `recipe.split` is null, same as
+    Omitted entirely when `standard.split` is null, same as
     `dataset_revision`'s null: "we don't have one," not "send an empty
     one."
     """
     args: dict[str, Any] = {
-        "dataset_id": recipe.dataset_name,
+        "dataset_id": standard.dataset_name,
         "subset_list": ["default"],
-        "few_shot_num": recipe.few_shot,
-        "prompt_template": recipe.prompt_template,
-        "metric_list": _metric_names(recipe.metrics),
+        "few_shot_num": standard.few_shot,
+        "prompt_template": standard.prompt_template,
+        "metric_list": _metric_names(standard.metrics),
     }
-    if recipe.split is not None:
-        args["eval_split"] = recipe.split
+    if standard.split is not None:
+        args["eval_split"] = standard.split
     return args
 
 

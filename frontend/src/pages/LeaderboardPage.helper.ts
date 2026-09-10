@@ -1,5 +1,5 @@
 // Non-DOM logic for LeaderboardPage.tsx: turning the API's flat
-// (checkpoint, recipe) rows into a checkpoints-as-rows,
+// (checkpoint, comparison_hash) rows into a checkpoints-as-rows,
 // benchmarks-as-columns grid. The backend deliberately returns rows, not
 // a pre-pivoted grid (docs/IMPLEMENTATION_PHASES.md) -- this is that
 // pivot.
@@ -8,7 +8,7 @@ import type { CheckpointListItem, LeaderboardRow } from '../api/client'
 
 interface LeaderboardCell {
   value: number
-  recipeHash: string
+  comparisonHash: string
 }
 
 export interface LeaderboardGridRow {
@@ -40,14 +40,15 @@ export function buildLeaderboardGrid(
       }
       rowsByCheckpoint.set(row.checkpoint_id, gridRow)
     }
-    // If a checkpoint was ever run under two different recipes for the
-    // same benchmark, the later-finished one wins the cell -- the query
-    // already picked each recipe's most recent finished run, so this
-    // only matters across recipes, which is rare enough not to need a
-    // richer cell shape yet.
+    // If a checkpoint was ever run under two different comparison
+    // hashes for the same benchmark (e.g. the same standard under two
+    // different sampling profiles), the later-finished one wins the
+    // cell -- the query already picked each comparison hash's most
+    // recent finished run, so this only matters across comparison
+    // hashes, which is rare enough not to need a richer cell shape yet.
     gridRow.cellsByBenchmark[row.benchmark] = {
       value: row.metric_value,
-      recipeHash: row.recipe_hash,
+      comparisonHash: row.comparison_hash,
     }
   }
 

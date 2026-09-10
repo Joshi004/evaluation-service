@@ -5,7 +5,7 @@ import { EmptyState } from '../components/EmptyState/EmptyState'
 import { StatusBadge } from '../components/StatusBadge/StatusBadge'
 import { formatElapsedTime } from '../utils/formatElapsedTime'
 import { formatFractionAsPercent } from '../utils/formatFractionAsPercent'
-import { recipeDisplayName } from '../utils/recipeDisplayName'
+import { standardDisplayName } from '../utils/standardDisplayName'
 import { groupRunsByGroup, isCancellable } from './RunsPage.helper'
 
 export function RunsPage() {
@@ -104,7 +104,7 @@ export function RunsPage() {
                           Checkpoint
                         </th>
                         <th className="border-b border-slate-800 p-2 text-left font-medium text-slate-400">
-                          Recipe
+                          Standard
                         </th>
                         <th className="border-b border-slate-800 p-2 text-right font-medium text-slate-400">
                           Truncation
@@ -133,7 +133,7 @@ export function RunsPage() {
                             {run.checkpoint_name}
                           </td>
                           <td className="border-b border-slate-800/50 p-2 font-mono text-xs text-slate-300">
-                            {recipeDisplayName(run.recipe_label, run.recipe_hash)}
+                            {standardDisplayName(run.standard_label, run.standard_hash)}
                           </td>
                           <td className="border-b border-slate-800/50 p-2 text-right text-slate-200">
                             {formatFractionAsPercent(run.truncation_rate)}

@@ -25,9 +25,10 @@ async def list_runs(
 
 
 async def submit_runs(db: AsyncSession, request: CreateRunsRequest) -> RunSubmission | None:
-    """None means a checkpoint_id or recipe_id in the request doesn't
-    exist -- the router 404s. submit.SubmitValidationError propagates
-    past this unchanged for the router to map to 400.
+    """None means a checkpoint_id, standard_id, or explicit
+    sampling_profile_id in the request doesn't exist -- the router 404s.
+    submit.SubmitValidationError propagates past this unchanged for the
+    router to map to 400.
 
     Spawning each run's background worker happens here, after the rows
     are safely committed -- the orchestration step between "create the
@@ -40,8 +41,10 @@ async def submit_runs(db: AsyncSession, request: CreateRunsRequest) -> RunSubmis
         db,
         name=request.name,
         checkpoint_ids=request.checkpoint_ids,
-        recipe_ids=request.recipe_ids,
-        overrides=request.overrides.model_dump(exclude_unset=True),
+        standard_ids=request.standard_ids,
+        standard_overrides=request.standard_overrides.model_dump(exclude_unset=True),
+        sampling_overrides=request.sampling_overrides.model_dump(exclude_unset=True),
+        sampling_profile_id=request.sampling_profile_id,
         submitted_by=request.submitted_by,
     )
     if submission is None:
@@ -54,15 +57,18 @@ async def submit_runs(db: AsyncSession, request: CreateRunsRequest) -> RunSubmis
 
 
 async def preview_runs(db: AsyncSession, request: RunPreviewRequest) -> RunPreview | None:
-    """None means a checkpoint_id or recipe_id in the request doesn't
-    exist -- the router 404s, same as submit_runs. Never spawns
-    anything: a preview has no worker to start.
+    """None means a checkpoint_id, standard_id, or explicit
+    sampling_profile_id in the request doesn't exist -- the router
+    404s, same as submit_runs. Never spawns anything: a preview has no
+    worker to start.
     """
     return await preview_service.preview_runs(
         db,
         checkpoint_ids=request.checkpoint_ids,
-        recipe_ids=request.recipe_ids,
-        overrides=request.overrides.model_dump(exclude_unset=True),
+        standard_ids=request.standard_ids,
+        standard_overrides=request.standard_overrides.model_dump(exclude_unset=True),
+        sampling_overrides=request.sampling_overrides.model_dump(exclude_unset=True),
+        sampling_profile_id=request.sampling_profile_id,
     )
 
 

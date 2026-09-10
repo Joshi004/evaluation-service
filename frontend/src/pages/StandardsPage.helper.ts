@@ -1,4 +1,4 @@
-import type { StandardRecipe } from '../api/client'
+import type { StandardSummary } from '../api/client'
 
 export interface StandardFieldRow {
   field: string
@@ -16,13 +16,50 @@ function formatExtraction(extraction: Record<string, unknown>): string {
   return `${String(method)}${extra}`
 }
 
+// Every SamplingProfileConfig field's human label, keyed the same way
+// OverrideEditor.tsx labels the same fields -- sampling_overrides only
+// ever carries a subset of these keys (S-D22 validates against the
+// same field set at load time).
+const SAMPLING_OVERRIDE_LABELS: Record<string, string> = {
+  temperature: 'Temperature',
+  top_p: 'Top-p',
+  top_k: 'Top-k',
+  min_p: 'Min-p',
+  presence_penalty: 'Presence penalty',
+  repetition_penalty: 'Repetition penalty',
+  max_tokens: 'Max tokens',
+  enable_thinking: 'Enable thinking',
+  seed: 'Seed',
+}
+
+// One row per key this standard's own sampling_overrides actually sets
+// -- most standards set none, in which case sampling comes entirely
+// from whichever sampling profile a submit picks (S-D4's three-layer
+// merge). No placeholder row when empty: an empty override list is the
+// normal case, not a missing value -- StandardsPage.tsx's own caption
+// explains what an absent field means.
+function samplingOverrideRows(
+  samplingOverrides: Record<string, unknown>,
+  warningByField: Map<string, string>,
+): StandardFieldRow[] {
+  return Object.entries(samplingOverrides).map(([field, value]) => ({
+    field,
+    label: SAMPLING_OVERRIDE_LABELS[field] ?? field,
+    value: String(value),
+    warning: warningByField.get(field) ?? null,
+  }))
+}
+
 // Every scalar field on a standard, in the same order as the YAML files
 // themselves, paired with a human label and its formatted value. Metrics
 // aren't included -- they render as their own table (see StandardsPage).
-export function buildFieldRows(standard: StandardRecipe): StandardFieldRow[] {
+// Protocol fields first, then whatever this standard's own
+// sampling_overrides mandates (Phase 3 moved the rest of sampling off
+// the standard entirely, onto sampling_profile).
+export function buildFieldRows(standard: StandardSummary): StandardFieldRow[] {
   const warningByField = new Map(standard.warnings.map((warning) => [warning.field, warning.message]))
 
-  const fields: [field: string, label: string, value: string][] = [
+  const protocolFields: [field: string, label: string, value: string][] = [
     ['dataset_name', 'Dataset', standard.dataset_name],
     ['dataset_revision', 'Dataset revision', standard.dataset_revision ?? '—'],
     ['split', 'Split', standard.split ?? '—'],
@@ -31,21 +68,15 @@ export function buildFieldRows(standard: StandardRecipe): StandardFieldRow[] {
     ['extraction', 'Extraction', formatExtraction(standard.extraction)],
     ['repeats', 'Repeats', String(standard.repeats)],
     ['sample_limit', 'Sample limit', standard.sample_limit === null ? 'full dataset' : String(standard.sample_limit)],
-    ['enable_thinking', 'Enable thinking', String(standard.enable_thinking)],
     ['think_handling', 'Think handling', standard.think_handling],
-    ['temperature', 'Temperature', String(standard.temperature)],
-    ['top_p', 'Top-p', String(standard.top_p)],
-    ['top_k', 'Top-k', String(standard.top_k)],
-    ['min_p', 'Min-p', String(standard.min_p)],
-    ['presence_penalty', 'Presence penalty', String(standard.presence_penalty)],
-    ['repetition_penalty', 'Repetition penalty', String(standard.repetition_penalty)],
-    ['max_tokens', 'Max tokens', String(standard.max_tokens)],
   ]
 
-  return fields.map(([field, label, value]) => ({
+  const protocolRows: StandardFieldRow[] = protocolFields.map(([field, label, value]) => ({
     field,
     label,
     value,
     warning: warningByField.get(field) ?? null,
   }))
+
+  return [...protocolRows, ...samplingOverrideRows(standard.sampling_overrides, warningByField)]
 }

@@ -8,12 +8,12 @@ import { PhaseProgress } from '../components/PhaseProgress/PhaseProgress'
 import { StatusBadge } from '../components/StatusBadge/StatusBadge'
 import { formatElapsedTime } from '../utils/formatElapsedTime'
 import { formatFractionAsPercent } from '../utils/formatFractionAsPercent'
-import { recipeDisplayName } from '../utils/recipeDisplayName'
+import { standardDisplayName } from '../utils/standardDisplayName'
 import {
   displayOrDash,
   formatTimestamp,
   samplingFieldRows,
-  taskFieldRows,
+  standardFieldRows,
   type FieldRow,
 } from './RunDetailPage.helper'
 
@@ -77,7 +77,7 @@ export function RunDetailPage() {
           </div>
           <p className="mt-1 text-sm text-slate-400">
             {run.data.run_group_name} · {run.data.checkpoint_name} ·{' '}
-            {recipeDisplayName(run.data.recipe_label, run.data.recipe_hash)}
+            {standardDisplayName(run.data.standard_label, run.data.standard_hash)}
           </p>
 
           <div className="mt-4">
@@ -102,6 +102,10 @@ export function RunDetailPage() {
                   { label: 'Elapsed', value: formatElapsedTime(run.data.created_at, run.data.finished_at, now) },
                   { label: 'Truncation rate', value: formatFractionAsPercent(run.data.truncation_rate) },
                   { label: 'Output directory', value: run.data.output_dir ?? '—' },
+                  // What the leaderboard groups by (S-D5): two runs
+                  // only share a leaderboard cell if they share both
+                  // the standard and the resolved sampling profile.
+                  { label: 'Comparison hash', value: run.data.comparison_hash },
                 ]}
               />
             </div>
@@ -126,17 +130,23 @@ export function RunDetailPage() {
 
           <section className="mt-6 rounded-lg border border-slate-800 bg-slate-900 p-4">
             <h2 className="text-sm font-medium text-slate-300">
-              Resolved recipe — {recipeDisplayName(run.data.recipe.label, run.data.recipe.hash)}
+              Resolved standard — {standardDisplayName(run.data.standard.label, run.data.standard.hash)}
             </h2>
             <div className="mt-3">
-              <FieldGrid rows={taskFieldRows(run.data.recipe)} />
+              <FieldGrid rows={standardFieldRows(run.data.standard)} />
             </div>
-            <div className="mt-4">
-              <FieldGrid rows={samplingFieldRows(run.data.recipe)} />
+          </section>
+
+          <section className="mt-6 rounded-lg border border-slate-800 bg-slate-900 p-4">
+            <h2 className="text-sm font-medium text-slate-300">
+              Resolved sampling profile — {run.data.sampling.label ?? run.data.sampling.hash}
+            </h2>
+            <div className="mt-3">
+              <FieldGrid rows={samplingFieldRows(run.data.sampling)} />
             </div>
-            {run.data.recipe.warnings.length > 0 && (
+            {run.data.sampling.warnings.length > 0 && (
               <ul className="mt-4 space-y-1">
-                {run.data.recipe.warnings.map((warning) => (
+                {run.data.sampling.warnings.map((warning) => (
                   <li key={warning.field} className="text-xs text-amber-400">
                     {warning.field}: {warning.message}
                   </li>

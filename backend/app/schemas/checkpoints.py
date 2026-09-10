@@ -43,7 +43,7 @@ class CheckpointListItem(BaseModel):
 
 class CheckpointRunSummary(BaseModel):
     id: int
-    recipe_id: int
+    standard_id: int
     status: str
     created_at: datetime
     finished_at: datetime | None

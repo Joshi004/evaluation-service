@@ -1,5 +1,5 @@
 """The generic catalog mechanism: one loader, parameterised by a
-`CatalogRepository`, for every reviewed-YAML-backed table (`recipe`,
+`CatalogRepository`, for every reviewed-YAML-backed table (`standard`,
 `serving_profile`, and from Phase 2 `sampling_profile`). See
 docs/STANDARDS_AND_PROFILES_PHASES.md Section 0.5 and Phase 1.
 

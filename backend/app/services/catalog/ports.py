@@ -1,7 +1,7 @@
 """The `CatalogRepository` port -- the interface between the generic
 catalog loader (`app.services.catalog.loader`) and one specific table
-(`recipe` today; `serving_profile` from this phase; `sampling_profile`
-from Phase 2). See docs/STANDARDS_AND_PROFILES_PHASES.md Section 0.5.
+(`standard`, `serving_profile`, `sampling_profile`). See
+docs/STANDARDS_AND_PROFILES_PHASES.md Section 0.5.
 
 Parameterising the loader by a small object with named methods, rather
 than three loose functions passed positionally, mirrors

@@ -21,6 +21,8 @@ seed: 42   # S-D6 -- not in CATALOG's table; no team pins it in a sampling
 
 # --- Provenance -----------------------------------------------------------
 # Source: docs/STANDARDS_AND_PROFILES_CATALOG.md Section 4.1, row 1.
-# Must reproduce catalog/standards/ifeval-v1-instruct.yaml's sampling
-# block exactly (S-T8) -- Phase 3 depends on it matching by hash.
+# Reproduces the sampling block the pre-Phase-3 ifeval-v1-instruct
+# standard used to carry directly, before that standard and
+# ifeval-v1-think merged into catalog/standards/ifeval-v1.yaml and
+# sampling moved to this table (S-D12).
 # Must hash to 429314c39f4e2c2a.

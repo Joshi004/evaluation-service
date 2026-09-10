@@ -1,4 +1,4 @@
-"""Leaderboard endpoint: one row per (checkpoint, recipe) pair.
+"""Leaderboard endpoint: one row per (checkpoint, comparison_hash) pair.
 
 Pivoting these flat rows into a checkpoints-by-benchmarks grid is a
 frontend concern (frontend/src/pages/LeaderboardPage.helper.ts).

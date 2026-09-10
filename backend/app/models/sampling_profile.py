@@ -7,13 +7,9 @@ deleted: change anything and you get a new row with a new hash; if that
 hash already exists, the existing row is reused. Mirrors
 `serving_profile` (app/models/serving_profile.py) exactly -- see
 docs/STANDARDS_AND_PROFILES_PHASES.md Phase 2, Section 0.5. A table
-rather than columns on `recipe`/`standard`, because sampling depends on
-the checkpoint, not the benchmark (RESEARCH §5) -- the same reuse-key
+rather than columns on `standard`, because sampling depends on the
+checkpoint, not the benchmark (RESEARCH §5) -- the same reuse-key
 reasoning `serving_profile`'s own docstring gives.
-
-**Known temporary state (Phase 2):** the eight sampling columns this
-table adds also still exist on `recipe`, and nothing reads this table
-for a run yet. Phase 3 removes the duplication.
 """
 
 from datetime import datetime

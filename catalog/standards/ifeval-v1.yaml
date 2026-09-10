@@ -1,11 +1,16 @@
-# catalog/standards/ifeval-v1-instruct.yaml
+# catalog/standards/ifeval-v1.yaml
 #
-# IFEval, Instruct mode (no thinking). Layer 1 is identical to
-# ifeval-v1-think.yaml; only enable_thinking and the sampling block differ.
+# IFEval. Protocol only, as of docs/STANDARDS_AND_PROFILES_PHASES.md
+# Phase 3 -- sampling moved off this file entirely, onto
+# sampling_profile. What used to be two standards here
+# (ifeval-v1-instruct.yaml, ifeval-v1-think.yaml, differing only in
+# their sampling block) is now one: the instruct/think distinction is
+# which sampling profile a submit picks (`greedy` versus
+# `qwen3_think`), not which standard it targets.
 
-label: ifeval/v1-instruct
+label: ifeval/v1
 
-# --- Layer 1: the protocol ------------------------------------------------
+# --- Protocol --------------------------------------------------------------
 
 benchmark: ifeval
 framework: evalscope
@@ -22,7 +27,7 @@ dataset_revision: null
 # knob for a ModelScope-hosted set, so there is no real value to put here.
 # The column is nullable for exactly this case: null says "we don't have
 # one" rather than standing in a fake pin. Revisit the day a real revision
-# string exists -- setting it then is a new recipe row, like any other
+# string exists -- setting it then is a new standard row, like any other
 # field change.
 
 split: train            # source: EvalScope. IFEval ships one split, oddly named "train".
@@ -68,24 +73,39 @@ repeats: 1
 
 sample_limit: null   # null = the full 541 prompts. Never null on a published run.
 
-# --- Layer 2: sampling. Legitimately depends on the checkpoint. -----------
+# --- Grading -----------------------------------------------------------------
 
-enable_thinking: false   # this recipe is the Instruct-mode number.
-think_handling: strip    # inert here -- there's no think block to strip. Set
-                         # rather than left ambiguous, per the "every sampling
-                         # column NOT NULL on purpose" rule.
+think_handling: strip
+# "strip" here is mechanical, not a text filter: it requires the serving
+# profile to carry --reasoning-parser qwen3 whenever the picked sampling
+# profile has enable_thinking: true (e.g. qwen3_think) -- with that flag
+# vLLM splits <think>...</think> into a separate reasoning_content field
+# before EvalScope sees the response, so the content being scored is
+# already think-free. Under a sampling profile with enable_thinking: false
+# (e.g. greedy) there is no think block to strip in the first place, so
+# the same setting is simply inert (Trap T5 of Phase 2; Section 10 item 3
+# of docs/CHECKPOINT_REGISTRATION_PHASES.md) -- this coupling is invisible
+# if you only look at one table.
 
-temperature: 0.0          # our decision -- greedy, deterministic.
-top_p: 1.0                # vLLM's own neutral defaults, written down
-top_k: -1                 # explicitly rather than omitted, so nothing is
-min_p: 0.0                # supplied invisibly. min_p never reaches vLLM
-presence_penalty: 0.0     # through this path -- decision D4; must be 0.0.
-repetition_penalty: 1.0
-max_tokens: 8192          # our decision. Generous for a non-thinking 4B reply.
+sampling_overrides: {}
+# IFEval's own published definition mandates nothing about sampling --
+# the instruct/think distinction that used to be two separate standards
+# is now just which sampling profile a submit picks.
 
-# --- Provenance -----------------------------------------------------------
+# --- Provenance --------------------------------------------------------------
+# Was two files, ifeval-v1-instruct.yaml (label ifeval/v1-instruct) and
+# ifeval-v1-think.yaml (label ifeval/v1-think), collapsed into this one
+# by docs/STANDARDS_AND_PROFILES_PHASES.md Phase 3 (S-D12): sampling
+# moved to sampling_profile, leaving both files with an identical
+# protocol block and nothing left to distinguish them by.
+#
 # Reference checkpoint: Qwen3-4B-allternary-ep03
 #   (/home/shared/agentic_slm/models/Qwen3-4B-allternary-ep03)
-# Reference score: prompt_level_strict = 0.7412 (n = 541), from a real
-#   completed tool-call run: simple_eval/results/ifeval/
+# Reference score under the greedy sampling profile:
+#   prompt_level_strict = 0.7412 (n = 541), from a real completed
+#   tool-call run: simple_eval/results/ifeval/
 #   Qwen3-4B-allternary-ep03/full-ternary-04b/run-270187
+# Reference score under qwen3_think: NOT YET RUN. Get one before
+# publishing anything against this combination. Do not fabricate a
+# plausible-looking number here; a field that says TODO is worth more
+# than a guess that looks like data.

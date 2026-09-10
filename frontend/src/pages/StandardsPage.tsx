@@ -1,20 +1,22 @@
 import { useQuery } from '@tanstack/react-query'
-import { apiFetch, type StandardRecipe } from '../api/client'
+import { apiFetch, type StandardSummary } from '../api/client'
 import { EmptyState } from '../components/EmptyState/EmptyState'
 import { buildFieldRows } from './StandardsPage.helper'
 
 export function StandardsPage() {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['standards'],
-    queryFn: () => apiFetch<StandardRecipe[]>('/standards'),
+    queryFn: () => apiFetch<StandardSummary[]>('/standards'),
   })
 
   return (
     <div>
       <h1 className="text-2xl font-semibold">Standards / Methodology</h1>
       <p className="mt-2 max-w-2xl text-slate-400">
-        Every reviewed recipe: what it measures, every setting, and where each one came from. The hash
-        is what makes two results comparable -- two runs sharing a hash were produced identically.
+        Every reviewed standard: what it measures, every setting, and where each one came from. The hash
+        is what makes two standards comparable -- and the comparison hash a run actually records
+        (see a run's own detail page) additionally depends on the resolved sampling profile, so two
+        runs sharing a standard hash can still not be directly comparable.
       </p>
 
       {isLoading && <p className="mt-6 text-sm text-slate-500">Loading standards…</p>}
@@ -38,7 +40,7 @@ export function StandardsPage() {
   )
 }
 
-function StandardSection({ standard }: { standard: StandardRecipe }) {
+function StandardSection({ standard }: { standard: StandardSummary }) {
   const fieldRows = buildFieldRows(standard)
 
   return (
@@ -47,7 +49,7 @@ function StandardSection({ standard }: { standard: StandardRecipe }) {
         <h2 className="text-lg font-medium text-slate-100">{standard.label}</h2>
         <span
           className="rounded-full bg-slate-800 px-2 py-0.5 font-mono text-xs text-slate-300"
-          title="Recipe hash -- identical hashes were produced by the exact same recipe"
+          title="Standard hash -- identical hashes were produced by the exact same standard"
         >
           {standard.hash}
         </span>
@@ -89,6 +91,10 @@ function StandardSection({ standard }: { standard: StandardRecipe }) {
       </table>
 
       <h3 className="mt-6 text-sm font-medium text-slate-400">Configuration</h3>
+      <p className="mt-1 text-xs text-slate-500">
+        Sampling fields not listed below aren't mandated by this standard -- they come entirely from
+        whichever sampling profile a submit picks.
+      </p>
       <table className="mt-2 w-full border-collapse text-sm">
         <tbody>
           {fieldRows.map((row) => (

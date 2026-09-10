@@ -2,7 +2,7 @@
 // run_group_id (every run belongs to a group, even a submit of one --
 // see app/models/run_group.py) and deciding which runs a cancel button
 // applies to. Formatting shared with RunDetailPage (elapsed time,
-// fraction-as-percent, recipe label-or-hash) lives in src/utils/ instead.
+// fraction-as-percent, standard label-or-hash) lives in src/utils/ instead.
 
 import type { RunListItem } from '../api/client'
 

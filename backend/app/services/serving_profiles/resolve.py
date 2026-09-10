@@ -1,5 +1,5 @@
 """`resolve_serving_profile` -- the whole profile-customisation
-mechanism, mirroring `resolve_recipe` (app/services/standards/resolve.py)
+mechanism, mirroring `resolve_standard` (app/services/standards/resolve.py)
 exactly. Not called anywhere yet: Phase 5's registration flow calls this
 for a customised profile.
 """

@@ -1,9 +1,10 @@
 # catalog/sampling-profiles/qwen3_think.yaml
 #
 # Qwen3's own model-card guidance for thinking mode. Reproduces the
-# sampling half of catalog/standards/ifeval-v1-think.yaml exactly
-# (S-T8) -- Phase 3's migration finds this profile by hash when it
-# splits that standard's Layer 2 out.
+# sampling block the pre-Phase-3 ifeval-v1-think standard used to carry
+# directly, before that standard and ifeval-v1-instruct merged into
+# catalog/standards/ifeval-v1.yaml and sampling moved to this table
+# (S-D12).
 #
 # Also the row LFM2.5's thinking-mode checkpoints resolve to.
 # CATALOG Section 4.1 gives lfm2_5_think the identical temperature /
@@ -11,9 +12,8 @@
 # max_tokens as this profile, and with enable_thinking and seed pinned
 # the same way on both, the two are content-identical -- one row, same
 # mechanism as S-D12's IFEval-standard collapse. This is the row that
-# wins: it's the name Phase 3 (S-T8) and the shipped ifeval-v1-think
-# standard both already depend on. See
-# catalog/sampling-profiles/lfm2_5_think.yaml for the other half of
+# wins: it's the name a submit against `ifeval/v1` already depends on.
+# See catalog/sampling-profiles/lfm2_5_think.yaml for the other half of
 # this note.
 
 label: qwen3_think
@@ -35,7 +35,5 @@ seed: 42   # S-D6.
 # --- Provenance -----------------------------------------------------------
 # Source: docs/STANDARDS_AND_PROFILES_CATALOG.md Section 4.1, row 2
 # (tool-call models.yaml:52-57; starred fields neutral).
-# Must reproduce catalog/standards/ifeval-v1-think.yaml's sampling block
-# exactly (S-T8).
 # Must hash to 5a5923cd75de33a2 -- deliberately shared with
 # lfm2_5_think.yaml (see the note above).

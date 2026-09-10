@@ -4,7 +4,7 @@ engine (vLLM today) for a family of weights.
 A row is created from its own content, hashed, and never updated or
 deleted (R-D17): change anything and you get a new row with a new hash;
 if that hash already exists, the existing row is reused. Same pattern as
-`recipe` (app/models/recipe.py) -- see
+`standard` (app/models/standard.py) -- see
 docs/CHECKPOINT_REGISTRATION_PHASES.md Phase 3. A table rather than
 columns on `checkpoint`, because it's the endpoint reuse key and copying
 a flag list per checkpoint is how flag lists drift apart -- see
@@ -27,7 +27,7 @@ class ServingProfile(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
     # Identity, computed from the content -- fixed width so a 17th
-    # character is impossible, mirroring Recipe.hash.
+    # character is impossible, mirroring Standard.hash.
     hash: Mapped[str] = mapped_column(CHAR(16), unique=True)
     # 'qwen3'; NULL means an ad-hoc customisation minted at registration
     # time rather than a reviewed standard profile (R-D16).
@@ -63,7 +63,7 @@ class ServingProfile(Base):
         Deliberately excludes `id`, `label`, and `created_at`: naming a
         profile or knowing when it was inserted doesn't change how it
         serves, so those must never affect the hash. Mirrors
-        `Recipe.as_hashable_dict`'s docstring discipline exactly.
+        `Standard.as_hashable_dict`'s docstring discipline exactly.
         """
         return {
             "engine": self.engine,

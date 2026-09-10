@@ -97,11 +97,10 @@ async def _load_one(db: AsyncSession, path: Path, repository: CatalogRepository[
     if existing is not None:
         return existing
 
-    # An explicit lookup, not a caught IntegrityError (S-T3): a
-    # `serving_profile.label` conflict violates a real UNIQUE
-    # constraint, but `recipe.label` has none until Phase 3, so relying
-    # on the database to notice would only catch half of this loader's
-    # two catalogs.
+    # An explicit lookup, not a caught IntegrityError (S-T3): this gives
+    # every catalog the same actionable CatalogConflictError, with both
+    # hashes in it, instead of a bare IntegrityError whose message
+    # depends on which table's UNIQUE constraint happened to fire.
     conflicting = await repository.get_by_label(db, document.label)
     if conflicting is not None:
         raise CatalogConflictError(

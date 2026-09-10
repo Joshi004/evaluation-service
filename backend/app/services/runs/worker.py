@@ -111,7 +111,11 @@ async def _run_one(eval_run_id: int) -> None:
             await runs_queries.attach_endpoint(db, eval_run_id, endpoint.id)
 
             await harness_runner.run_harness(
-                context.recipe, context.checkpoint, endpoint, eval_run_id
+                context.standard,
+                context.sampling_profile,
+                context.checkpoint,
+                endpoint,
+                eval_run_id,
             )
 
             run_dir = harness_runner.run_directory(eval_run_id)
@@ -120,8 +124,10 @@ async def _run_one(eval_run_id: int) -> None:
             # it's the <model_tag> segment under both predictions/ and
             # reports/.
             served_model_name = context.checkpoint.name
-            report = parse_report(run_dir, context.recipe, served_model_name)
-            truncation_rate = compute_truncation_rate(run_dir, context.recipe, served_model_name)
+            report = parse_report(run_dir, context.standard, served_model_name)
+            truncation_rate = compute_truncation_rate(
+                run_dir, context.standard, context.sampling_profile, served_model_name
+            )
 
             await harness_queries.record_harness_result(
                 db, eval_run_id, str(run_dir), report.results_json, truncation_rate

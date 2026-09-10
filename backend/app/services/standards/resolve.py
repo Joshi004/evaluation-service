@@ -1,23 +1,24 @@
-"""`resolve_recipe` -- the whole override mechanism (docs/IMPLEMENTATION_PHASES.md
-Section 0.6). Not called anywhere yet: Phase 6 builds the Submit override
-editor that calls this. Built here because it shares `get_recipe_by_hash`
-and `insert_recipe` with the loader and is the same code path in miniature.
+"""`resolve_standard` -- the override mechanism for a benchmark's
+protocol fields (docs/STANDARDS_AND_PROFILES_PHASES.md Section 0.6,
+Phase 3). Built here because it shares `get_standard_by_hash` and
+`insert_standard` with the loader and is the same code path in
+miniature.
 """
 
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Recipe
-from app.services.recipes import queries as recipes_queries
-from app.services.recipes.hashing import recipe_hash
+from app.models import Standard
+from app.services.standards import queries as standards_queries
+from app.services.standards.hashing import standard_hash
 
 
-async def resolve_recipe(db: AsyncSession, base: Recipe, overrides: dict[str, Any]) -> Recipe:
-    """A user override is not a special case. It's just a different recipe."""
+async def resolve_standard(db: AsyncSession, base: Standard, overrides: dict[str, Any]) -> Standard:
+    """A user override is not a special case. It's just a different standard."""
     config = base.as_hashable_dict() | overrides
-    hash_value = recipe_hash(config)
-    existing = await recipes_queries.get_recipe_by_hash(db, hash_value)
+    hash_value = standard_hash(config)
+    existing = await standards_queries.get_standard_by_hash(db, hash_value)
     if existing:
         return existing
-    return await recipes_queries.insert_recipe(db, config, hash_value, label=None)
+    return await standards_queries.insert_standard(db, config, hash_value, label=None)

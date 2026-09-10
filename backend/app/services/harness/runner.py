@@ -14,7 +14,7 @@ import shlex
 from pathlib import Path
 
 from app.config import get_settings
-from app.models import Checkpoint, Endpoint, Recipe
+from app.models import Checkpoint, Endpoint, SamplingProfile, Standard
 from app.services.harness.task_config import build_task_config
 
 logger = logging.getLogger(__name__)
@@ -73,7 +73,11 @@ def _container_name(eval_run_id: int) -> str:
 
 
 async def run_harness(
-    recipe: Recipe, checkpoint: Checkpoint, endpoint: Endpoint, eval_run_id: int
+    standard: Standard,
+    sampling_profile: SamplingProfile,
+    checkpoint: Checkpoint,
+    endpoint: Endpoint,
+    eval_run_id: int,
 ) -> None:
     """Builds the task config, writes it into the run directory, and
     runs the harness container to completion against it.
@@ -86,7 +90,9 @@ async def run_harness(
     run_dir = run_directory(eval_run_id)
     run_dir.mkdir(parents=True, exist_ok=True)
 
-    config = build_task_config(recipe, checkpoint, endpoint, _CONTAINER_WORK_DIR)
+    config = build_task_config(
+        standard, sampling_profile, checkpoint, endpoint, _CONTAINER_WORK_DIR
+    )
     config_path = run_dir / "harness_task_config.json"
     config_path.write_text(json.dumps(config, indent=2))
 

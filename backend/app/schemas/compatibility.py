@@ -15,12 +15,12 @@ from pydantic import BaseModel, computed_field
 
 
 class CompatibilityFinding(BaseModel):
-    """One rule's verdict on a (checkpoint, serving profile, recipe)
-    triple. `code` is `snake_case`, stable, and never changes once
-    shipped (R-D27) -- it is what the frontend groups and styles on, and
-    what a log line is worth searching for. `message` is for humans and
-    will be reworded over time; `field` names what a human should look
-    at, e.g. `'recipe.max_tokens'`.
+    """One rule's verdict on a (checkpoint, serving profile, standard,
+    sampling profile) tuple. `code` is `snake_case`, stable, and never
+    changes once shipped (R-D27) -- it is what the frontend groups and
+    styles on, and what a log line is worth searching for. `message` is
+    for humans and will be reworded over time; `field` names what a
+    human should look at, e.g. `'sampling.max_tokens'`.
     """
 
     code: str

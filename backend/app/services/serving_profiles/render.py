@@ -19,7 +19,8 @@ def render_engine_args(profile: ServingProfile) -> list[str]:
 
     `--generation-config vllm` is emitted first and unconditionally
     (R-D7): without it, vLLM silently applies the checkpoint's own
-    `generation_config.json` underneath whatever a recipe set.
+    `generation_config.json` underneath whatever a resolved sampling
+    profile set.
     """
     args = [
         "--generation-config",
@@ -57,8 +58,8 @@ def _render_engine_option(key: str, value: _EngineOptionValue) -> list[str]:
 
 def serving_profile_display_name(profile: ServingProfile) -> str:
     """A profile's label-or-hash -- mirrors
-    frontend/src/utils/recipeDisplayName.ts and, before it,
-    `Recipe.label`'s own fallback rule. An ad-hoc customisation has
+    frontend/src/utils/standardDisplayName.ts and, before it,
+    `Standard.label`'s own fallback rule. An ad-hoc customisation has
     `label=None`, so the hash is the only thing that identifies it in a
     message a human reads (e.g. `runs/submit.py`'s conflict messages).
     """

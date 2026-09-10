@@ -8,17 +8,17 @@
 # enable_thinking and seed pinned the same way on both (this phase's own
 # rules), the two hash identically: content addressing means "same
 # content -> same row" (the same mechanism S-D12 uses to collapse the
-# two IFEval standards). `sampling_profile.hash` is UNIQUE, so only one
-# row can exist for this content -- it is labelled `qwen3_think`, since
-# that's the name Phase 3 (S-T8) and the shipped ifeval-v1-think
-# standard already depend on. This file still exists (both catalog
-# labels are real, CATALOG-named profiles) and still validates and
-# hashes correctly; a reload finds the existing row by hash and changes
-# nothing -- `GET /sampling-profiles/catalog-status` reports this file
-# as `loaded`, pointing at a row whose own `label` column reads
-# `qwen3_think`, not `lfm2_5_think`. That mismatch is expected, not a
-# bug. See catalog/sampling-profiles/qwen3_think.yaml for the other half
-# of this note.
+# two IFEval standards into catalog/standards/ifeval-v1.yaml).
+# `sampling_profile.hash` is UNIQUE, so only one row can exist for this
+# content -- it is labelled `qwen3_think`, since that's the name a
+# submit against `ifeval/v1` already depends on. This file still
+# exists (both catalog labels are real, CATALOG-named profiles) and
+# still validates and hashes correctly; a reload finds the existing row
+# by hash and changes nothing -- `GET /sampling-profiles/catalog-status`
+# reports this file as `loaded`, pointing at a row whose own `label`
+# column reads `qwen3_think`, not `lfm2_5_think`. That mismatch is
+# expected, not a bug. See catalog/sampling-profiles/qwen3_think.yaml
+# for the other half of this note.
 
 label: lfm2_5_think
 

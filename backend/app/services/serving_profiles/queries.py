@@ -17,7 +17,7 @@ from app.schemas.serving_profiles import ServingProfileConfig, ServingProfileSum
 
 async def list_serving_profiles(db: AsyncSession) -> list[ServingProfileSummary]:
     """Every serving profile ever hashed, labelled standard or ad-hoc
-    customisation alike -- mirrors `recipes.queries.list_recipes`.
+    customisation alike -- mirrors `standards.queries.list_standards`.
     """
     stmt = select(ServingProfile).order_by(ServingProfile.created_at)
     profiles = (await db.execute(stmt)).scalars().all()
@@ -65,9 +65,9 @@ async def get_serving_profile_by_hash(db: AsyncSession, hash_value: str) -> Serv
 
 async def get_serving_profile_by_label(db: AsyncSession, label: str) -> ServingProfile | None:
     """The label-conflict lookup the catalog loader needs (S-T3).
-    Unlike `recipes.queries.get_recipe_by_label`, `scalar_one_or_none()`
-    is safe here -- `serving_profile.label` is already `UNIQUE`, so more
-    than one row sharing a label is not a state the database allows.
+    `serving_profile.label` is `UNIQUE`, so `scalar_one_or_none()` is
+    safe here -- more than one row sharing a label is not a state the
+    database allows.
     """
     stmt = select(ServingProfile).where(ServingProfile.label == label)
     return (await db.execute(stmt)).scalar_one_or_none()

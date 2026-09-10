@@ -35,9 +35,9 @@ export function LeaderboardPage() {
     <div>
       <h1 className="text-2xl font-semibold">Leaderboard</h1>
       <p className="mt-2 max-w-2xl text-slate-400">
-        Every checkpoint's most recent finished result per recipe. Cells are
-        coloured by recipe hash, so cells scored the same way are visually
-        obvious at a glance.
+        Every checkpoint's most recent finished result per standard. Cells are
+        coloured by comparison hash, so cells produced the same way -- same standard AND same resolved
+        sampling profile -- are visually obvious at a glance.
       </p>
 
       <div className="mt-6 max-w-md rounded-lg border border-slate-800 bg-slate-900 p-4">
@@ -100,7 +100,7 @@ export function LeaderboardPage() {
                   {grid.benchmarks.map((benchmark) => {
                     const cell = row.cellsByBenchmark[benchmark]
                     return cell ? (
-                      <MetricCell key={benchmark} value={cell.value} recipeHash={cell.recipeHash} />
+                      <MetricCell key={benchmark} value={cell.value} comparisonHash={cell.comparisonHash} />
                     ) : (
                       <td
                         key={benchmark}

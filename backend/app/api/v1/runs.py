@@ -51,7 +51,9 @@ async def submit_runs(
         # cold start rather than six minutes into one.
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     if submission is None:
-        raise HTTPException(status_code=404, detail="Checkpoint or recipe not found")
+        raise HTTPException(
+            status_code=404, detail="Checkpoint, standard, or sampling profile not found"
+        )
     return submission
 
 
@@ -59,15 +61,18 @@ async def submit_runs(
 async def preview_runs(
     request: RunPreviewRequest, db: AsyncSession = Depends(get_db)
 ) -> RunPreview:
-    """Read-only: never mints a recipe row or creates a run_group. The
-    Submit page calls this on every grid or override change, so unlike
-    POST /runs above, a pair that cannot run is reported in the
-    response's `blocking_error` rather than raised as a 400 -- a 3x6
-    grid with one bad pair should still preview the other 17.
+    """Read-only: never mints a standard or sampling profile row, and
+    never creates a run_group. The Submit page calls this on every grid
+    or override change, so unlike POST /runs above, a pair that cannot
+    run is reported in the response's `blocking_error` rather than
+    raised as a 400 -- a 3x6 grid with one bad pair should still preview
+    the other 17.
     """
     preview = await runs_controller.preview_runs(db, request)
     if preview is None:
-        raise HTTPException(status_code=404, detail="Checkpoint or recipe not found")
+        raise HTTPException(
+            status_code=404, detail="Checkpoint, standard, or sampling profile not found"
+        )
     return preview
 
 

@@ -8,7 +8,10 @@ carry its own reason in its own docstring, rather than a single
 sprawling function trying to explain all of them at once. See
 docs/CHECKPOINT_REGISTRATION_PHASES.md Phase 6 for the full list and its
 Section 10 item 3 for the two rules whose exact shape needed a decision
-beyond what the phase doc itself settled.
+beyond what the phase doc itself settled, and
+docs/STANDARDS_AND_PROFILES_PHASES.md Phase 3 for why several of them
+now take a `standard_config` and a `sampling_config` instead of one
+merged dict.
 """
 
 from typing import Any
@@ -19,18 +22,18 @@ from app.services.serving_profiles.render import serving_profile_display_name
 from app.services.standards.capabilities import sampling_field_warnings
 
 # The endpoint's max_model_len is the model's whole context window --
-# prompt plus completion together -- while recipe.max_tokens bounds only
-# the generated completion. IFEval prompts run to a few hundred tokens;
-# 2048 is deliberately generous headroom rather than a measured worst
-# case, so a recipe that is genuinely too big for a profile fails at
-# submit time instead of after a cold start.
+# prompt plus completion together -- while sampling.max_tokens bounds
+# only the generated completion. IFEval prompts run to a few hundred
+# tokens; 2048 is deliberately generous headroom rather than a measured
+# worst case, so a sampling profile that is genuinely too big for a
+# serving profile fails at submit time instead of after a cold start.
 _PROMPT_ALLOWANCE_TOKENS = 2048
 
 
 def max_tokens_exceeds_context(
-    recipe_config: dict[str, Any], serving_profile: ServingProfile
+    sampling_config: dict[str, Any], serving_profile: ServingProfile
 ) -> CompatibilityFinding | None:
-    """None if `recipe_config` fits `serving_profile`'s context window,
+    """None if `sampling_config` fits `serving_profile`'s context window,
     otherwise the exact reason it doesn't. Moved from
     `runs/submit.py::context_window_conflict` with its message text
     unchanged (R-T20) -- the preview a user read must match the error
@@ -38,13 +41,13 @@ def max_tokens_exceeds_context(
     """
     if serving_profile.max_model_len is None:
         return None
-    max_tokens = recipe_config["max_tokens"]
+    max_tokens = sampling_config["max_tokens"]
     if max_tokens + _PROMPT_ALLOWANCE_TOKENS > serving_profile.max_model_len:
         return CompatibilityFinding(
             code="max_tokens_exceeds_context",
-            field="recipe.max_tokens",
+            field="sampling.max_tokens",
             message=(
-                f"recipe max_tokens ({max_tokens}) plus a {_PROMPT_ALLOWANCE_TOKENS}-token "
+                f"sampling max_tokens ({max_tokens}) plus a {_PROMPT_ALLOWANCE_TOKENS}-token "
                 f"prompt allowance exceeds serving profile "
                 f"{serving_profile_display_name(serving_profile)!r}'s max_model_len "
                 f"({serving_profile.max_model_len})"
@@ -54,9 +57,9 @@ def max_tokens_exceeds_context(
 
 
 def as_is_needs_no_reasoning_parser(
-    recipe_config: dict[str, Any], serving_profile: ServingProfile
+    standard_config: dict[str, Any], serving_profile: ServingProfile
 ) -> CompatibilityFinding | None:
-    """None if `recipe_config`'s think_handling is compatible with
+    """None if `standard_config`'s think_handling is compatible with
     `serving_profile`, otherwise the exact reason it isn't. Moved from
     `runs/submit.py::think_handling_conflict` with its message text
     unchanged (R-T20).
@@ -64,54 +67,57 @@ def as_is_needs_no_reasoning_parser(
     Phase 2 Trap T5: think_handling='strip' is only mechanically true
     when the endpoint's profile carries --reasoning-parser -- vLLM has to
     split <think>...</think> into reasoning_content before EvalScope ever
-    sees content. An 'as_is' recipe needs the opposite: no reasoning
+    sees content. An 'as_is' standard needs the opposite: no reasoning
     parser, or the think text never reaches content for EvalScope to
-    score in the first place. A recipe requesting 'as_is' against a
+    score in the first place. A standard requesting 'as_is' against a
     profile with a reasoning parser is a request that cannot do what it
     says.
     """
     has_reasoning_parser = serving_profile.reasoning_parser is not None
-    if recipe_config["think_handling"] == "as_is" and has_reasoning_parser:
+    if standard_config["think_handling"] == "as_is" and has_reasoning_parser:
         return CompatibilityFinding(
             code="as_is_needs_no_reasoning_parser",
-            field="recipe.think_handling",
+            field="standard.think_handling",
             message=(
-                f"recipe think_handling='as_is' cannot run against serving profile "
+                f"standard think_handling='as_is' cannot run against serving profile "
                 f"{serving_profile_display_name(serving_profile)!r}, which carries "
                 "--reasoning-parser: the think block would never reach the completion "
-                "this recipe means to score whole"
+                "this standard means to score whole"
             ),
         )
     return None
 
 
 def strip_needs_reasoning_parser(
-    recipe_config: dict[str, Any], serving_profile: ServingProfile
+    standard_config: dict[str, Any],
+    sampling_config: dict[str, Any],
+    serving_profile: ServingProfile,
 ) -> CompatibilityFinding | None:
     """Error, but only when there is an actual think block to strip.
-    `think_handling='strip'` with `enable_thinking=False` is inert --
-    `catalog/standards/ifeval-v1-instruct.yaml` ships exactly this combination,
-    with its own comment noting there's no think block for a no-parser
-    profile to fail to split out. Gating on `enable_thinking` is what
-    keeps that shipped standard from tripping this rule (Section 10 item
-    3's resolution). When `enable_thinking` is true, though, the strip
-    is mechanically broken without a reasoning parser -- there is no way
-    to make it correct after the fact, which is why this is an error and
-    not a warning.
+    `think_handling='strip'` with `enable_thinking=False` is inert
+    regardless of serving profile -- there is no think block for a
+    no-parser profile to fail to split out. Gating on `enable_thinking`
+    is what keeps a standard like `ifeval/v1` paired with the `greedy`
+    sampling profile from tripping this rule (Section 10 item 3's
+    resolution), even though the same standard paired with
+    `qwen3_think` needs the reasoning parser this rule checks for. When
+    `enable_thinking` is true, though, the strip is mechanically broken
+    without a reasoning parser -- there is no way to make it correct
+    after the fact, which is why this is an error and not a warning.
     """
     if (
-        recipe_config["think_handling"] == "strip"
-        and recipe_config["enable_thinking"] is True
+        standard_config["think_handling"] == "strip"
+        and sampling_config["enable_thinking"] is True
         and serving_profile.reasoning_parser is None
     ):
         return CompatibilityFinding(
             code="strip_needs_reasoning_parser",
-            field="recipe.think_handling",
+            field="standard.think_handling",
             message=(
-                f"recipe think_handling='strip' with enable_thinking=true needs a "
+                f"standard think_handling='strip' with enable_thinking=true needs a "
                 f"--reasoning-parser to split the <think> block out, but serving profile "
                 f"{serving_profile_display_name(serving_profile)!r} carries none -- the "
-                "think block would remain in the completion this recipe means to score"
+                "think block would remain in the completion this standard means to score"
             ),
         )
     return None
@@ -205,19 +211,21 @@ def checkpoint_availability_stale(checkpoint: Checkpoint) -> CompatibilityFindin
     return None
 
 
-def recipe_max_tokens_below_checkpoint_default(
-    checkpoint: Checkpoint, recipe_config: dict[str, Any]
+def standard_max_tokens_below_checkpoint_default(
+    checkpoint: Checkpoint, sampling_config: dict[str, Any]
 ) -> CompatibilityFinding | None:
     """`DATA_MODEL_V1.md` Section 3.2's own rationale for storing
     `generation_config` at all: "this checkpoint wants max_tokens 32768
-    and your recipe says 8192" is the truncation failure that column
-    exists to catch. This is the inverse of the phase doc's originally
-    named `recipe_exceeds_checkpoint_generation_config` -- renamed to
-    match the direction it actually checks; see
-    docs/CHECKPOINT_REGISTRATION_PHASES.md Section 10 item 3 for the
-    resolution. Skips cleanly when `generation_config` is null or
-    carries no `max_tokens` key (R-T21): it is stored verbatim, and not
-    every checkpoint's own file uses that exact key.
+    and your sampling profile says 8192" is the truncation failure that
+    column exists to catch. This checks the inverse of the phase doc's
+    originally proposed direction -- renamed once already to match the
+    direction it actually checks (see
+    docs/CHECKPOINT_REGISTRATION_PHASES.md Section 10 item 3), and again
+    here for the standard/sampling split, even though the value it reads
+    now lives on the resolved sampling profile rather than the standard.
+    Skips cleanly when `generation_config` is null or carries no
+    `max_tokens` key (R-T21): it is stored verbatim, and not every
+    checkpoint's own file uses that exact key.
     """
     generation_config = checkpoint.generation_config
     if generation_config is None:
@@ -225,15 +233,15 @@ def recipe_max_tokens_below_checkpoint_default(
     checkpoint_max_tokens = generation_config.get("max_tokens")
     if checkpoint_max_tokens is None:
         return None
-    recipe_max_tokens = recipe_config["max_tokens"]
-    if recipe_max_tokens < checkpoint_max_tokens:
+    sampling_max_tokens = sampling_config["max_tokens"]
+    if sampling_max_tokens < checkpoint_max_tokens:
         return CompatibilityFinding(
-            code="recipe_max_tokens_below_checkpoint_default",
-            field="recipe.max_tokens",
+            code="standard_max_tokens_below_checkpoint_default",
+            field="sampling.max_tokens",
             message=(
                 f"checkpoint {checkpoint.name!r} wants max_tokens {checkpoint_max_tokens} "
-                f"but this recipe sets {recipe_max_tokens} -- responses may be truncated "
-                "before they reach the checkpoint's own expected length"
+                f"but this sampling profile sets {sampling_max_tokens} -- responses may be "
+                "truncated before they reach the checkpoint's own expected length"
             ),
         )
     return None
@@ -267,20 +275,22 @@ def quantization_mismatch(
     return None
 
 
-def framework_drops_sampling_field(recipe_config: dict[str, Any]) -> list[CompatibilityFinding]:
+def framework_drops_sampling_field(
+    standard_config: dict[str, Any], sampling_config: dict[str, Any]
+) -> list[CompatibilityFinding]:
     """The one rule that returns a list rather than a single finding,
-    because a recipe can set more than one framework-unsupported field
-    at once. Wraps `sampling_field_warnings()`
+    because a sampling profile can set more than one framework-
+    unsupported field at once. Wraps `sampling_field_warnings()`
     (app.services.standards.capabilities) rather than reimplementing it
-    -- that module is untouched by this phase, since the Standards page
-    and `RunRecipeDetail` (app/schemas/runs.py) still read its
-    `RecipeFieldWarning` shape directly.
+    -- that's the same function the Standards page and `RunSamplingDetail`
+    (app/schemas/runs.py) use to warn about the same fields, so a
+    submit's own warning can never disagree with either.
     """
     return [
         CompatibilityFinding(
             code="framework_drops_sampling_field",
-            field=f"recipe.{warning.field}",
+            field=f"sampling.{warning.field}",
             message=warning.message,
         )
-        for warning in sampling_field_warnings(recipe_config["framework"], recipe_config)
+        for warning in sampling_field_warnings(standard_config["framework"], sampling_config)
     ]
