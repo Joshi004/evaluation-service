@@ -1,0 +1,28 @@
+# catalog/sampling-profiles/lfm2_5_2_6b.yaml
+#
+# LFM2.5-2.6B's own profile -- lower temperature, wider top_k, and a
+# repetition_penalty above 1.0 (the only one of the seven that sets it).
+
+label: lfm2_5_2_6b
+
+temperature: 0.1
+top_p: 1.0                 # vLLM's own neutral default, written out
+top_k: 50                   # rather than omitted.
+min_p: 0.0
+presence_penalty: 0.0
+repetition_penalty: 1.1
+max_tokens: 16384
+
+# Not cited in tool-call's own (partial) profile -- CATALOG Section 4.1
+# and RESEARCH Section 16.3 both omit enable_thinking from their tables.
+# Inferred from the profile name (no "_think" suffix), not read from
+# tool-call's models.yaml. Revisit if that config is ever consulted
+# directly.
+enable_thinking: false
+
+seed: 42   # S-D6.
+
+# --- Provenance -----------------------------------------------------------
+# Source: docs/STANDARDS_AND_PROFILES_CATALOG.md Section 4.1, row 5
+# (tool-call models.yaml:66-70).
+# Must hash to 9a66ad40f7bfc98f.

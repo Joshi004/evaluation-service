@@ -1,0 +1,32 @@
+# catalog/sampling-profiles/qwen3_5_think.yaml
+#
+# Qwen3.5's thinking-mode profile, for the small SKUs.
+
+label: qwen3_5_think
+
+temperature: 1.0
+top_p: 0.95
+top_k: 20
+min_p: 0.0
+# Load-bearing, not cosmetic (CATALOG Section 4.1's own footnote): this
+# curbs a repetition loop the small Qwen3.5 models fall into and is what
+# makes generation terminate at all. Our harness builder does forward
+# presence_penalty, so it works as intended -- do not "clean up" this
+# value to 0.0 to match the other profiles.
+presence_penalty: 1.5
+repetition_penalty: 1.0
+max_tokens: 32768
+
+# Not cited in tool-call's own (partial) profile -- CATALOG Section 4.1
+# and RESEARCH Section 16.3 both omit enable_thinking from their tables.
+# Inferred from the profile name ("_think"), not read from
+# tool-call's models.yaml. Revisit if that config is ever consulted
+# directly.
+enable_thinking: true
+
+seed: 42   # S-D6.
+
+# --- Provenance -----------------------------------------------------------
+# Source: docs/STANDARDS_AND_PROFILES_CATALOG.md Section 4.1, row 3
+# (tool-call models.yaml:37-45).
+# Must hash to 5aed9f401a82b31a.

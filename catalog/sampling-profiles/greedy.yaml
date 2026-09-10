@@ -1,0 +1,26 @@
+# catalog/sampling-profiles/greedy.yaml
+#
+# Deterministic, no sampling at all. The default for every checkpoint
+# until something registered needs otherwise (S-D11, S-T6 -- this is the
+# migration's backfill target).
+
+label: greedy
+
+temperature: 0.0          # greedy, deterministic.
+top_p: 1.0                 # vLLM's own neutral defaults, written out
+top_k: -1                  # explicitly rather than omitted, so nothing
+min_p: 0.0                 # is supplied invisibly.
+presence_penalty: 0.0
+repetition_penalty: 1.0
+max_tokens: 8192            # generous for a non-thinking 4B reply.
+
+enable_thinking: false
+
+seed: 42   # S-D6 -- not in CATALOG's table; no team pins it in a sampling
+           # block, but it's a sampling control, hashed here for real.
+
+# --- Provenance -----------------------------------------------------------
+# Source: docs/STANDARDS_AND_PROFILES_CATALOG.md Section 4.1, row 1.
+# Must reproduce catalog/standards/ifeval-v1-instruct.yaml's sampling
+# block exactly (S-T8) -- Phase 3 depends on it matching by hash.
+# Must hash to 429314c39f4e2c2a.

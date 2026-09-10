@@ -1,0 +1,41 @@
+# catalog/sampling-profiles/qwen3_think.yaml
+#
+# Qwen3's own model-card guidance for thinking mode. Reproduces the
+# sampling half of catalog/standards/ifeval-v1-think.yaml exactly
+# (S-T8) -- Phase 3's migration finds this profile by hash when it
+# splits that standard's Layer 2 out.
+#
+# Also the row LFM2.5's thinking-mode checkpoints resolve to.
+# CATALOG Section 4.1 gives lfm2_5_think the identical temperature /
+# top_p / top_k / min_p / presence_penalty / repetition_penalty /
+# max_tokens as this profile, and with enable_thinking and seed pinned
+# the same way on both, the two are content-identical -- one row, same
+# mechanism as S-D12's IFEval-standard collapse. This is the row that
+# wins: it's the name Phase 3 (S-T8) and the shipped ifeval-v1-think
+# standard both already depend on. See
+# catalog/sampling-profiles/lfm2_5_think.yaml for the other half of
+# this note.
+
+label: qwen3_think
+
+temperature: 0.6           # Qwen3's own model-card guidance for thinking
+top_p: 0.95                 # mode, independently confirmed against a real
+top_k: 20                    # working profile (tool-call's qwen3_think).
+min_p: 0.0                  # vLLM's own neutral default, written out
+presence_penalty: 0.0        # rather than omitted.
+repetition_penalty: 1.0
+max_tokens: 16384        # big on purpose: a 512-token budget produced
+                          # 512 tokens of <think> and no answer at all on
+                          # this exact checkpoint.
+
+enable_thinking: true
+
+seed: 42   # S-D6.
+
+# --- Provenance -----------------------------------------------------------
+# Source: docs/STANDARDS_AND_PROFILES_CATALOG.md Section 4.1, row 2
+# (tool-call models.yaml:52-57; starred fields neutral).
+# Must reproduce catalog/standards/ifeval-v1-think.yaml's sampling block
+# exactly (S-T8).
+# Must hash to 5a5923cd75de33a2 -- deliberately shared with
+# lfm2_5_think.yaml (see the note above).

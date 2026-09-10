@@ -21,6 +21,13 @@ class CheckpointListItem(BaseModel):
     # and has no reason to look up the profile separately for that.
     serving_profile_label: str | None
     serving_profile_hash: str
+    # Joined in from sampling_profile, same reasoning -- named with the
+    # default_ prefix (unlike serving_profile_label/_hash above) because
+    # docs/STANDARDS_AND_PROFILES_PHASES.md Phase 2 names it explicitly;
+    # the asymmetry with the two fields above stays rather than
+    # triggering a rename outside this phase's scope.
+    default_sampling_profile_label: str | None
+    default_sampling_profile_hash: str
     created_at: datetime
     # Independent of registration (R-D1): a row stays even if the
     # weights behind it later vanish. 'unknown' for a checkpoint nobody
@@ -108,4 +115,10 @@ class RegisterCheckpointRequest(BaseModel):
     # CheckpointInferredMetadata.base_model for the inferred hint.
     parent_checkpoint_id: int | None = None
     serving_profile: ServingProfileSelection
+    # Optional, unlike serving_profile (S-D9): omitted means "the
+    # checkpoint's recommended default," computed server-side by
+    # registration.py. There is no ServingProfileSelection-style
+    # customisation branch here yet -- Phase 2 ships with no sampling
+    # picker in the UI at all (Phase 8 adds one as a pure enhancement).
+    sampling_profile_id: int | None = None
     registered_by: str | None = None

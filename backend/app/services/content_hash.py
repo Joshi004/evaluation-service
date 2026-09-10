@@ -1,17 +1,19 @@
 """The canonical-JSON content hash shared by every content-addressed
-table (`recipe`, `serving_profile`): canonical JSON (sorted keys, no
-whitespace, UTF-8, floats rounded to 6 decimal places), SHA-256, first
-16 hex characters.
+table (`recipe`, `serving_profile`, `sampling_profile`): canonical JSON
+(sorted keys, no whitespace, UTF-8, floats rounded to 6 decimal
+places), SHA-256, first 16 hex characters.
 
 A hash whose definition drifts is worse than no hash -- it looks
 authoritative while silently splitting or merging populations that
 should have compared equal. `recipe_hash()`
-(app/services/recipes/hashing.py) and `serving_profile_hash()`
-(app/services/serving_profiles/hashing.py) both delegate to
-`content_hash()` below rather than each defining their own, so the two
-can never drift apart from each other. Getting a stable, reproducible
-hash is the entire point, so nothing here is negotiable without also
-handling every already-hashed row that used the old definition.
+(app/services/recipes/hashing.py), `serving_profile_hash()`
+(app/services/serving_profiles/hashing.py), and `sampling_profile_hash()`
+(app/services/sampling_profiles/hashing.py) all delegate to
+`content_hash()` below rather than each defining their own, so no two
+of them can ever drift apart from each other. Getting a stable,
+reproducible hash is the entire point, so nothing here is negotiable
+without also handling every already-hashed row that used the old
+definition.
 """
 
 import hashlib

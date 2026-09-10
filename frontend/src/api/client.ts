@@ -30,6 +30,11 @@ export interface CheckpointListItem {
   // See utils/servingProfileDisplayName.ts for the label-or-hash rule.
   serving_profile_label: string | null
   serving_profile_hash: string
+  // Joined in from sampling_profile, same reasoning -- named with the
+  // default_ prefix (unlike serving_profile_label/_hash above) because
+  // docs/STANDARDS_AND_PROFILES_PHASES.md Phase 2 names it explicitly.
+  default_sampling_profile_label: string | null
+  default_sampling_profile_hash: string
   created_at: string
   availability_status: CheckpointAvailabilityStatus
   availability_checked_at: string | null
@@ -120,6 +125,41 @@ export interface ServingProfileRecommendation {
   reason: string
 }
 
+// Sampling-profile wire shapes (docs/STANDARDS_AND_PROFILES_PHASES.md
+// Section 0.5, Phase 2). SamplingProfileConfig is the nine-field
+// hashable config -- identical to SamplingProfile.as_hashable_dict()'s
+// key set. Types only, this phase: nothing in the frontend renders
+// these yet (Phase 7 adds a picker).
+export interface SamplingProfileConfig {
+  temperature: number
+  top_p: number
+  top_k: number
+  min_p: number
+  presence_penalty: number
+  repetition_penalty: number
+  max_tokens: number
+  enable_thinking: boolean
+  seed: number
+}
+
+// A persisted profile row -- every SamplingProfileConfig field plus
+// identity. label is null for an ad-hoc customisation (Phase 3+), in
+// which case hash is what identifies it -- mirrors ServingProfileSummary.
+export interface SamplingProfileSummary extends SamplingProfileConfig {
+  id: number
+  hash: string
+  label: string | null
+}
+
+// Registration's suggested sampling profile for a freshly-inspected
+// checkpoint, attached to CheckpointInspection by the controller
+// (app.services.checkpoints.recommendation). `reason` is never empty --
+// mirrors ServingProfileRecommendation.
+export interface SamplingProfileRecommendation {
+  profile: SamplingProfileSummary | null
+  reason: string
+}
+
 // One directory on the cluster that looks evaluable -- not yet a
 // database row (Phase 2). `already_registered` is set server-side by
 // comparing `reference` against every registered checkpoint's path, so
@@ -155,6 +195,7 @@ export interface CheckpointInspection {
   readable: boolean
   problems: string[]
   recommendation: ServingProfileRecommendation | null
+  sampling_recommendation: SamplingProfileRecommendation | null
 }
 
 // POST /checkpoints' `serving_profile` field -- a union, not two
@@ -178,6 +219,10 @@ export interface RegisterCheckpointRequest {
   family?: string | null
   parent_checkpoint_id?: number | null
   serving_profile: ServingProfileSelection
+  // Optional, unlike serving_profile: omitted means "the checkpoint's
+  // recommended default," computed server-side (S-D9). No picker
+  // exists yet to set this from the wizard (Phase 7).
+  sampling_profile_id?: number | null
   registered_by?: string | null
 }
 

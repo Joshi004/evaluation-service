@@ -13,6 +13,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel
 
+from app.schemas.sampling_profiles import SamplingProfileRecommendation
 from app.schemas.serving_profiles import ServingProfileRecommendation
 
 
@@ -59,6 +60,11 @@ class CheckpointInspection(BaseModel):
     # database, and `ModelDiscovery` implementations never touch it
     # (R-D14). `None` until the controller attaches it.
     recommendation: ServingProfileRecommendation | None = None
+    # Same reasoning, one profile over (docs/STANDARDS_AND_PROFILES_PHASES.md
+    # Phase 2, item 6) -- attached alongside `recommendation` so the
+    # registration wizard needs no second round trip once Phase 7 adds
+    # a sampling-profile control.
+    sampling_recommendation: SamplingProfileRecommendation | None = None
 
 
 class CheckpointAvailability(BaseModel):

@@ -19,6 +19,7 @@ from app.api.v1 import (
     recipes,
     run_groups,
     runs,
+    sampling_profiles,
     serving_profiles,
     standards,
 )
@@ -35,4 +36,7 @@ api_router.include_router(leaderboard.router, prefix="/leaderboard", tags=["lead
 api_router.include_router(endpoints.router, prefix="/endpoints", tags=["endpoints"])
 api_router.include_router(
     serving_profiles.router, prefix="/serving-profiles", tags=["serving-profiles"]
+)
+api_router.include_router(
+    sampling_profiles.router, prefix="/sampling-profiles", tags=["sampling-profiles"]
 )

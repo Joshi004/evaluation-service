@@ -9,8 +9,12 @@ from app.schemas.discovery import CheckpointCandidate, CheckpointInspection
 from app.services.checkpoints import availability as availability_service
 from app.services.checkpoints import queries as checkpoints_service
 from app.services.checkpoints import registration as registration_service
-from app.services.checkpoints.recommendation import recommend_serving_profile
+from app.services.checkpoints.recommendation import (
+    recommend_sampling_profile,
+    recommend_serving_profile,
+)
 from app.services.cluster import get_model_discovery
+from app.services.sampling_profiles import queries as sampling_profiles_service
 from app.services.serving_profiles import queries as serving_profiles_service
 
 
@@ -38,11 +42,12 @@ async def list_checkpoint_candidates(db: AsyncSession) -> list[CheckpointCandida
 
 
 async def inspect_checkpoint_candidate(db: AsyncSession, reference: str) -> CheckpointInspection:
-    """Inspects over SSH first, then attaches a serving-profile
-    recommendation built from already-registered rows -- mirrors how
-    `list_checkpoint_candidates` above sets `already_registered`
-    (R-D14: `SshModelDiscovery` itself never touches the database, so
-    the controller is where the two are joined).
+    """Inspects over SSH first, then attaches a serving-profile and a
+    sampling-profile recommendation, each built from already-registered
+    rows -- mirrors how `list_checkpoint_candidates` above sets
+    `already_registered` (R-D14: `SshModelDiscovery` itself never
+    touches the database, so the controller is where the two are
+    joined).
     """
     discovery = get_model_discovery()
     inspection = await discovery.inspect_checkpoint(reference)
@@ -58,7 +63,25 @@ async def inspect_checkpoint_candidate(db: AsyncSession, reference: str) -> Chec
     recommendation = recommend_serving_profile(
         inspection, profiles, profile_ids_for_same_model_type
     )
-    return inspection.model_copy(update={"recommendation": recommendation})
+
+    sampling_profiles = await sampling_profiles_service.list_sampling_profiles(db)
+    sampling_profile_ids_for_same_model_type: list[int] = []
+    if inspection.model_type is not None:
+        sampling_profile_ids_for_same_model_type = (
+            await checkpoints_service.list_default_sampling_profile_ids_for_model_type(
+                db, inspection.model_type
+            )
+        )
+    sampling_recommendation = recommend_sampling_profile(
+        inspection, sampling_profiles, sampling_profile_ids_for_same_model_type
+    )
+
+    return inspection.model_copy(
+        update={
+            "recommendation": recommendation,
+            "sampling_recommendation": sampling_recommendation,
+        }
+    )
 
 
 async def register_checkpoint(

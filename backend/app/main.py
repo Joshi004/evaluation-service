@@ -27,6 +27,7 @@ from app.config import get_settings
 from app.db import AsyncSessionLocal
 from app.services.catalog.loader import load_catalog
 from app.services.runs.recovery import fail_interrupted_runs
+from app.services.sampling_profiles.repository import sampling_profiles_repository
 from app.services.serving_profiles.repository import serving_profiles_repository
 from app.services.standards.repository import standards_repository
 
@@ -57,7 +58,11 @@ async def lifespan(app: FastAPI):
             )
 
         catalog_dir = Path(settings.catalog_dir)
-        for repository in (standards_repository, serving_profiles_repository):
+        for repository in (
+            standards_repository,
+            serving_profiles_repository,
+            sampling_profiles_repository,
+        ):
             loaded = await load_catalog(db, catalog_dir, repository)
             logger.info(
                 "loaded %d %s catalog entry(s) from %s",

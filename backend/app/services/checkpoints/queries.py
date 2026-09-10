@@ -9,7 +9,7 @@ from typing import Literal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Checkpoint, EvalRun, ServingProfile
+from app.models import Checkpoint, EvalRun, SamplingProfile, ServingProfile
 from app.schemas.checkpoints import (
     CheckpointDetail,
     CheckpointInferredMetadata,
@@ -38,8 +38,15 @@ async def list_checkpoints(db: AsyncSession) -> list[CheckpointListItem]:
     each family's rows already adjacent.
     """
     stmt = (
-        select(Checkpoint, ServingProfile.label, ServingProfile.hash)
+        select(
+            Checkpoint,
+            ServingProfile.label,
+            ServingProfile.hash,
+            SamplingProfile.label,
+            SamplingProfile.hash,
+        )
         .join(ServingProfile, Checkpoint.default_serving_profile_id == ServingProfile.id)
+        .join(SamplingProfile, Checkpoint.default_sampling_profile_id == SamplingProfile.id)
         .order_by(Checkpoint.family, Checkpoint.name)
     )
     rows = (await db.execute(stmt)).all()
@@ -52,12 +59,20 @@ async def list_checkpoints(db: AsyncSession) -> list[CheckpointListItem]:
             parent_checkpoint_id=checkpoint.parent_checkpoint_id,
             serving_profile_label=serving_profile_label,
             serving_profile_hash=serving_profile_hash,
+            default_sampling_profile_label=sampling_profile_label,
+            default_sampling_profile_hash=sampling_profile_hash,
             created_at=checkpoint.created_at,
             availability_status=checkpoint.availability_status,
             availability_checked_at=checkpoint.availability_checked_at,
             availability_detail=checkpoint.availability_detail,
         )
-        for checkpoint, serving_profile_label, serving_profile_hash in rows
+        for (
+            checkpoint,
+            serving_profile_label,
+            serving_profile_hash,
+            sampling_profile_label,
+            sampling_profile_hash,
+        ) in rows
     ]
 
 
@@ -66,14 +81,27 @@ async def get_checkpoint_with_runs(db: AsyncSession, checkpoint_id: int) -> Chec
     phase -- no eval_run rows exist until Phase 3 submits real jobs.
     """
     stmt = (
-        select(Checkpoint, ServingProfile.label, ServingProfile.hash)
+        select(
+            Checkpoint,
+            ServingProfile.label,
+            ServingProfile.hash,
+            SamplingProfile.label,
+            SamplingProfile.hash,
+        )
         .join(ServingProfile, Checkpoint.default_serving_profile_id == ServingProfile.id)
+        .join(SamplingProfile, Checkpoint.default_sampling_profile_id == SamplingProfile.id)
         .where(Checkpoint.id == checkpoint_id)
     )
     row = (await db.execute(stmt)).first()
     if row is None:
         return None
-    checkpoint, serving_profile_label, serving_profile_hash = row
+    (
+        checkpoint,
+        serving_profile_label,
+        serving_profile_hash,
+        sampling_profile_label,
+        sampling_profile_hash,
+    ) = row
 
     runs_stmt = (
         select(EvalRun)
@@ -90,6 +118,8 @@ async def get_checkpoint_with_runs(db: AsyncSession, checkpoint_id: int) -> Chec
         parent_checkpoint_id=checkpoint.parent_checkpoint_id,
         serving_profile_label=serving_profile_label,
         serving_profile_hash=serving_profile_hash,
+        default_sampling_profile_label=sampling_profile_label,
+        default_sampling_profile_hash=sampling_profile_hash,
         created_at=checkpoint.created_at,
         availability_status=checkpoint.availability_status,
         availability_checked_at=checkpoint.availability_checked_at,
@@ -166,6 +196,27 @@ async def list_default_profile_ids_for_model_type(db: AsyncSession, model_type: 
     return list(deduplicated_ids)
 
 
+async def list_default_sampling_profile_ids_for_model_type(
+    db: AsyncSession, model_type: str
+) -> list[int]:
+    """Every `default_sampling_profile_id` used by an already-registered
+    checkpoint of this `model_type`, most recently registered first --
+    feeds `recommend_sampling_profile`'s "a derived checkpoint reuses
+    its base's profile" rule. Mirrors
+    `list_default_profile_ids_for_model_type` exactly, one column over.
+    """
+    stmt = (
+        select(Checkpoint.default_sampling_profile_id)
+        .where(Checkpoint.model_type == model_type)
+        .order_by(Checkpoint.created_at.desc())
+    )
+    rows = (await db.execute(stmt)).all()
+    deduplicated_ids: dict[int, None] = {}
+    for (profile_id,) in rows:
+        deduplicated_ids[profile_id] = None
+    return list(deduplicated_ids)
+
+
 async def insert_checkpoint(
     db: AsyncSession,
     name: str,
@@ -173,6 +224,7 @@ async def insert_checkpoint(
     family: str | None,
     parent_checkpoint_id: int | None,
     default_serving_profile_id: int,
+    default_sampling_profile_id: int,
     registered_by: str | None,
     inspection: CheckpointInspection,
 ) -> Checkpoint:
@@ -193,6 +245,7 @@ async def insert_checkpoint(
         family=family,
         parent_checkpoint_id=parent_checkpoint_id,
         default_serving_profile_id=default_serving_profile_id,
+        default_sampling_profile_id=default_sampling_profile_id,
         generation_config=inspection.generation_config,
         registered_by=registered_by,
         model_type=inspection.model_type,

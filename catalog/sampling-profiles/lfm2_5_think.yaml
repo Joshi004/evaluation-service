@@ -1,0 +1,46 @@
+# catalog/sampling-profiles/lfm2_5_think.yaml
+#
+# LFM2.5's thinking-mode profile.
+#
+# IMPORTANT -- this file resolves to the SAME row as qwen3_think.yaml,
+# not a row of its own. CATALOG Section 4.1 gives lfm2_5_think and
+# qwen3_think byte-identical values for every column it lists, and with
+# enable_thinking and seed pinned the same way on both (this phase's own
+# rules), the two hash identically: content addressing means "same
+# content -> same row" (the same mechanism S-D12 uses to collapse the
+# two IFEval standards). `sampling_profile.hash` is UNIQUE, so only one
+# row can exist for this content -- it is labelled `qwen3_think`, since
+# that's the name Phase 3 (S-T8) and the shipped ifeval-v1-think
+# standard already depend on. This file still exists (both catalog
+# labels are real, CATALOG-named profiles) and still validates and
+# hashes correctly; a reload finds the existing row by hash and changes
+# nothing -- `GET /sampling-profiles/catalog-status` reports this file
+# as `loaded`, pointing at a row whose own `label` column reads
+# `qwen3_think`, not `lfm2_5_think`. That mismatch is expected, not a
+# bug. See catalog/sampling-profiles/qwen3_think.yaml for the other half
+# of this note.
+
+label: lfm2_5_think
+
+temperature: 0.6
+top_p: 0.95
+top_k: 20
+min_p: 0.0                # vLLM's own neutral default, written out
+presence_penalty: 0.0      # rather than omitted.
+repetition_penalty: 1.0
+max_tokens: 16384
+
+# Not cited in tool-call's own (partial) profile -- CATALOG Section 4.1
+# and RESEARCH Section 16.3 both omit enable_thinking from their tables.
+# Inferred from the profile name ("_think"), not read from
+# tool-call's models.yaml. Revisit if that config is ever consulted
+# directly.
+enable_thinking: true
+
+seed: 42   # S-D6.
+
+# --- Provenance -----------------------------------------------------------
+# Source: docs/STANDARDS_AND_PROFILES_CATALOG.md Section 4.1, row 4
+# (tool-call models.yaml:59-64).
+# Must hash to 5a5923cd75de33a2 -- deliberately shared with
+# qwen3_think.yaml (see the note above).

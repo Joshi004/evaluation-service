@@ -60,6 +60,13 @@ class Checkpoint(Base):
     default_serving_profile_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("serving_profile.id")
     )
+    # A default, not the only profile a run against this checkpoint may
+    # use -- nothing in the schema forbids a run choosing another one
+    # (S-D9: an explicit sampling_profile_id at submit time overrides
+    # it). Mirrors default_serving_profile_id's own comment exactly.
+    default_sampling_profile_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("sampling_profile.id")
+    )
     generation_config: Mapped[dict[str, Any] | None] = mapped_column(JSONB, default=None)
     registered_by: Mapped[str | None] = mapped_column(Text, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
