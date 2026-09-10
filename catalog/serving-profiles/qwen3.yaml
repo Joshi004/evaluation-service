@@ -1,0 +1,39 @@
+# catalog/serving-profiles/qwen3.yaml
+#
+# The original self-hosted serving profile: Qwen3, vLLM, one GPU, the
+# qwen3 reasoning parser. Carries no tool-call flags -- fine for the two
+# shipped IFEval standards, wrong the moment anything tool-using runs
+# against it (see qwen3-tools.yaml).
+
+label: qwen3
+
+engine: vllm
+engine_version: "0.19.0"
+
+gpus: 1
+tensor_parallel_size: 1
+pipeline_parallel_size: 1
+
+# Raised from 8192 by d1c7b5104d76 -- the original value left no room for
+# ifeval/v1-think's max_tokens: 16384. Qwen3-4B's own generation_config
+# already declares max_tokens: 32768, and the checkpoint supports that
+# context length.
+max_model_len: 32768
+
+# Splits <think>...</think> into a separate field before the harness ever
+# sees the response -- what makes think_handling: strip mechanically true.
+reasoning_parser: qwen3
+
+dtype: auto
+quantization: null
+
+gpu_memory_utilization: 0.85
+
+engine_options: {}
+
+# --- Provenance -----------------------------------------------------------
+# The row seeded by a961c4064d9c and backfilled onto these structured
+# columns, verbatim, by 77be30708294::_backfill_seeded_profile. This file
+# must hash to a0e36aad24ce96dc -- if it doesn't, the loader finds no row
+# for the new hash, then finds the label `qwen3` already taken, and
+# reports a conflict (S-T2, docs/STANDARDS_AND_PROFILES_PHASES.md).

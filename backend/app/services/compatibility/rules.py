@@ -90,7 +90,7 @@ def strip_needs_reasoning_parser(
 ) -> CompatibilityFinding | None:
     """Error, but only when there is an actual think block to strip.
     `think_handling='strip'` with `enable_thinking=False` is inert --
-    `standards/ifeval-v1-instruct.yaml` ships exactly this combination,
+    `catalog/standards/ifeval-v1-instruct.yaml` ships exactly this combination,
     with its own comment noting there's no think block for a no-parser
     profile to fail to split out. Gating on `enable_thinking` is what
     keeps that shipped standard from tripping this rule (Section 10 item

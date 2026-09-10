@@ -76,7 +76,7 @@ docker compose exec backend alembic upgrade head
 docker-compose.yml
 .env.example
 docs/                 design docs — plan, data model, cluster validation, research
-standards/            version-controlled benchmark recipe YAML (empty so far)
+catalog/              version-controlled catalog YAML — standards, sampling profiles, serving profiles
 backend/              FastAPI control-plane API — see backend/README.md
 frontend/             React + Vite UI — see frontend/README.md
 ```

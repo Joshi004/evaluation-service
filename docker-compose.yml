@@ -79,7 +79,7 @@ services:
       - "${BACKEND_PORT:-8000}:8000"
     volumes:
       - ./backend:/app
-      - ./standards:/standards:ro
+      - ./catalog:/catalog:ro
       # Neither has a meaningful default (unlike the ports/passwords
       # above) -- both must be set in .env to real absolute paths before
       # cluster access works. The /dev/null fallback keeps `docker compose

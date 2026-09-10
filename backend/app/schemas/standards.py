@@ -10,6 +10,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
+from app.schemas.catalog import CatalogDocument
 from app.schemas.recipes import RecipeFieldWarning
 
 
@@ -41,22 +42,21 @@ class RecipeMetricDefinition(BaseModel):
     is_primary: bool
 
 
-class StandardDocument(BaseModel):
-    """A standards/*.yaml file, validated strictly: a typo in a recipe is
-    worse than a crash, because it produces a number nobody questions.
+class StandardDocument(CatalogDocument):
+    """A catalog/standards/*.yaml file, validated strictly: a typo in a
+    recipe is worse than a crash, because it produces a number nobody
+    questions.
 
-    `extra="forbid"` catches a misspelled key. Every field below is
-    required -- the key must be present in the YAML -- except
-    `dataset_revision`, `split` and `sample_limit`, which may hold `null`
-    per decision D3 and the DB schema's own nullability. "Required but
-    nullable" is deliberately `field: T | None` with **no** `= None`
-    default: a default would make the *key* optional too, which is exactly
-    the silent-default this phase's spec rules out.
+    `extra="forbid"` (inherited from `CatalogDocument`) catches a
+    misspelled key. Every field below is required -- the key must be
+    present in the YAML -- except `dataset_revision`, `split` and
+    `sample_limit`, which may hold `null` per decision D3 and the DB
+    schema's own nullability. "Required but nullable" is deliberately
+    `field: T | None` with **no** `= None` default: a default would make
+    the *key* optional too, which is exactly the silent-default this
+    phase's spec rules out.
     """
 
-    model_config = ConfigDict(extra="forbid")
-
-    label: str
     benchmark: str
     framework: str
     framework_image: str
@@ -128,8 +128,8 @@ class StandardRecipe(BaseModel):
     """One row from `recipe` where `label IS NOT NULL`, plus the two things
     the table itself can't hold: per-field capability warnings (computed
     from the row, not stored) and the recipe's own YAML source text
-    (re-read from STANDARDS_DIR by label, not stored -- see the Phase 2
-    plan's source-rendering decision).
+    (re-read from `catalog/standards/` by label, not stored -- see the
+    Phase 2 plan's source-rendering decision).
     """
 
     id: int

@@ -1,16 +1,25 @@
 """Wire shapes for `serving_profile` (docs/CHECKPOINT_REGISTRATION_PHASES.md
-Section 0.5, Phase 3).
+Section 0.5, Phase 3; docs/STANDARDS_AND_PROFILES_PHASES.md Section 0.5,
+Phase 1).
 
 `ServingProfileConfig` is the eleven-field hashable config -- the same
 key set `ServingProfile.as_hashable_dict()` produces -- for a caller that
 builds a profile's content rather than reading an already-persisted row:
 `resolve_serving_profile`'s input today, and (from Phase 5) the
-customisation branch of registration. `ServingProfileSummary` is the
-persisted-row shape the profile picker reads; no route serves it until
-Phase 5's GET /serving-profiles.
+customisation branch of registration. `ServingProfileDocument` is the
+same eleven fields plus `label`, for validating a
+`catalog/serving-profiles/*.yaml` file (Phase 1) -- composed from
+`ServingProfileConfig` rather than restating its fields, so the two
+cannot drift. `ServingProfileSummary` is the persisted-row shape the
+profile picker reads; no route serves it until Phase 5's GET
+/serving-profiles.
 """
 
+from typing import Any
+
 from pydantic import BaseModel, ConfigDict, field_validator
+
+from app.schemas.catalog import CatalogDocument
 
 # Every key here either duplicates a structured column above or (
 # "generation-config") is unconditional and never overridable (R-D7).
@@ -78,6 +87,24 @@ class ServingProfileConfig(BaseModel):
             if not isinstance(option_value, str | int | float | bool):
                 raise ValueError(f"engine_options[{key!r}] must be str, int, float, or bool")
         return value
+
+
+class ServingProfileDocument(CatalogDocument, ServingProfileConfig):
+    """A `catalog/serving-profiles/*.yaml` file. Composes `label`
+    (`CatalogDocument`) with the eleven hashable fields
+    (`ServingProfileConfig`) rather than restating either -- both already
+    set `extra="forbid"`, and the `engine_options` reserved-key validator
+    comes along for free, so a YAML profile and a wizard-customised one
+    (`ServingProfileConfig`) can never validate under different rules.
+    """
+
+    def as_hashable_dict(self) -> dict[str, Any]:
+        """Exactly `ServingProfileConfig`'s key set -- verified by
+        construction: this is `model_dump()` over every field except
+        `label`, and `ServingProfileConfig` contributes no field but
+        those eleven.
+        """
+        return self.model_dump(exclude={"label"})
 
 
 class ServingProfileSummary(BaseModel):

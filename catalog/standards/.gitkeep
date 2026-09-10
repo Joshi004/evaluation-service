@@ -1,0 +1,11 @@
+This directory holds version-controlled benchmark recipe YAML files, one
+per benchmark, per Section 5 of ../../docs/EVAL_SERVICE_PLAN.md ("The
+standard recipe — we decide it, not the teams").
+
+It is part of catalog/, bind-mounted read-only into the backend
+container at /catalog (see ../../docker-compose.yml), and is loaded into
+the `recipe` table by backend/app/services/catalog's generic loader via
+backend/app/services/standards/repository.py.
+
+Two standards are seeded today: ifeval-v1-instruct.yaml and
+ifeval-v1-think.yaml.

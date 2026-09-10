@@ -1,0 +1,31 @@
+# catalog/serving-profiles/qwen3-plain.yaml
+#
+# qwen3, with no reasoning parser at all. The only profile that can
+# satisfy think_handling: as_is -- every other profile carries a
+# reasoning parser, so as_is has always been a setting the schema
+# accepts and the system could never actually run, until this file.
+
+label: qwen3-plain
+
+engine: vllm
+engine_version: "0.19.0"
+
+gpus: 1
+tensor_parallel_size: 1
+pipeline_parallel_size: 1
+
+max_model_len: 32768
+
+# The one change from qwen3.yaml: no --reasoning-parser flag at all.
+reasoning_parser: null
+
+dtype: auto
+quantization: null
+
+gpu_memory_utilization: 0.85
+
+engine_options: {}
+
+# --- Provenance -----------------------------------------------------------
+# Source: docs/STANDARDS_AND_PROFILES_CATALOG.md Section 5, row 2.
+# Must hash to f17c1ce766027e41.

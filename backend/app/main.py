@@ -1,11 +1,13 @@
 """FastAPI application factory.
 
-Assembles middleware and routers, and on startup (Phase 2) loads
-standards/*.yaml into the `recipe` table so a fresh `docker compose up`
-has the two IFEval recipes without a manual reload call, and (Phase 5)
-fails any eval_run left `queued`/`running` by an unclean stop. Per Phase
-5's own "no reconciler and no state machine" decision, a run's
-background worker task is spawned directly from `POST /runs`
+Assembles middleware and routers, and on startup (Phase 2, widened to
+every catalog by docs/STANDARDS_AND_PROFILES_PHASES.md Phase 1) loads
+every catalog directory's YAML files into its own table so a fresh
+`docker compose up` has the seeded standards and serving profiles
+without a manual reload call, and (Phase 5) fails any eval_run left
+`queued`/`running` by an unclean stop. Per Phase 5's own "no reconciler
+and no state machine" decision, a run's background worker task is
+spawned directly from `POST /runs`
 (app.services.runs.worker.spawn_run_worker), not from here -- this
 lifespan only ever runs once, at startup, so it's the wrong place for
 anything that has to happen per run. The reconciler loop
@@ -23,8 +25,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.router import api_router
 from app.config import get_settings
 from app.db import AsyncSessionLocal
+from app.services.catalog.loader import load_catalog
 from app.services.runs.recovery import fail_interrupted_runs
-from app.services.standards.loader import load_all
+from app.services.serving_profiles.repository import serving_profiles_repository
+from app.services.standards.repository import standards_repository
 
 # Uvicorn configures handlers for its own loggers (uvicorn.error,
 # uvicorn.access) but never touches the root logger, so every
@@ -52,8 +56,15 @@ async def lifespan(app: FastAPI):
                 failed_run_count,
             )
 
-        loaded = await load_all(Path(settings.standards_dir), db)
-        logger.info("loaded %d standard(s) from %s", len(loaded), settings.standards_dir)
+        catalog_dir = Path(settings.catalog_dir)
+        for repository in (standards_repository, serving_profiles_repository):
+            loaded = await load_catalog(db, catalog_dir, repository)
+            logger.info(
+                "loaded %d %s catalog entry(s) from %s",
+                len(loaded),
+                repository.name,
+                catalog_dir / repository.directory_name,
+            )
     yield
     # Shutdown: nothing to release yet.
 

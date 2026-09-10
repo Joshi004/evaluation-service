@@ -1,0 +1,35 @@
+# catalog/serving-profiles/qwen3-tools.yaml
+#
+# qwen3, plus vLLM's own tool-calling flags. Without these, a function
+# call comes back as ordinary text and every tool benchmark scores zero
+# -- BFCL, ACEBench, tau2/tau3 and ToolSandbox all need this profile.
+
+label: qwen3-tools
+
+engine: vllm
+engine_version: "0.19.0"
+
+gpus: 1
+tensor_parallel_size: 1
+pipeline_parallel_size: 1
+
+max_model_len: 32768
+
+reasoning_parser: qwen3
+
+dtype: auto
+quantization: null
+
+gpu_memory_utilization: 0.85
+
+# `true` renders as a bare flag (R-D6). `tool-call-parser: hermes` is the
+# tool-call team's own qwen3 family (families.yaml:43-49) -- kebab-case,
+# no leading dashes, vLLM's own flag spelling (RESEARCH Section 7's
+# agreed convention).
+engine_options:
+  enable-auto-tool-choice: true
+  tool-call-parser: hermes
+
+# --- Provenance -----------------------------------------------------------
+# Source: docs/STANDARDS_AND_PROFILES_CATALOG.md Section 5, row 1.
+# Must hash to 29e314c44c8e7ee3.

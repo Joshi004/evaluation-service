@@ -1,9 +1,9 @@
-# standards/ifeval-v1-instruct.yaml
+# catalog/standards/ifeval-v1-think.yaml
 #
-# IFEval, Instruct mode (no thinking). Layer 1 is identical to
-# ifeval-v1-think.yaml; only enable_thinking and the sampling block differ.
+# IFEval, thinking mode. Layer 1 is identical to ifeval-v1-instruct.yaml;
+# only enable_thinking and the sampling block differ.
 
-label: ifeval/v1-instruct
+label: ifeval/v1-think
 
 # --- Layer 1: the protocol ------------------------------------------------
 
@@ -70,22 +70,26 @@ sample_limit: null   # null = the full 541 prompts. Never null on a published ru
 
 # --- Layer 2: sampling. Legitimately depends on the checkpoint. -----------
 
-enable_thinking: false   # this recipe is the Instruct-mode number.
-think_handling: strip    # inert here -- there's no think block to strip. Set
-                         # rather than left ambiguous, per the "every sampling
-                         # column NOT NULL on purpose" rule.
+enable_thinking: true
+think_handling: strip
+# "strip" here is mechanical, not a text filter: it requires the endpoint's
+# serving_profile.vllm_flags to include --reasoning-parser qwen3. With that
+# flag vLLM splits <think>...</think> into a separate reasoning_content
+# field before EvalScope sees the response, so the content being scored is
+# already think-free. See Trap T5 -- this coupling is invisible if you only
+# look at one table.
 
-temperature: 0.0          # our decision -- greedy, deterministic.
-top_p: 1.0                # vLLM's own neutral defaults, written down
-top_k: -1                 # explicitly rather than omitted, so nothing is
-min_p: 0.0                # supplied invisibly. min_p never reaches vLLM
-presence_penalty: 0.0     # through this path -- decision D4; must be 0.0.
+temperature: 0.6          # Qwen3's own model-card guidance for thinking mode,
+top_p: 0.95               # independently confirmed against a real working
+top_k: 20                 # profile (tool-call's qwen3_think).
+min_p: 0.0
+presence_penalty: 0.0
 repetition_penalty: 1.0
-max_tokens: 8192          # our decision. Generous for a non-thinking 4B reply.
+max_tokens: 16384         # same reference profile. Big on purpose: a 512-token
+                          # budget produced 512 tokens of <think> and no answer
+                          # at all on this exact checkpoint.
 
 # --- Provenance -----------------------------------------------------------
-# Reference checkpoint: Qwen3-4B-allternary-ep03
-#   (/home/shared/agentic_slm/models/Qwen3-4B-allternary-ep03)
-# Reference score: prompt_level_strict = 0.7412 (n = 541), from a real
-#   completed tool-call run: simple_eval/results/ifeval/
-#   Qwen3-4B-allternary-ep03/full-ternary-04b/run-270187
+# Reference score: NOT YET RUN. Get one before publishing anything against
+# this recipe. Do not fabricate a plausible-looking number here; a field
+# that says TODO is worth more than a guess that looks like data.

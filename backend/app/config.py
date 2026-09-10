@@ -64,7 +64,7 @@ class Settings(BaseSettings):
     # a harness container joins it and can reach the Phase 3 tunnel at
     # http://backend:PORT/v1 (see services/cluster/tunnel.py).
     harness_docker_network: str = "evaluation-service_default"
-    standards_dir: str = "/standards"
+    catalog_dir: str = "/catalog"
 
 
 @lru_cache

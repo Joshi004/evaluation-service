@@ -37,6 +37,38 @@ def build_task_config(
     `/work`), not inside this backend process -- the harness is started
     by the host Docker daemon via `runner.py`, and never sees this
     process's filesystem.
+
+    Every field in `Recipe.as_hashable_dict()` is accounted for below,
+    either by where it lands in the returned dict or by why it
+    deliberately doesn't -- a silently-dropped field is exactly how the
+    `enable_thinking` bug shipped (see the `extra_body` comment below).
+
+    - `benchmark`, `framework`: not sent -- they identify the standard to
+      a human (frontend, docs), not to EvalScope.
+    - `framework_image`: not sent by this function -- `runner.py` picks
+      the harness image from `settings.harness_image`, not per recipe.
+    - `task_name`: the `datasets` entry and the `dataset_args` key.
+    - `dataset_name`: `dataset_args.<task>.dataset_id`.
+    - `dataset_revision`: not sent (decision D3 -- no EvalScope knob
+      exists for a ModelScope-hosted set).
+    - `split`: `dataset_args.<task>.eval_split`, via `_dataset_args`;
+      omitted when null.
+    - `few_shot`: `dataset_args.<task>.few_shot_num`.
+    - `prompt_template`: `dataset_args.<task>.prompt_template`.
+    - `extraction`: not sent -- EvalScope's equivalent is
+      `dataset_args.<task>.filters`, but every shipped standard is
+      `method: none`, so there is nothing yet to translate.
+    - `metrics`: `dataset_args.<task>.metric_list`, via `_metric_names`.
+    - `repeats`, `sample_limit`: `repeats`, `limit`.
+    - `temperature`, `top_p`, `top_k`, `presence_penalty`,
+      `repetition_penalty`, `max_tokens`: `generation_config`.
+    - `min_p`: not sent -- decision D4, see the comment inline at
+      `generation_config`.
+    - `enable_thinking`:
+      `generation_config.extra_body.chat_template_kwargs.enable_thinking`.
+    - `think_handling`: not sent -- resolved at compatibility-check time
+      against the serving profile's `reasoning_parser`
+      (services/compatibility/rules.py), not something EvalScope reads.
     """
     return {
         "model": checkpoint.name,
@@ -44,15 +76,7 @@ def build_task_config(
         "api_key": "EMPTY",
         "eval_type": "openai_api",  # HTTP only -- never loads the model itself
         "datasets": [recipe.task_name],
-        "dataset_args": {
-            recipe.task_name: {
-                "dataset_id": recipe.dataset_name,
-                "subset_list": ["default"],
-                "few_shot_num": recipe.few_shot,
-                "prompt_template": recipe.prompt_template,
-                "metric_list": _metric_names(recipe.metrics),
-            }
-        },
+        "dataset_args": {recipe.task_name: _dataset_args(recipe)},
         "generation_config": {
             "temperature": recipe.temperature,
             "top_p": recipe.top_p,
@@ -68,6 +92,22 @@ def build_task_config(
             # Standards/Submit pages, driven by
             # FRAMEWORK_UNSUPPORTED_SAMPLING_FIELDS
             # (services/standards/capabilities.py) -- not in this builder.
+            #
+            # extra_body is EvalScope's escape hatch straight into the
+            # OpenAI-compatible request body -- openai_completion_params
+            # forwards it verbatim, and chat_template_kwargs.enable_thinking
+            # is vLLM's own per-request switch for Qwen3-style thinking.
+            # It has to be per-request, not a serve-time flag: one endpoint
+            # is shared by every run against the same
+            # (checkpoint, serving_profile), so a think and a no-think
+            # recipe can be in flight against the same server at once.
+            # Passed explicitly in both directions, per this function's own
+            # rule -- Qwen3's own default is enable_thinking=True, and
+            # leaving this out for a recipe with enable_thinking=False
+            # silently ran that recipe in thinking mode anyway (confirmed
+            # against a real run: 100% of predictions carried a <think>
+            # block under a stored enable_thinking: false recipe).
+            "extra_body": {"chat_template_kwargs": {"enable_thinking": recipe.enable_thinking}},
             "timeout": 1800,
         },
         "repeats": recipe.repeats,
@@ -82,6 +122,32 @@ def build_task_config(
         # safe" -- that loses a whole run to one bad sample instead.
         "ignore_errors": True,
     }
+
+
+def _dataset_args(recipe: Recipe) -> dict[str, Any]:
+    """The `dataset_args.<task_name>` block EvalScope's benchmark
+    registration reads -- which samples run and how they're framed, as
+    opposed to `generation_config`'s job of saying how the model answers.
+
+    `eval_split` is EvalScope's own field name (`BenchmarkMeta.eval_split`),
+    not `split` -- `BenchmarkMeta._update` (evalscope's registry) sets an
+    attribute only when `hasattr` already agrees, and silently drops
+    anything else, so the wrong name here would look like it worked while
+    actually falling through to EvalScope's own registered default.
+    Omitted entirely when `recipe.split` is null, same as
+    `dataset_revision`'s null: "we don't have one," not "send an empty
+    one."
+    """
+    args: dict[str, Any] = {
+        "dataset_id": recipe.dataset_name,
+        "subset_list": ["default"],
+        "few_shot_num": recipe.few_shot,
+        "prompt_template": recipe.prompt_template,
+        "metric_list": _metric_names(recipe.metrics),
+    }
+    if recipe.split is not None:
+        args["eval_split"] = recipe.split
+    return args
 
 
 def _metric_names(metrics: list[dict[str, Any]]) -> list[str]:

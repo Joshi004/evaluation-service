@@ -6,6 +6,10 @@ app.services.standards (the loader and resolve_recipe both read/write
 `recipe` rows) -- per .cursor/rules/backend-layering.mdc, a library
 module reusing another library module's DB access is normal composition,
 and it keeps every query against this table in one file.
+`get_recipe_by_label` and `list_all_recipes` (Phase 1,
+docs/STANDARDS_AND_PROFILES_PHASES.md) exist specifically for
+`app.services.standards.repository`, the `CatalogRepository`
+implementation the generic catalog loader drives.
 """
 
 from typing import Any
@@ -45,10 +49,33 @@ async def list_standards(db: AsyncSession) -> list[Recipe]:
     return list((await db.execute(stmt)).scalars().all())
 
 
+async def list_all_recipes(db: AsyncSession) -> list[Recipe]:
+    """Every recipe row, reviewed and ad-hoc alike -- unlike
+    `list_standards`'s `label IS NOT NULL` filter, this is what
+    `CatalogRepository.list_all` needs so a `catalog-status` report can
+    show every row a YAML file doesn't account for.
+    """
+    stmt = select(Recipe).order_by(Recipe.id)
+    return list((await db.execute(stmt)).scalars().all())
+
+
 async def get_recipe_by_hash(db: AsyncSession, hash_value: str) -> Recipe | None:
     """The identity lookup the hash exists for: same content, same row."""
     stmt = select(Recipe).where(Recipe.hash == hash_value)
     return (await db.execute(stmt)).scalar_one_or_none()
+
+
+async def get_recipe_by_label(db: AsyncSession, label: str) -> Recipe | None:
+    """The label-conflict lookup the catalog loader needs (S-T3):
+    `recipe.label` carries no `UNIQUE` constraint until Phase 3, so this
+    must tolerate more than one row sharing a label rather than raising
+    -- `scalar_one_or_none()` would raise `MultipleResultsFound` on
+    exactly the duplicate-label state this lookup exists to detect.
+    `.limit(1)` plus the first match is enough: the loader only needs to
+    know *a* conflicting row exists, to report it and stop.
+    """
+    stmt = select(Recipe).where(Recipe.label == label).limit(1)
+    return (await db.execute(stmt)).scalars().first()
 
 
 async def get_recipe(db: AsyncSession, recipe_id: int) -> Recipe | None:
