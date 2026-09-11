@@ -14,6 +14,7 @@ structural typing is the point of a `Protocol`, and neither
 either.
 """
 
+from collections.abc import Sequence
 from typing import Any, Protocol, TypeVar
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -52,6 +53,8 @@ class CatalogRepository(Protocol[RowT]):
 
     async def get_by_label(self, db: AsyncSession, label: str) -> RowT | None: ...
 
+    async def get_by_id(self, db: AsyncSession, row_id: int) -> RowT | None: ...
+
     async def list_all(self, db: AsyncSession) -> list[RowT]: ...
 
     async def insert(
@@ -68,5 +71,29 @@ class CatalogRepository(Protocol[RowT]):
         implementation is correct there (see
         `app.services.sampling_profiles.repository`,
         `app.services.serving_profiles.repository`).
+        """
+        ...
+
+    async def referencing_counts(
+        self, db: AsyncSession, row_ids: Sequence[int]
+    ) -> dict[int, dict[str, int]]:
+        """S-D10's first deletion guard, batched: for every id in
+        `row_ids`, how many rows of each referencing table point at it
+        -- e.g. `{7: {"eval_run": 3}, 9: {"checkpoint": 1}}`. A row with
+        no referencing rows at all is simply absent from the result
+        (Phase 6, Build item 3): one grouped `SELECT ... GROUP BY`
+        per referencing column, never one query per row, so a
+        `catalog-status` call over a few hundred ad-hoc rows stays a
+        handful of round trips.
+        """
+        ...
+
+    async def delete(self, db: AsyncSession, row: RowT) -> None:
+        """Delete this row. Flushes but deliberately does **not**
+        commit -- `app.services.catalog.deletion.prune_ad_hoc_rows`
+        wraps each row's delete in its own `db.begin_nested()` savepoint
+        (S-T27) so one row losing a race against a concurrent submit's
+        new foreign key doesn't roll back every row already removed in
+        the same prune; the caller commits once, after the whole loop.
         """
         ...

@@ -17,6 +17,8 @@ import yaml
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.catalog import CatalogEntryStatus, CatalogStatus
+from app.services.catalog.deletion import annotate_deletability
+from app.services.catalog.paths import source_yaml_path
 from app.services.catalog.ports import CatalogRepository, RowT
 from app.services.content_hash import content_hash
 
@@ -46,8 +48,19 @@ def _conflict_resolution_hint() -> str:
     """The one piece of advice a label conflict needs, in one place so
     the loader's exception message and the `catalog-status` `detail`
     text can't drift apart from each other.
+
+    Phase 6 makes "delete the existing row" a real, callable action --
+    but only once no file claims its label (S-D10's second guard is
+    literal), and the very file causing this conflict is, by
+    definition, sitting at that label's path right now. So deleting
+    the old row needs that file gone or renamed first -- a git-level
+    edit to catalog/, per S-D30, not something the API does.
     """
-    return "bump the version in the label, or delete the existing row and reload"
+    return (
+        "bump the version in the label to load this as a new row, or remove/rename this "
+        "file (deletion is blocked while a file claims the label) and delete the existing "
+        "row, then reload"
+    )
 
 
 async def load_catalog(
@@ -146,6 +159,11 @@ async def catalog_status(
         if row.id in claimed_row_ids:
             continue
         entries.append(_status_for_unclaimed_row(row))
+
+    # Phase 6: fill in `deletable` (and fold any blocker into `detail`)
+    # for every entry with a row_id, so this one call is also what
+    # Phase 7's delete UI reads -- no second round trip per row.
+    entries = await annotate_deletability(db, catalog_dir, repository, entries)
 
     return CatalogStatus(catalog=repository.name, entries=entries)
 
@@ -263,15 +281,15 @@ def read_source_yaml(
     catalog_dir: Path, repository: CatalogRepository[RowT], label: str
 ) -> str | None:
     """The raw text of the YAML file a labelled row was loaded from,
-    keyed off `label` via the `/` -> `-` filename convention. Read fresh
-    on every call rather than cached or stored: this is a low-traffic
-    internal page and the files are small and local, so there's nothing
-    to optimise yet.
+    keyed off `label` via `source_yaml_path`'s `/` -> `-` filename
+    convention. Read fresh on every call rather than cached or stored:
+    this is a low-traffic internal page and the files are small and
+    local, so there's nothing to optimise yet.
 
     Returns `None` (logged) if the file has since been moved or deleted
     -- the row is immutable and outlives the file that created it.
     """
-    path = catalog_dir / repository.directory_name / f"{label.replace('/', '-')}.yaml"
+    path = source_yaml_path(catalog_dir, repository, label)
     try:
         return path.read_text()
     except OSError:

@@ -4,6 +4,7 @@ Phase 2). The generic loader in `app.services.catalog.loader` reads and
 writes `sampling_profile` rows only through this class.
 """
 
+from collections.abc import Sequence
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,6 +30,9 @@ class SamplingProfilesRepository:
     async def get_by_label(self, db: AsyncSession, label: str) -> SamplingProfile | None:
         return await sampling_profiles_queries.get_sampling_profile_by_label(db, label)
 
+    async def get_by_id(self, db: AsyncSession, row_id: int) -> SamplingProfile | None:
+        return await sampling_profiles_queries.get_sampling_profile(db, row_id)
+
     async def list_all(self, db: AsyncSession) -> list[SamplingProfile]:
         return await sampling_profiles_queries.list_all_sampling_profiles(db)
 
@@ -52,6 +56,14 @@ class SamplingProfilesRepository:
         nothing on this row needs to change.
         """
         return None
+
+    async def referencing_counts(
+        self, db: AsyncSession, row_ids: Sequence[int]
+    ) -> dict[int, dict[str, int]]:
+        return await sampling_profiles_queries.get_sampling_profile_referencing_counts(db, row_ids)
+
+    async def delete(self, db: AsyncSession, row: SamplingProfile) -> None:
+        await sampling_profiles_queries.delete_sampling_profile(db, row)
 
 
 # One instance, imported directly by callers -- no factory function

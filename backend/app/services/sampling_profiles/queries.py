@@ -6,10 +6,12 @@ implementation the generic catalog loader drives), the GET
 Mirrors `app.services.serving_profiles.queries` exactly.
 """
 
-from sqlalchemy import select
+from collections.abc import Sequence
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import SamplingProfile
+from app.models import Checkpoint, EvalRun, SamplingProfile
 from app.schemas.sampling_profiles import SamplingProfileConfig, SamplingProfileSummary
 
 
@@ -91,3 +93,43 @@ async def insert_sampling_profile(
     await db.flush()  # populates profile.id via Postgres RETURNING
     await db.commit()
     return profile
+
+
+async def get_sampling_profile_referencing_counts(
+    db: AsyncSession, sampling_profile_ids: Sequence[int]
+) -> dict[int, dict[str, int]]:
+    """S-D10's first deletion guard: how many `eval_run` rows resolved
+    to, and how many checkpoints default to, each id in
+    `sampling_profile_ids` -- the two referencing columns S-T24 lists
+    for this table. One grouped query per column, never one query per
+    row, so a catalog-status call over a few hundred rows stays cheap.
+    """
+    counts: dict[int, dict[str, int]] = {}
+
+    eval_run_stmt = (
+        select(EvalRun.sampling_profile_id, func.count())
+        .where(EvalRun.sampling_profile_id.in_(sampling_profile_ids))
+        .group_by(EvalRun.sampling_profile_id)
+    )
+    for sampling_profile_id, count in (await db.execute(eval_run_stmt)).all():
+        counts.setdefault(sampling_profile_id, {})["eval_run"] = count
+
+    checkpoint_stmt = (
+        select(Checkpoint.default_sampling_profile_id, func.count())
+        .where(Checkpoint.default_sampling_profile_id.in_(sampling_profile_ids))
+        .group_by(Checkpoint.default_sampling_profile_id)
+    )
+    for sampling_profile_id, count in (await db.execute(checkpoint_stmt)).all():
+        counts.setdefault(sampling_profile_id, {})["checkpoint"] = count
+
+    return counts
+
+
+async def delete_sampling_profile(db: AsyncSession, profile: SamplingProfile) -> None:
+    """Delete this row. Flushes but deliberately does not commit -- see
+    `CatalogRepository.delete`'s docstring: prune wraps each row's
+    delete in its own savepoint (S-T27), so this function must leave
+    the outer transaction open for the caller to commit once.
+    """
+    await db.delete(profile)
+    await db.flush()

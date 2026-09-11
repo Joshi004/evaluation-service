@@ -10,8 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.models import Standard
-from app.schemas.catalog import CatalogStatus
+from app.schemas.catalog import CatalogPruneResult, CatalogStatus
 from app.schemas.standards import StandardSummary
+from app.services.catalog import deletion as catalog_deletion
 from app.services.catalog import loader as catalog_loader
 from app.services.standards import queries as standards_queries
 from app.services.standards.capabilities import sampling_field_warnings
@@ -34,6 +35,22 @@ async def reload_standards(db: AsyncSession) -> list[StandardSummary]:
 async def get_catalog_status(db: AsyncSession) -> CatalogStatus:
     catalog_dir = Path(get_settings().catalog_dir)
     return await catalog_loader.catalog_status(db, catalog_dir, standards_repository)
+
+
+async def delete_standard(db: AsyncSession, standard_id: int) -> bool:
+    """`False` for an unknown id (router: 404). Raises
+    `DeletionBlockedError`, uncaught here -- the router maps it to 409,
+    the same layer `SubmitValidationError` -> 400 already uses.
+    """
+    catalog_dir = Path(get_settings().catalog_dir)
+    return await catalog_deletion.delete_catalog_row(
+        db, catalog_dir, standards_repository, standard_id
+    )
+
+
+async def prune_standards(db: AsyncSession) -> CatalogPruneResult:
+    deleted_ids = await catalog_deletion.prune_ad_hoc_rows(db, standards_repository)
+    return CatalogPruneResult(deleted_ids=deleted_ids)
 
 
 def _to_standard_summary(standard: Standard, catalog_dir: Path) -> StandardSummary:

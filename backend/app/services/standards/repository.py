@@ -7,6 +7,7 @@ directly.
 """
 
 import logging
+from collections.abc import Sequence
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,6 +35,9 @@ class StandardsRepository:
 
     async def get_by_label(self, db: AsyncSession, label: str) -> Standard | None:
         return await standards_queries.get_standard_by_label(db, label)
+
+    async def get_by_id(self, db: AsyncSession, row_id: int) -> Standard | None:
+        return await standards_queries.get_standard(db, row_id)
 
     async def list_all(self, db: AsyncSession) -> list[Standard]:
         return await standards_queries.list_all_standards(db)
@@ -68,6 +72,14 @@ class StandardsRepository:
             old_values,
             changed,
         )
+
+    async def referencing_counts(
+        self, db: AsyncSession, row_ids: Sequence[int]
+    ) -> dict[int, dict[str, int]]:
+        return await standards_queries.get_standard_referencing_counts(db, row_ids)
+
+    async def delete(self, db: AsyncSession, row: Standard) -> None:
+        await standards_queries.delete_standard(db, row)
 
 
 # One instance, imported directly by callers -- no factory function

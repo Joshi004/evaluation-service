@@ -6,12 +6,13 @@ implementation the generic catalog loader drives), by
 `app.services.standards.resolve`, and by the runs submit/preview path.
 """
 
+from collections.abc import Sequence
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Standard
+from app.models import EvalRun, Standard
 
 
 async def list_standards(db: AsyncSession, *, include_ad_hoc: bool) -> list[Standard]:
@@ -96,3 +97,32 @@ async def update_standard_columns(
     for column, value in columns.items():
         setattr(standard, column, value)
     await db.commit()
+
+
+async def get_standard_referencing_counts(
+    db: AsyncSession, standard_ids: Sequence[int]
+) -> dict[int, dict[str, int]]:
+    """S-D10's first deletion guard: how many `eval_run` rows point at
+    each id in `standard_ids`. `standard_id` is the only referencing
+    column (S-T24 -- checkpoint and endpoint reference sampling_profile
+    and serving_profile, never standard directly), so one grouped query
+    covers it; a row absent from the result has zero references.
+    """
+    stmt = (
+        select(EvalRun.standard_id, func.count())
+        .where(EvalRun.standard_id.in_(standard_ids))
+        .group_by(EvalRun.standard_id)
+    )
+    return {
+        standard_id: {"eval_run": count} for standard_id, count in (await db.execute(stmt)).all()
+    }
+
+
+async def delete_standard(db: AsyncSession, standard: Standard) -> None:
+    """Delete this row. Flushes but deliberately does not commit -- see
+    `CatalogRepository.delete`'s docstring: prune wraps each row's
+    delete in its own savepoint (S-T27), so this function must leave
+    the outer transaction open for the caller to commit once.
+    """
+    await db.delete(standard)
+    await db.flush()

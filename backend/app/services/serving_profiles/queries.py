@@ -8,10 +8,12 @@ docs/STANDARDS_AND_PROFILES_PHASES.md) exist for
 implementation the generic catalog loader drives.
 """
 
-from sqlalchemy import select
+from collections.abc import Sequence
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import ServingProfile
+from app.models import Checkpoint, Endpoint, EvalRun, ServingProfile
 from app.schemas.serving_profiles import ServingProfileConfig, ServingProfileSummary
 
 
@@ -93,3 +95,53 @@ async def insert_serving_profile(
     await db.flush()  # populates profile.id via Postgres RETURNING
     await db.commit()
     return profile
+
+
+async def get_serving_profile_referencing_counts(
+    db: AsyncSession, serving_profile_ids: Sequence[int]
+) -> dict[int, dict[str, int]]:
+    """S-D10's first deletion guard: how many `eval_run`, `endpoint`,
+    and checkpoint-default rows point at each id in
+    `serving_profile_ids` -- the three referencing columns S-T24 lists
+    for this table (S-T12 keeps `eval_run.serving_profile_id` and
+    `endpoint.serving_profile_id` counted separately even though they
+    share a name). One grouped query per column, never one query per
+    row.
+    """
+    counts: dict[int, dict[str, int]] = {}
+
+    eval_run_stmt = (
+        select(EvalRun.serving_profile_id, func.count())
+        .where(EvalRun.serving_profile_id.in_(serving_profile_ids))
+        .group_by(EvalRun.serving_profile_id)
+    )
+    for serving_profile_id, count in (await db.execute(eval_run_stmt)).all():
+        counts.setdefault(serving_profile_id, {})["eval_run"] = count
+
+    endpoint_stmt = (
+        select(Endpoint.serving_profile_id, func.count())
+        .where(Endpoint.serving_profile_id.in_(serving_profile_ids))
+        .group_by(Endpoint.serving_profile_id)
+    )
+    for serving_profile_id, count in (await db.execute(endpoint_stmt)).all():
+        counts.setdefault(serving_profile_id, {})["endpoint"] = count
+
+    checkpoint_stmt = (
+        select(Checkpoint.default_serving_profile_id, func.count())
+        .where(Checkpoint.default_serving_profile_id.in_(serving_profile_ids))
+        .group_by(Checkpoint.default_serving_profile_id)
+    )
+    for serving_profile_id, count in (await db.execute(checkpoint_stmt)).all():
+        counts.setdefault(serving_profile_id, {})["checkpoint"] = count
+
+    return counts
+
+
+async def delete_serving_profile(db: AsyncSession, profile: ServingProfile) -> None:
+    """Delete this row. Flushes but deliberately does not commit -- see
+    `CatalogRepository.delete`'s docstring: prune wraps each row's
+    delete in its own savepoint (S-T27), so this function must leave
+    the outer transaction open for the caller to commit once.
+    """
+    await db.delete(profile)
+    await db.flush()

@@ -66,3 +66,13 @@ class CatalogStatus(BaseModel):
 
     catalog: str
     entries: list[CatalogEntryStatus]
+
+
+class CatalogPruneResult(BaseModel):
+    """The response of `POST /{resource}/prune` (Phase 6, S-D31): every
+    id actually removed, not a bare count -- so the caller can see
+    exactly what went, the same reason `DeletionBlocker` never
+    collapses its reasons into "cannot delete".
+    """
+
+    deleted_ids: list[int]
