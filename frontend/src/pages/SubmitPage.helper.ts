@@ -8,7 +8,7 @@
 // continuous typing.
 
 import { useEffect, useState } from 'react'
-import type { CheckpointListItem, StandardSummary } from '../api/client'
+import type { CheckpointListItem, SamplingProfileSummary, StandardSummary } from '../api/client'
 
 export function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value)
@@ -29,4 +29,10 @@ export function checkpointsById(
   checkpoints: CheckpointListItem[] | undefined,
 ): Map<number, CheckpointListItem> {
   return new Map((checkpoints ?? []).map((checkpoint) => [checkpoint.id, checkpoint]))
+}
+
+export function samplingProfilesById(
+  samplingProfiles: SamplingProfileSummary[] | undefined,
+): Map<number, SamplingProfileSummary> {
+  return new Map((samplingProfiles ?? []).map((profile) => [profile.id, profile]))
 }

@@ -8,14 +8,17 @@ import { PhaseProgress } from '../components/PhaseProgress/PhaseProgress'
 import { StatusBadge } from '../components/StatusBadge/StatusBadge'
 import { formatElapsedTime } from '../utils/formatElapsedTime'
 import { formatFractionAsPercent } from '../utils/formatFractionAsPercent'
+import { servingProfileDisplayName } from '../utils/servingProfileDisplayName'
 import { standardDisplayName } from '../utils/standardDisplayName'
 import {
   displayOrDash,
   formatTimestamp,
   samplingFieldRows,
+  servingFieldRows,
   standardFieldRows,
   type FieldRow,
 } from './RunDetailPage.helper'
+import { engineOptionEntries } from './ServingProfilesPage.helper'
 
 const LOG_SOURCES: { value: LogSource; label: string }[] = [
   { value: 'harness', label: 'Harness' },
@@ -149,6 +152,25 @@ export function RunDetailPage() {
                 {run.data.sampling.warnings.map((warning) => (
                   <li key={warning.field} className="text-xs text-amber-400">
                     {warning.field}: {warning.message}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section className="mt-6 rounded-lg border border-slate-800 bg-slate-900 p-4">
+            <h2 className="text-sm font-medium text-slate-300">
+              Resolved serving profile —{' '}
+              {servingProfileDisplayName(run.data.serving.label, run.data.serving.hash)}
+            </h2>
+            <div className="mt-3">
+              <FieldGrid rows={servingFieldRows(run.data.serving)} />
+            </div>
+            {engineOptionEntries(run.data.serving).length > 0 && (
+              <ul className="mt-4 space-y-1 text-xs text-slate-400">
+                {engineOptionEntries(run.data.serving).map(([key, value]) => (
+                  <li key={key}>
+                    {key}: <span className="font-mono text-slate-200">{String(value)}</span>
                   </li>
                 ))}
               </ul>

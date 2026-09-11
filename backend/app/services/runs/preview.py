@@ -24,6 +24,7 @@ from app.schemas.runs import (
     RunPreviewPair,
 )
 from app.services.compatibility.validator import validate_compatibility
+from app.services.runs.comparison import comparison_hash
 from app.services.runs.submit import (
     load_base_sampling_profiles_by_checkpoint,
     load_base_standards,
@@ -70,22 +71,28 @@ async def preview_runs(
     resolved_sampling: list[ResolvedSamplingPreview] = []
     for base_standard in base_standards:
         standard_config = base_standard.as_hashable_dict() | standard_overrides
-        resolved_standards.append(
-            await _preview_resolved_standard(db, base_standard, standard_config)
-        )
+        resolved_standard = await _preview_resolved_standard(db, base_standard, standard_config)
+        resolved_standards.append(resolved_standard)
         for checkpoint, serving_profile in checkpoints_and_profiles:
             base_sampling_profile = base_sampling_profile_by_checkpoint_id[checkpoint.id]
             sampling_config = merge_sampling_config(
                 base_sampling_profile, base_standard, sampling_overrides
             )
+            # Computed before the pair below so its comparison_hash can
+            # be included -- Phase 8 shows the value that decides
+            # leaderboard grouping before the run, not only after.
+            resolved_sampling_preview = await _preview_resolved_sampling(
+                db, checkpoint, base_standard, base_sampling_profile, sampling_config
+            )
+            resolved_sampling.append(resolved_sampling_preview)
             pairs.append(
                 _preview_pair(
-                    checkpoint, base_standard, standard_config, sampling_config, serving_profile
-                )
-            )
-            resolved_sampling.append(
-                await _preview_resolved_sampling(
-                    db, checkpoint, base_standard, base_sampling_profile, sampling_config
+                    checkpoint,
+                    base_standard,
+                    standard_config,
+                    sampling_config,
+                    serving_profile,
+                    comparison_hash(resolved_standard.hash, resolved_sampling_preview.hash),
                 )
             )
 
@@ -113,6 +120,7 @@ def _preview_pair(
     standard_config: dict[str, Any],
     sampling_config: dict[str, Any],
     serving_profile: ServingProfile,
+    pair_comparison_hash: str,
 ) -> RunPreviewPair:
     report = validate_compatibility(checkpoint, serving_profile, standard_config, sampling_config)
     return RunPreviewPair(
@@ -129,6 +137,7 @@ def _preview_pair(
         blocking_error=(
             "; ".join(finding.message for finding in report.errors) if report.errors else None
         ),
+        comparison_hash=pair_comparison_hash,
     )
 
 

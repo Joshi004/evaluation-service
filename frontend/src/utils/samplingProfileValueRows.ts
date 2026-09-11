@@ -1,6 +1,8 @@
-// Non-DOM logic for SamplingProfilesPage.tsx: reshaping a
-// SamplingProfileSummary into the label/value rows its expanded row
-// renders.
+// Reshapes a SamplingProfileSummary into the label/value rows a value
+// table renders. Promoted here from SamplingProfilesPage.helper.ts once
+// SamplingProfilePicker needed the same rows for its read-only display
+// of the chosen profile (frontend-components.mdc: a second consumer is
+// what promotes page-local logic to src/utils/).
 import type { SamplingProfileSummary } from '../api/client'
 
 export interface SamplingProfileValueRow {

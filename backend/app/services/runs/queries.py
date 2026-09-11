@@ -31,6 +31,7 @@ from app.schemas.runs import (
     RunSamplingDetail,
     RunStandardDetail,
 )
+from app.services.serving_profiles.queries import to_serving_profile_summary
 from app.services.standards.capabilities import sampling_field_warnings
 
 _ACTIVE_STATUSES = ("queued", "running")
@@ -183,15 +184,15 @@ def _to_run_sampling_detail(sampling_profile: SamplingProfile, framework: str) -
 
 async def get_run_detail(db: AsyncSession, eval_run_id: int) -> RunDetail | None:
     """Everything the run detail page needs: the enriched row (shared
-    with list_runs/get_run_list_item), the fully resolved standard and
-    sampling profile, the endpoint it ran against (None if it never got
-    one -- Phase 5's known cancel-before-endpoint gap), and its metric
-    rows.
+    with list_runs/get_run_list_item), the fully resolved standard,
+    sampling profile and serving profile, the endpoint it ran against
+    (None if it never got one -- Phase 5's known cancel-before-endpoint
+    gap), and its metric rows.
 
-    Five small queries rather than one giant join: Standard,
-    SamplingProfile, and Metric each have their own multi-column shape a
-    single flat SELECT would otherwise have to repeat once per metric
-    row.
+    Six small queries rather than one giant join: Standard,
+    SamplingProfile, ServingProfile, and Metric each have their own
+    multi-column shape a single flat SELECT would otherwise have to
+    repeat once per metric row.
     """
     run_list_item = await get_run_list_item(db, eval_run_id)
     if run_list_item is None:
@@ -205,6 +206,13 @@ async def get_run_detail(db: AsyncSession, eval_run_id: int) -> RunDetail | None
 
     sampling_profile = await db.get(SamplingProfile, eval_run.sampling_profile_id)
     assert sampling_profile is not None  # eval_run.sampling_profile_id is a NOT NULL foreign key
+
+    # The run's own recorded profile (S-T12), not
+    # `checkpoint.default_serving_profile_id` -- the two can differ the
+    # moment a submit ever picks a profile explicitly, and this page
+    # must show what the run actually ran against.
+    serving_profile = await db.get(ServingProfile, eval_run.serving_profile_id)
+    assert serving_profile is not None  # eval_run.serving_profile_id is a NOT NULL foreign key
 
     endpoint_summary = None
     if eval_run.endpoint_id is not None:
@@ -226,6 +234,7 @@ async def get_run_detail(db: AsyncSession, eval_run_id: int) -> RunDetail | None
         comparison_hash=eval_run.comparison_hash,
         standard=_to_run_standard_detail(standard),
         sampling=_to_run_sampling_detail(sampling_profile, standard.framework),
+        serving=to_serving_profile_summary(serving_profile),
         endpoint=endpoint_summary,
         metrics=[
             RunMetric(name=m.name, value=m.value, n_samples=m.n_samples, is_primary=m.is_primary)

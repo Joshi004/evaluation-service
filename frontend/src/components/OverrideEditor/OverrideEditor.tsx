@@ -105,6 +105,10 @@ export function OverrideEditor({ draft, onChange }: OverrideEditorProps) {
 
       <div>
         <h3 className="text-sm font-medium text-slate-300">Sampling</h3>
+        <p className="mt-1 text-xs text-slate-500">
+          Applies on top of the selected sampling profile (or each checkpoint's default) and anything the
+          standard itself mandates for this benchmark.
+        </p>
         <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
           <NumberField
             label="Temperature"

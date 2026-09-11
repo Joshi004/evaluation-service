@@ -4,7 +4,7 @@
 // component body per .cursor/rules/frontend-components.mdc -- "data
 // should already be in the shape it needs by the time it reaches JSX."
 
-import type { RunSamplingDetail, RunStandardDetail } from '../api/client'
+import type { RunSamplingDetail, RunStandardDetail, ServingProfileSummary } from '../api/client'
 
 export function formatTimestamp(value: string | null): string {
   return value === null ? '—' : new Date(value).toLocaleString()
@@ -69,5 +69,27 @@ export function samplingFieldRows(sampling: RunSamplingDetail): FieldRow[] {
     { label: 'Max tokens', value: displayOrDash(sampling.max_tokens) },
     { label: 'Enable thinking', value: displayOrDash(sampling.enable_thinking) },
     { label: 'Seed', value: displayOrDash(sampling.seed) },
+  ]
+}
+
+// The fields a human needs to know exactly how the model's server was
+// started, from the run's own recorded serving profile (S-T12: this is
+// eval_run.serving_profile_id, not necessarily the checkpoint's current
+// default). engine_options is left out -- its keys vary per profile, so
+// RunDetailPage renders it as its own list below this grid, the same
+// call ServingProfilesPage.helper.ts's buildServingValueRows already
+// made for the Serving Profiles page.
+export function servingFieldRows(serving: ServingProfileSummary): FieldRow[] {
+  return [
+    { label: 'Engine', value: serving.engine },
+    { label: 'Engine version', value: serving.engine_version },
+    { label: 'GPUs', value: String(serving.gpus) },
+    { label: 'Tensor parallel size', value: String(serving.tensor_parallel_size) },
+    { label: 'Pipeline parallel size', value: String(serving.pipeline_parallel_size) },
+    { label: 'Max model length', value: displayOrDash(serving.max_model_len) },
+    { label: 'Reasoning parser', value: serving.reasoning_parser ?? '—' },
+    { label: 'Dtype', value: serving.dtype },
+    { label: 'Quantization', value: serving.quantization ?? '—' },
+    { label: 'GPU memory utilization', value: String(serving.gpu_memory_utilization) },
   ]
 }

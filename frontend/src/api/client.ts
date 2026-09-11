@@ -256,6 +256,10 @@ export interface LeaderboardRow {
   label: string | null
   comparison_hash: string
   sampling_profile_label: string | null
+  // label is null for an ad-hoc sampling profile -- the hash is what
+  // still tells two such columns for the same benchmark apart once the
+  // pivot keys on comparison_hash (Phase 8).
+  sampling_profile_hash: string
   metric_name: string
   metric_value: number
   n_samples: number | null
@@ -498,10 +502,11 @@ export interface RunPreviewPair {
   benchmark: string
   errors: CompatibilityFinding[]
   warnings: CompatibilityFinding[]
-  // Joined from `errors` the same way submit.py itself joins them
-  // before raising a 400 -- so this and a real submit can never
-  // disagree about what a value does.
-  blocking_error: string | null
+  // What this pair's run would actually be grouped under on the
+  // leaderboard (S-D5) -- shown before the run, not only discovered on
+  // the leaderboard afterwards (docs/STANDARDS_AND_PROFILES_PHASES.md
+  // Phase 8).
+  comparison_hash: string
 }
 
 // One field an override would change from its base value -- equally
@@ -627,16 +632,22 @@ export interface RunSamplingDetail {
 }
 
 // GET /api/v1/runs/{id} -- the full row (RunListItem) plus what a human
-// reads to actually understand what happened: the resolved standard and
-// sampling profile, the comparison_hash they produced (S-D5 -- what the
-// leaderboard groups by), the endpoint it ran against (or null if it
-// never got one -- Phase 5's known cancel-before-endpoint gap), its
-// output directory, and its metric rows.
+// reads to actually understand what happened: the resolved standard,
+// sampling profile and serving profile, the comparison_hash they
+// produced (S-D5 -- what the leaderboard groups by), the endpoint it
+// ran against (or null if it never got one -- Phase 5's known
+// cancel-before-endpoint gap), its output directory, and its metric
+// rows. `serving` is the run's own recorded profile (S-T12), not
+// necessarily the checkpoint's current default -- reuses
+// ServingProfileSummary rather than a fourth resolved-detail type,
+// since nothing about a serving profile's shape changes for the run
+// context.
 export interface RunDetail extends RunListItem {
   output_dir: string | null
   comparison_hash: string
   standard: RunStandardDetail
   sampling: RunSamplingDetail
+  serving: ServingProfileSummary
   endpoint: RunEndpointSummary | null
   metrics: RunMetric[]
 }

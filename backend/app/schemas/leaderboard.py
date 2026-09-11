@@ -1,8 +1,9 @@
 """Response shape for GET /api/v1/leaderboard.
 
 One row per (checkpoint, comparison_hash) pair -- pivoting that into
-"checkpoints as rows, benchmarks as columns" is a frontend concern
-(frontend/src/pages/LeaderboardPage.helper.ts), not this API's job.
+"checkpoints as rows, comparison hashes as columns" is a frontend
+concern (frontend/src/pages/LeaderboardPage.helper.ts), not this API's
+job.
 """
 
 from datetime import datetime
@@ -21,6 +22,10 @@ class LeaderboardRow(BaseModel):
     # sampling profile, not just the standard.
     comparison_hash: str
     sampling_profile_label: str | None
+    # label is null for an ad-hoc sampling profile -- the hash is what
+    # still tells two such columns for the same benchmark apart once
+    # the frontend pivot keys on comparison_hash (Phase 8).
+    sampling_profile_hash: str
     metric_name: str
     metric_value: float
     n_samples: int | None

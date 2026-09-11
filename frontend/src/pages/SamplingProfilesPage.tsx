@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { apiFetch, type SamplingProfileSummary } from '../api/client'
 import { CatalogPanel } from '../components/CatalogPanel/CatalogPanel'
 import { samplingProfileDisplayName } from '../utils/samplingProfileDisplayName'
-import { buildSamplingValueRows } from './SamplingProfilesPage.helper'
+import { buildSamplingValueRows } from '../utils/samplingProfileValueRows'
 
 export function SamplingProfilesPage() {
   const { data, isLoading, isError, error } = useQuery({

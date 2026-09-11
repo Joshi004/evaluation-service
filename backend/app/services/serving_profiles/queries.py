@@ -17,31 +17,38 @@ from app.models import Checkpoint, Endpoint, EvalRun, ServingProfile
 from app.schemas.serving_profiles import ServingProfileConfig, ServingProfileSummary
 
 
+def to_serving_profile_summary(profile: ServingProfile) -> ServingProfileSummary:
+    """One serving profile row, shaped for the wire -- shared by
+    `list_serving_profiles` below and `runs.queries.get_run_detail`
+    (Phase 8, docs/STANDARDS_AND_PROFILES_PHASES.md), so a run's
+    resolved serving profile and the Serving Profiles page can never
+    drift onto two different field lists.
+    """
+    return ServingProfileSummary(
+        id=profile.id,
+        hash=profile.hash,
+        label=profile.label,
+        engine=profile.engine,
+        engine_version=profile.engine_version,
+        gpus=profile.gpus,
+        tensor_parallel_size=profile.tensor_parallel_size,
+        pipeline_parallel_size=profile.pipeline_parallel_size,
+        max_model_len=profile.max_model_len,
+        reasoning_parser=profile.reasoning_parser,
+        dtype=profile.dtype,
+        quantization=profile.quantization,
+        gpu_memory_utilization=profile.gpu_memory_utilization,
+        engine_options=profile.engine_options,
+    )
+
+
 async def list_serving_profiles(db: AsyncSession) -> list[ServingProfileSummary]:
     """Every serving profile ever hashed, labelled standard or ad-hoc
     customisation alike -- mirrors `standards.queries.list_standards`.
     """
     stmt = select(ServingProfile).order_by(ServingProfile.created_at)
     profiles = (await db.execute(stmt)).scalars().all()
-    return [
-        ServingProfileSummary(
-            id=profile.id,
-            hash=profile.hash,
-            label=profile.label,
-            engine=profile.engine,
-            engine_version=profile.engine_version,
-            gpus=profile.gpus,
-            tensor_parallel_size=profile.tensor_parallel_size,
-            pipeline_parallel_size=profile.pipeline_parallel_size,
-            max_model_len=profile.max_model_len,
-            reasoning_parser=profile.reasoning_parser,
-            dtype=profile.dtype,
-            quantization=profile.quantization,
-            gpu_memory_utilization=profile.gpu_memory_utilization,
-            engine_options=profile.engine_options,
-        )
-        for profile in profiles
-    ]
+    return [to_serving_profile_summary(profile) for profile in profiles]
 
 
 async def get_serving_profile(db: AsyncSession, serving_profile_id: int) -> ServingProfile | None:

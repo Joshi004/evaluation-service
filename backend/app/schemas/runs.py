@@ -12,6 +12,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.compatibility import CompatibilityFinding
+from app.schemas.serving_profiles import ServingProfileSummary
 from app.schemas.standards import SamplingFieldWarning
 
 
@@ -165,6 +166,12 @@ class RunPreviewPair(BaseModel):
     and a real submit can never disagree about what a value does, and
     the existing Submit page keeps working unchanged until Phase 8
     renders the structured lists instead.
+
+    `comparison_hash` is what this pair's run would actually be grouped
+    under on the leaderboard (S-D5) -- computed from this same standard
+    and resolved-sampling hash pair, via the one `comparison_hash()`
+    definition in `app.services.runs.comparison` (S-D23). Phase 8 shows
+    it before the run, not only after, on the leaderboard.
     """
 
     checkpoint_id: int
@@ -175,6 +182,7 @@ class RunPreviewPair(BaseModel):
     errors: list[CompatibilityFinding]
     warnings: list[CompatibilityFinding]
     blocking_error: str | None
+    comparison_hash: str
 
 
 class FieldChange(BaseModel):
@@ -329,15 +337,24 @@ class RunSamplingDetail(BaseModel):
 class RunDetail(RunListItem):
     """GET /api/v1/runs/{id} -- the full row (RunListItem), plus what a
     human reads to actually understand what happened: the resolved
-    standard and sampling profile, the `comparison_hash` they produced,
-    the endpoint it ran against (or None if it never got one -- Phase
-    5's known cancel-before-endpoint gap), its output directory, and its
-    metric rows.
+    standard, sampling profile and serving profile, the
+    `comparison_hash` they produced, the endpoint it ran against (or
+    None if it never got one -- Phase 5's known cancel-before-endpoint
+    gap), its output directory, and its metric rows.
+
+    `serving` is the run's own `eval_run.serving_profile_id`, not the
+    checkpoint's current default (S-T12) -- the two can differ the
+    moment a submit ever picks a profile explicitly, and this run's page
+    must show what it actually ran against. Reuses `ServingProfileSummary`
+    rather than a fourth resolved-detail schema: nothing about a serving
+    profile's shape needs to change for the run context, unlike the
+    standard/sampling split.
     """
 
     output_dir: str | None
     comparison_hash: str
     standard: RunStandardDetail
     sampling: RunSamplingDetail
+    serving: ServingProfileSummary
     endpoint: RunEndpointSummary | None
     metrics: list[RunMetric]

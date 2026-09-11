@@ -1,12 +1,19 @@
 import type {
   CheckpointListItem,
   FieldChange,
-  ResolvedSamplingPreview,
   ResolvedStandardPreview,
   RunPreview,
+  SamplingOverrides,
+  SamplingProfileSummary,
   StandardSummary,
 } from '../../api/client'
-import { formatPreviewValue, groupFindingsByCode, type GroupedFinding } from './DryRunPreview.helper'
+import {
+  comparisonHashByPair,
+  formatPreviewValue,
+  groupFindingsByCode,
+  type GroupedFinding,
+} from './DryRunPreview.helper'
+import { ResolvedSamplingCard } from './ResolvedSamplingCard'
 
 interface DryRunPreviewProps {
   preview: RunPreview | undefined
@@ -15,6 +22,11 @@ interface DryRunPreviewProps {
   error: unknown
   standardsById: Map<number, StandardSummary>
   checkpointsById: Map<number, CheckpointListItem>
+  samplingProfilesById: Map<number, SamplingProfileSummary>
+  // The submit's own sampling overrides (OverrideEditor's sampling
+  // half) -- the same object for every card, since S-D35 applies one
+  // sampling choice to the whole grid, not one per pair.
+  userSamplingOverrides: SamplingOverrides
 }
 
 interface FindingGroupItemProps {
@@ -47,10 +59,11 @@ function FindingGroupItem({ finding, textClassName }: FindingGroupItemProps) {
   )
 }
 
-// The before/after table shared by a resolved standard's card and a
-// resolved sampling profile's card below -- both are just "a base
-// config, merged with overrides" (FieldChange, app/schemas/runs.py).
-function ChangedFieldsTable({ changedFields }: { changedFields: FieldChange[] }) {
+// The before/after table shared by a resolved standard's card here and
+// a resolved sampling profile's card (ResolvedSamplingCard.tsx) -- both
+// are just "a base config, merged with overrides" (FieldChange,
+// app/schemas/runs.py). Exported for that second file to reuse.
+export function ChangedFieldsTable({ changedFields }: { changedFields: FieldChange[] }) {
   if (changedFields.length === 0) {
     return null
   }
@@ -101,52 +114,6 @@ function ResolvedStandardCard({ resolved, standardsById }: ResolvedStandardCardP
   )
 }
 
-interface ResolvedSamplingCardProps {
-  resolved: ResolvedSamplingPreview
-  standardsById: Map<number, StandardSummary>
-  checkpointsById: Map<number, CheckpointListItem>
-}
-
-// What resolve_sampling_profile would actually insert (or reuse) for
-// one (checkpoint, standard) pair -- one card per pair, since S-D4's
-// merge depends on both the checkpoint's own default sampling profile
-// and the standard's sampling_overrides, so the same submit-level
-// override can resolve to a different profile for every cell of the
-// grid.
-function ResolvedSamplingCard({ resolved, standardsById, checkpointsById }: ResolvedSamplingCardProps) {
-  const checkpoint = checkpointsById.get(resolved.checkpoint_id)
-  const standard = standardsById.get(resolved.standard_id)
-  return (
-    <div className="rounded border border-slate-800 bg-slate-950 p-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm text-slate-200">
-          {checkpoint?.name ?? resolved.checkpoint_id} × {standard?.label ?? resolved.standard_id}
-        </span>
-        <span className="font-mono text-xs text-slate-500">→ {resolved.hash}</span>
-        <span
-          className={
-            resolved.is_new_sampling_profile
-              ? 'rounded bg-amber-500/10 px-1.5 py-0.5 text-xs text-amber-300'
-              : 'rounded bg-slate-800 px-1.5 py-0.5 text-xs text-slate-400'
-          }
-        >
-          {resolved.is_new_sampling_profile ? 'new sampling profile, no label' : 'reuses existing sampling profile'}
-        </span>
-      </div>
-      <ChangedFieldsTable changedFields={resolved.changed_fields} />
-      {resolved.warnings.length > 0 && (
-        <ul className="mt-2 space-y-0.5">
-          {resolved.warnings.map((warning) => (
-            <li key={warning.field} className="text-xs text-amber-400">
-              {warning.field}: {warning.message}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  )
-}
-
 // Everything Submit needs to show before anything POSTs: how many runs
 // and GPUs (Trap T1 -- GPUs are per distinct checkpoint, not per run,
 // so this is the one number a human will actually act on), which
@@ -163,6 +130,8 @@ export function DryRunPreview({
   error,
   standardsById,
   checkpointsById,
+  samplingProfilesById,
+  userSamplingOverrides,
 }: DryRunPreviewProps) {
   if (isLoading) {
     return <p className="text-sm text-slate-500">Checking…</p>
@@ -178,6 +147,7 @@ export function DryRunPreview({
 
   const groupedErrors = groupFindingsByCode(preview.pairs, 'errors')
   const groupedWarnings = groupFindingsByCode(preview.pairs, 'warnings')
+  const comparisonHashes = comparisonHashByPair(preview.pairs)
 
   return (
     <div>
@@ -244,6 +214,9 @@ export function DryRunPreview({
             resolved={resolved}
             standardsById={standardsById}
             checkpointsById={checkpointsById}
+            samplingProfilesById={samplingProfilesById}
+            userSamplingOverrides={userSamplingOverrides}
+            comparisonHash={comparisonHashes.get(`${resolved.checkpoint_id}-${resolved.standard_id}`)}
           />
         ))}
       </div>

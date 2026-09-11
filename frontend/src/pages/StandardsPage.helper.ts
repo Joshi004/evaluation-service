@@ -19,8 +19,11 @@ function formatExtraction(extraction: Record<string, unknown>): string {
 // Every SamplingProfileConfig field's human label, keyed the same way
 // OverrideEditor.tsx labels the same fields -- sampling_overrides only
 // ever carries a subset of these keys (S-D22 validates against the
-// same field set at load time).
-const SAMPLING_OVERRIDE_LABELS: Record<string, string> = {
+// same field set at load time). Exported so DryRunPreview's resolved-
+// sampling card can label a standard's mandated overrides and a
+// submit's own overrides with this same one label set, not a second
+// one (Phase 8).
+export const SAMPLING_OVERRIDE_LABELS: Record<string, string> = {
   temperature: 'Temperature',
   top_p: 'Top-p',
   top_k: 'Top-k',

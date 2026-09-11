@@ -7,6 +7,7 @@ import {
   type CreateRunsRequest,
   type RunPreview,
   type RunSubmission,
+  type SamplingProfileSummary,
   type StandardSummary,
 } from '../api/client'
 import { DryRunPreview } from '../components/DryRunPreview/DryRunPreview'
@@ -16,8 +17,10 @@ import {
   EMPTY_OVERRIDE_DRAFT,
   type OverrideDraft,
 } from '../components/OverrideEditor/OverrideEditor.helper'
+import { SamplingProfilePicker } from '../components/SamplingProfilePicker/SamplingProfilePicker'
+import type { SamplingProfileChoice } from '../components/SamplingProfilePicker/SamplingProfilePicker.helper'
 import { SubmitGrid } from '../components/SubmitGrid/SubmitGrid'
-import { checkpointsById, standardsById, useDebouncedValue } from './SubmitPage.helper'
+import { checkpointsById, samplingProfilesById, standardsById, useDebouncedValue } from './SubmitPage.helper'
 
 export function SubmitPage() {
   const queryClient = useQueryClient()
@@ -25,6 +28,10 @@ export function SubmitPage() {
 
   const [selectedCheckpointIds, setSelectedCheckpointIds] = useState<number[]>([])
   const [selectedStandardIds, setSelectedStandardIds] = useState<number[]>([])
+  // null = "use each checkpoint's default" (S-D9's fallback, S-D35's
+  // first case) -- the default choice, so a submit that never touches
+  // this picker behaves exactly as it did before Phase 8.
+  const [samplingProfileChoice, setSamplingProfileChoice] = useState<SamplingProfileChoice>(null)
   const [draft, setDraft] = useState<OverrideDraft>(EMPTY_OVERRIDE_DRAFT)
   const [runName, setRunName] = useState('')
   const [submittedBy, setSubmittedBy] = useState('')
@@ -50,10 +57,26 @@ export function SubmitPage() {
     queryFn: () => apiFetch<StandardSummary[]>('/standards'),
   })
 
+  // Same query key as SamplingProfilesPage's own list query, so the two
+  // pages share one cache entry instead of fetching the catalog twice.
+  const samplingProfiles = useQuery({
+    queryKey: ['sampling-profiles'],
+    queryFn: () => apiFetch<SamplingProfileSummary[]>('/sampling-profiles'),
+  })
+
   const gridReady = selectedCheckpointIds.length > 0 && selectedStandardIds.length > 0
+  const selectedCheckpoints = (checkpoints.data ?? []).filter((checkpoint) =>
+    selectedCheckpointIds.includes(checkpoint.id),
+  )
 
   const preview = useQuery({
-    queryKey: ['runs-preview', selectedCheckpointIds, selectedStandardIds, debouncedOverrides],
+    queryKey: [
+      'runs-preview',
+      selectedCheckpointIds,
+      selectedStandardIds,
+      debouncedOverrides,
+      samplingProfileChoice,
+    ],
     queryFn: () =>
       apiFetch<RunPreview>('/runs/preview', {
         method: 'POST',
@@ -63,6 +86,7 @@ export function SubmitPage() {
           standard_ids: selectedStandardIds,
           standard_overrides: debouncedOverrides.standardOverrides,
           sampling_overrides: debouncedOverrides.samplingOverrides,
+          sampling_profile_id: samplingProfileChoice,
         }),
       }),
     // POST /runs/preview 422s on an empty checkpoint_ids or standard_ids
@@ -97,6 +121,7 @@ export function SubmitPage() {
       standard_ids: selectedStandardIds,
       standard_overrides: overrides.standardOverrides,
       sampling_overrides: overrides.samplingOverrides,
+      sampling_profile_id: samplingProfileChoice,
       submitted_by: trimmedSubmittedBy === '' ? null : trimmedSubmittedBy,
     })
   }
@@ -139,6 +164,31 @@ export function SubmitPage() {
               selectedStandardIds={selectedStandardIds}
               onCheckpointIdsChange={setSelectedCheckpointIds}
               onStandardIdsChange={setSelectedStandardIds}
+            />
+          )}
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-lg border border-slate-800 bg-slate-900 p-4">
+        <h2 className="text-sm font-medium text-slate-300">Sampling profile</h2>
+        <p className="mt-1 text-xs text-slate-500">
+          Applies to the whole grid, not one pick per pair. The default lets each checkpoint speak
+          however it normally does; picking a named profile applies it uniformly and can change every
+          pair's comparison hash -- the dry run below shows exactly which.
+        </p>
+        <div className="mt-3">
+          {samplingProfiles.isLoading ? (
+            <p className="text-sm text-slate-500">Loading sampling profiles…</p>
+          ) : samplingProfiles.isError ? (
+            <p className="text-sm text-red-400">
+              Could not load sampling profiles: {String(samplingProfiles.error)}
+            </p>
+          ) : (
+            <SamplingProfilePicker
+              profiles={samplingProfiles.data ?? []}
+              selectedCheckpoints={selectedCheckpoints}
+              choice={samplingProfileChoice}
+              onChoiceChange={setSamplingProfileChoice}
             />
           )}
         </div>
@@ -192,6 +242,12 @@ export function SubmitPage() {
               error={preview.error}
               standardsById={standardsById(standards.data)}
               checkpointsById={checkpointsById(checkpoints.data)}
+              samplingProfilesById={samplingProfilesById(samplingProfiles.data)}
+              // Debounced, not the immediate `overrides` -- this must
+              // describe the same request that produced `preview.data`,
+              // and the preview query itself fires on the debounced
+              // value.
+              userSamplingOverrides={debouncedOverrides.samplingOverrides}
             />
           ) : (
             <p className="text-sm text-slate-500">Select at least one checkpoint and one standard.</p>
