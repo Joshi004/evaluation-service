@@ -1,0 +1,174 @@
+# catalog/standards/mmlu_pro-v1-full.yaml
+#
+# MMLU-Pro. 14-subject, 10-choice multiple-choice knowledge benchmark --
+# docs/STANDARDS_AND_PROFILES_PHASES.md Phase 5's largest new standard,
+# and the one whose subsets ARE its subjects (Trap S-T22), not a
+# placeholder. "-full" in the label distinguishes this from medpsy's
+# health-only slice -- see the provenance note below.
+
+label: mmlu_pro/v1-full
+
+# --- Protocol --------------------------------------------------------------
+
+benchmark: mmlu_pro
+framework: evalscope
+framework_image: registry.local/evalscope:2ce95c3-tier1
+task_name: mmlu_pro
+
+dataset_name: TIGER-Lab/MMLU-Pro
+# Source: EvalScope's own adapter registration
+# (evalscope/benchmarks/mmlu_pro/mmlu_pro_adapter.py at the pinned
+# commit), read directly: dataset_id='TIGER-Lab/MMLU-Pro'.
+
+dataset_revision: null
+# Same reasoning as ifeval-v1.yaml's decision D3: no EvalScope
+# dataset_args knob exists for a revision on a ModelScope-hosted set.
+
+split: test          # source: EvalScope's registered eval_split='test'.
+train_split: validation
+# source: EvalScope's registered train_split='validation' -- the
+# few-shot source split. few_shot: 5 below means this is not null,
+# same reason gsm8k-v1.yaml's train_split is not null.
+few_shot: 5   # source: EvalScope's registered few_shot_num=5.
+
+prompt_template: |
+  Answer the following multiple choice question. The last line of your response should be of the following format: 'ANSWER: [LETTER]' (without quotes) where [LETTER] is one of {letters}. Think step by step before answering.
+
+  Question:
+  {question}
+  Options:
+  {choices}
+# Source: EvalScope's own USER_PROMPT_TEMPLATE constant
+# (evalscope/benchmarks/mmlu_pro/mmlu_pro_adapter.py), evaluated
+# directly from source, not hand-transcribed -- note the trailing
+# newline after {choices} is part of the real value (this block uses
+# YAML's "|" clip indicator rather than gpqa_diamond-v1.yaml's "|-",
+# specifically to preserve it). Genuinely load-bearing here, unlike
+# few_shot_prompt_template below: MMLUProAdapter.format_fewshot_template
+# calls self.format_prompt_template(sample) -- the base
+# MultiChoiceAdapter method that reads this exact field -- for every
+# sample, few-shot or not, so this is not only the 0-shot path. Same
+# valid_template({question}, {choices}) assertion as GPQA-Diamond
+# (Trap S-T27).
+
+few_shot_prompt_template: null
+# Deliberately null, and NOT the registered
+# SYSTEM_W_EXAMPLES_PROMPT_TEMPLATE + USER_PROMPT_TEMPLATE value --
+# confirmed by reading MMLUProAdapter.format_fewshot_template directly:
+#   fewshot_str = SYSTEM_W_EXAMPLES_PROMPT_TEMPLATE.format(subject=..., examples=...)
+#   prompt_str = self.format_prompt_template(sample)
+#   return fewshot_str + '\n' + prompt_str
+# This override never reads self.few_shot_prompt_template at all -- it
+# renders the few-shot preamble from the module-level
+# SYSTEM_W_EXAMPLES_PROMPT_TEMPLATE constant directly, which is not
+# something any TaskConfig field can reach. Sending the registered
+# value here would describe a rendering path this benchmark provably
+# does not take; null is the honest statement that this field has no
+# effect for mmlu_pro, the same "we don't have one" reasoning
+# dataset_revision: null already uses elsewhere in this file.
+
+extraction:
+  method: choice_letter
+  # Source: MMLUProAdapter subclasses MultiChoiceAdapter and overrides
+  # neither extract_answer nor filter_prediction, so it uses the same
+  # "ANSWER: [LETTER]" parsing (parse_answers) as gpqa_diamond-v1.yaml --
+  # confirmed by reading both adapters directly, not assumed from the
+  # shared base class alone. Identity and documentation only (S-D29):
+  # hashed, but not itself sent to EvalScope.
+
+metrics:
+  - name: accuracy
+    display_name: "Accuracy"
+    harness_key: "accuracy:mean"
+    higher_is_better: true
+    is_primary: true
+    harness_options: {}
+    # EvalScope registers metric_list=['acc'] -- a bare string, same as
+    # gpqa_diamond-v1.yaml, so harness_options is {} here too. No
+    # per-subject metric split to configure: ReportGenerator groups
+    # every sample by this one identity regardless of which of the 14
+    # subsets it came from, and Metric.score is the sample-weighted
+    # (micro) mean across subsets -- confirmed by reading
+    # evalscope/report/report.py directly -- so the 14-way subject
+    # split needs no parser.py change on our side, only the subsets
+    # list below to actually request all 14. harness_key is
+    # "accuracy:mean", not "acc:mean" -- same normalization mechanism
+    # documented in full in gsm8k-v1.yaml's own comment. Confirm against
+    # the first real report.json before publishing (S-T20).
+
+repeats: 1
+# 12,032 test questions across 14 subjects -- large enough that
+# per-question sampling noise already averages out; no
+# repeats-and-variance case like GPQA-Diamond's 198 (S-D30).
+
+sample_limit: null   # null = the full benchmark. Never null on a published run.
+
+# --- Grading -----------------------------------------------------------------
+
+think_handling: strip
+# Same mechanical reasoning as ifeval-v1.yaml: requires --reasoning-parser
+# qwen3 on the serving profile whenever the picked sampling profile has
+# enable_thinking: true, inert otherwise (Trap T5 of Phase 2).
+
+sampling_overrides: {}
+# MMLU-Pro's own published definition mandates nothing about sampling.
+
+# --- Operational -------------------------------------------------------------
+
+subsets:
+  - "computer science"
+  - "math"
+  - "chemistry"
+  - "engineering"
+  - "law"
+  - "biology"
+  - "health"
+  - "physics"
+  - "business"
+  - "philosophy"
+  - "economics"
+  - "other"
+  - "psychology"
+  - "history"
+# Trap S-T22: a multi-subject benchmark's subsets are its subjects, not
+# ["default"]. This is EvalScope's own SUBSET_LIST constant
+# (evalscope/benchmarks/mmlu_pro/mmlu_pro_adapter.py), copied in
+# registration order -- read from source, not from the paper, and not
+# re-sorted: this list is hashed (Phase 4), so reordering it would mint
+# a new standard for no measurement reason.
+
+eval_batch_size: 128
+# Measured, not the unmeasured default the other four Tier 1 standards
+# use: RESEARCH §13 found MMLU-Pro's own throughput goes 2,179 -> 3,950
+# tok/s moving eval_batch_size 32 -> 128, because its short
+# multiple-choice completions leave the GPU idle at the lower batch
+# size other, longer-completion benchmarks are sized for.
+
+request_timeout_seconds: 1800
+# Default. MMLU-Pro's completions are short (a single ANSWER line, no
+# forced long-form reasoning), so this is unlikely to bind, but 30
+# minutes is the same starting budget every other Tier 1 standard uses
+# until a real run's truncation_rate says otherwise.
+
+# --- Provenance --------------------------------------------------------------
+# New in docs/STANDARDS_AND_PROFILES_PHASES.md Phase 5. Collision note
+# (S-D28, RESEARCH §8, and this phase's item 5): medpsy also runs
+# MMLU-Pro, through OpenCompass, restricted to the health subject only
+# -- "MMLU-Pro | tool-call, medpsy | EvalScope (full) / OpenCompass
+# (health only) | No -- and different subsets". That is not the same
+# collision as IFEval/GSM8K/GPQA-Diamond above: different subsets means
+# it is two honest standards over one dataset rather than two
+# measurements of the same thing, which is exactly what makes the
+# "-full" suffix in this file's own label meaningful -- medpsy's slice
+# is free to exist as mmlu_pro/v1-health (subsets: ["health"]) without
+# conflicting with this one. Tool-call/EvalScope is canonical for the
+# full benchmark regardless (owner/incumbent, §8's tie-break).
+#
+# Reference checkpoint: Qwen3-4B-allternary-ep03
+#   (/home/shared/agentic_slm/models/Qwen3-4B-allternary-ep03)
+# Reference score under the greedy sampling profile: NOT YET RUN. Get one
+# before publishing anything against this standard; do not fabricate a
+# plausible-looking number here. Record wall-clock against
+# slurm_walltime_seconds when it runs (this is the largest generation
+# volume of the five Tier 1 standards) and report it -- do not tune the
+# global setting here.

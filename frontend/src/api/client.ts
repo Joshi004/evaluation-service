@@ -309,8 +309,10 @@ export interface StandardSummary {
   dataset_name: string
   dataset_revision: string | null
   split: string | null
+  train_split: string | null
   few_shot: number
   prompt_template: string
+  few_shot_prompt_template: string | null
   extraction: Record<string, unknown>
   metrics: StandardMetricDefinition[]
   repeats: number
@@ -550,8 +552,10 @@ export interface RunStandardDetail {
   dataset_name: string
   dataset_revision: string | null
   split: string | null
+  train_split: string | null
   few_shot: number
   prompt_template: string
+  few_shot_prompt_template: string | null
   extraction: Record<string, unknown>
   metrics: StandardMetricDefinition[]
   repeats: number

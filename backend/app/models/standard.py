@@ -69,8 +69,18 @@ class Standard(Base):
     # the authoritative version.
     dataset_revision: Mapped[str | None] = mapped_column(Text, default=None)
     split: Mapped[str | None] = mapped_column(Text, default=None)
+    # The few-shot *source* split (EvalScope's `BenchmarkMeta.train_split`,
+    # e.g. GSM8K's `train`) -- distinct from `split` above, which is
+    # `eval_split`, what's actually scored. Null for every 0-shot standard
+    # (Phase 5).
+    train_split: Mapped[str | None] = mapped_column(Text, default=None)
     few_shot: Mapped[int] = mapped_column(SmallInteger, server_default="0")
     prompt_template: Mapped[str] = mapped_column(Text, server_default=text("''"))
+    # The few-shot template `DefaultDataAdapter.format_fewshot_template()`
+    # actually formats once `few_shot > 0` -- null when `few_shot == 0` or
+    # when the adapter overrides that method and never reads this field
+    # (MMLU-Pro; Phase 5).
+    few_shot_prompt_template: Mapped[str | None] = mapped_column(Text, default=None)
     extraction: Mapped[dict[str, Any]] = mapped_column(JSONB)
     # A JSONB array of metric definitions, not a single object -- see
     # docs/DATA_MODEL_V1.md Section 3.3 for the shape.
@@ -144,8 +154,10 @@ class Standard(Base):
             "dataset_name": self.dataset_name,
             "dataset_revision": self.dataset_revision,
             "split": self.split,
+            "train_split": self.train_split,
             "few_shot": self.few_shot,
             "prompt_template": self.prompt_template,
+            "few_shot_prompt_template": self.few_shot_prompt_template,
             "extraction": self.extraction,
             "metrics": self.metrics,
             "repeats": self.repeats,

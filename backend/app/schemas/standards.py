@@ -29,7 +29,7 @@ class StandardExtraction(BaseModel):
 
 class StandardMetricDefinition(BaseModel):
     """One entry of the `metrics` JSONB array. Strict -- unlike `extraction`,
-    every metric definition has exactly these five fields today, so a typo
+    every metric definition has exactly these six fields today, so a typo
     (e.g. `harness_key` misspelled) should fail loudly rather than silently
     becoming an extra, ignored key.
     """
@@ -41,6 +41,15 @@ class StandardMetricDefinition(BaseModel):
     harness_key: str
     higher_is_better: bool
     is_primary: bool
+    # The scorer kwargs EvalScope reads from a dict-shaped `metric_list`
+    # entry (`BenchmarkMeta.get_metric_args`) -- e.g. GSM8K's registered
+    # `{'acc': {'numeric': True}}`, which switches `Accuracy` from exact
+    # string match to `math_equal()`. Defaults to `{}`: every metric that
+    # registers as a bare string (IFEval, IFBench, GPQA, MMLU-Pro's `acc`)
+    # has none, and `_metric_list_entries()` (task_config.py) sends those
+    # as plain strings rather than a `{name: {}}` dict, matching how
+    # EvalScope's own registrations spell them.
+    harness_options: dict[str, Any] = {}
 
 
 class StandardDocument(CatalogDocument):
@@ -50,12 +59,12 @@ class StandardDocument(CatalogDocument):
 
     `extra="forbid"` (inherited from `CatalogDocument`) catches a
     misspelled key. Every field below is required -- the key must be
-    present in the YAML -- except `dataset_revision`, `split` and
-    `sample_limit`, which may hold `null` per decision D3 and the DB
-    schema's own nullability. "Required but nullable" is deliberately
-    `field: T | None` with **no** `= None` default: a default would make
-    the *key* optional too, which is exactly the silent-default this
-    phase's spec rules out.
+    present in the YAML -- except `dataset_revision`, `split`,
+    `train_split`, `sample_limit` and `few_shot_prompt_template`, which
+    may hold `null` per decision D3 and the DB schema's own nullability.
+    "Required but nullable" is deliberately `field: T | None` with **no**
+    `= None` default: a default would make the *key* optional too, which
+    is exactly the silent-default this phase's spec rules out.
     """
 
     benchmark: str
@@ -65,8 +74,23 @@ class StandardDocument(CatalogDocument):
     dataset_name: str
     dataset_revision: str | None  # key required; null allowed -- decision D3
     split: str | None  # key required; null allowed
+    # The few-shot *source* split -- EvalScope's `BenchmarkMeta.train_split`
+    # (GSM8K's `train`, MMLU-Pro's `validation`), distinct from `split`
+    # above (`eval_split`, what's actually scored). Null for every 0-shot
+    # standard, where there's no source to name (Phase 5, S-D29 area).
+    train_split: str | None  # key required; null allowed
     few_shot: int
     prompt_template: str
+    # `DefaultDataAdapter.format_fewshot_template()` is
+    # `self.few_shot_prompt_template.format(fewshot=..., question=...)` --
+    # the template actually used once `few_shot > 0`, distinct from
+    # `prompt_template` (the 0-shot/per-question template). Null when
+    # `few_shot == 0` (nothing to format) or when the adapter overrides
+    # `format_fewshot_template` itself and ignores this field entirely
+    # (MMLU-Pro) -- both are legitimate, so this stays nullable rather
+    # than defaulting to `""` and silently asserting a template that was
+    # never registered.
+    few_shot_prompt_template: str | None  # key required; null allowed
     extraction: StandardExtraction
     metrics: list[StandardMetricDefinition]
     repeats: int
@@ -138,8 +162,10 @@ class StandardDocument(CatalogDocument):
             "dataset_name": self.dataset_name,
             "dataset_revision": self.dataset_revision,
             "split": self.split,
+            "train_split": self.train_split,
             "few_shot": self.few_shot,
             "prompt_template": self.prompt_template,
+            "few_shot_prompt_template": self.few_shot_prompt_template,
             "extraction": self.extraction.model_dump(),
             "metrics": [metric.model_dump() for metric in self.metrics],
             "repeats": self.repeats,
@@ -201,8 +227,10 @@ class StandardSummary(BaseModel):
     dataset_name: str
     dataset_revision: str | None
     split: str | None
+    train_split: str | None
     few_shot: int
     prompt_template: str
+    few_shot_prompt_template: str | None
     extraction: dict[str, Any]
     metrics: list[dict[str, Any]]
     repeats: int

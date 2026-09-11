@@ -59,7 +59,12 @@ class Settings(BaseSettings):
     # as CLUSTER_SSH_KEY_HOST_PATH below and in docker-compose.yml.
     output_root_host_path: str = "./runs"
     hf_home: str = "/data/evalsvc/hf-cache"
-    harness_image: str = "registry.local/evalscope:2ce95c3"
+    # `-tier1` suffix: Phase 5 (docs/STANDARDS_AND_PROFILES_PHASES.md,
+    # S-D31) rebuilds this image with four more datasets baked in
+    # (IFBench, GSM8K, GPQA-Diamond, MMLU-Pro). Decision D3 makes the
+    # tag the dataset pin, so a different dataset set needs a different
+    # tag rather than silently changing what `2ce95c3` means.
+    harness_image: str = "registry.local/evalscope:2ce95c3-tier1"
     # The docker-compose network the backend's own container is on, so
     # a harness container joins it and can reach the Phase 3 tunnel at
     # http://backend:PORT/v1 (see services/cluster/tunnel.py).

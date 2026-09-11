@@ -33,9 +33,9 @@ export function displayOrDash(value: string | number | boolean | null): string {
 // standard -- task/dataset shape plus think_handling, a protocol field
 // (docs/STANDARDS_AND_PROFILES_PHASES.md Phase 3 moved sampling off the
 // standard entirely; see samplingFieldRows below for that half).
-// prompt_template and extraction are intentionally left out: both are
-// large blobs better suited to the Standards page's raw-YAML view than
-// to a run's summary row.
+// prompt_template, few_shot_prompt_template and extraction are
+// intentionally left out: all three are better suited to the Standards
+// page's raw-YAML view than to a run's summary row.
 export function standardFieldRows(standard: RunStandardDetail): FieldRow[] {
   return [
     { label: 'Benchmark', value: standard.benchmark },
@@ -45,6 +45,7 @@ export function standardFieldRows(standard: RunStandardDetail): FieldRow[] {
     { label: 'Dataset', value: standard.dataset_name },
     { label: 'Dataset revision', value: displayOrDash(standard.dataset_revision) },
     { label: 'Split', value: displayOrDash(standard.split) },
+    { label: 'Train split', value: displayOrDash(standard.train_split) },
     { label: 'Few-shot', value: displayOrDash(standard.few_shot) },
     { label: 'Repeats', value: displayOrDash(standard.repeats) },
     { label: 'Sample limit', value: displayOrDash(standard.sample_limit) },

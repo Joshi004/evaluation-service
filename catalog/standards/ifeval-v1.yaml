@@ -14,7 +14,15 @@ label: ifeval/v1
 
 benchmark: ifeval
 framework: evalscope
-framework_image: registry.local/evalscope:2ce95c3
+framework_image: registry.local/evalscope:2ce95c3-tier1
+# -tier1: Phase 5 (docs/STANDARDS_AND_PROFILES_PHASES.md, S-D31) rebuilds
+# this image with four more datasets baked in (IFBench, GSM8K,
+# GPQA-Diamond, MMLU-Pro) -- same pinned EvalScope commit
+# (2ce95c314ed379a...), same IFEval dataset snapshot, but decision D3
+# makes the tag itself the dataset pin, so the tag changes with the set
+# even though nothing about IFEval's own measurement did. This is a
+# hashed field, so it mints a new standard row; there is no reference
+# score change to make because of it.
 task_name: ifeval
 
 dataset_name: opencompass/ifeval
@@ -31,11 +39,18 @@ dataset_revision: null
 # field change.
 
 split: train            # source: EvalScope. IFEval ships one split, oddly named "train".
+train_split: null
+# IFEval is 0-shot (few_shot: 0 below) -- there is no few-shot source
+# split to name. Verified against the pinned commit's own
+# BenchmarkMeta registration: IFEval sets no train_split at all.
 few_shot: 0             # source: paper and EvalScope agree.
 prompt_template: ""     # source: paper and EvalScope agree -- no wrapper at all.
 # The empty template isn't cosmetic: IFEval's instructions include things
 # like "respond in all lowercase", so any wrapper we added could itself
 # violate the instruction under test.
+few_shot_prompt_template: null
+# Only takes effect once few_shot > 0 (DefaultDataAdapter.format_fewshot_template);
+# IFEval is 0-shot, so there is nothing here to set.
 
 extraction:
   method: none
@@ -48,24 +63,31 @@ metrics:
     harness_key: "prompt_level_strict:mean"
     higher_is_better: true
     is_primary: true
+    harness_options: {}
   - name: inst_level_strict
     display_name: "Instruction-level (strict)"
     harness_key: "inst_level_strict:mean"
     higher_is_better: true
     is_primary: false
+    harness_options: {}
   - name: prompt_level_loose
     display_name: "Prompt-level (loose)"
     harness_key: "prompt_level_loose:mean"
     higher_is_better: true
     is_primary: false
+    harness_options: {}
   - name: inst_level_loose
     display_name: "Instruction-level (loose)"
     harness_key: "inst_level_loose:mean"
     higher_is_better: true
     is_primary: false
+    harness_options: {}
   # harness_key is the key inside the report's raw.<task>.metrics block --
   # verified against a real report.json. EvalScope's key has no "_acc" and
   # is colon-separated; "prompt_level_strict_acc,none" is lm-eval's format.
+  # harness_options is {} on every metric here -- all four registered as
+  # bare names in EvalScope's own metric_list, none carrying scorer kwargs
+  # (Phase 5; contrast GSM8K's accuracy, which needs numeric: true).
 
 repeats: 1
 # source: our decision. IFEval's own 95% CI at n=541 is already +/-4 points;
@@ -127,6 +149,13 @@ request_timeout_seconds: 1800
 # by docs/STANDARDS_AND_PROFILES_PHASES.md Phase 3 (S-D12): sampling
 # moved to sampling_profile, leaving both files with an identical
 # protocol block and nothing left to distinguish them by.
+#
+# Collision note (S-D28, Phase 5; RESEARCH §8): IFEval is the widest
+# collision this system ships -- three teams (tool-call, medpsy,
+# one-bit), two harnesses (EvalScope here, lm-eval for the other two).
+# Tool-call/EvalScope is canonical (owner/incumbent, §8's tie-break);
+# settling it with real data rather than opinion is the lm-eval
+# adapter's job (a later milestone), not this file's.
 #
 # Reference checkpoint: Qwen3-4B-allternary-ep03
 #   (/home/shared/agentic_slm/models/Qwen3-4B-allternary-ep03)

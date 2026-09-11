@@ -61,12 +61,39 @@ def build_task_config(
       exists for a ModelScope-hosted set).
     - `split`: `dataset_args.<task>.eval_split`, via `_dataset_args`;
       omitted when null.
+    - `train_split`: `dataset_args.<task>.train_split`, via
+      `_dataset_args` -- the few-shot *source* split (GSM8K's `train`,
+      MMLU-Pro's `validation`), distinct from `split`/`eval_split`
+      above. Omitted when null, same rule as `split` (S-T26): sending a
+      literal `null` would let `BenchmarkMeta._update`'s plain `setattr`
+      overwrite EvalScope's own registered value instead of leaving it
+      alone.
     - `few_shot`: `dataset_args.<task>.few_shot_num`.
     - `prompt_template`: `dataset_args.<task>.prompt_template`.
-    - `extraction`: not sent -- EvalScope's equivalent is
-      `dataset_args.<task>.filters`, but every shipped standard is
-      `method: none`, so there is nothing yet to translate.
-    - `metrics`: `dataset_args.<task>.metric_list`, via `_metric_names`.
+    - `few_shot_prompt_template`:
+      `dataset_args.<task>.few_shot_prompt_template`, via
+      `_dataset_args` -- the template
+      `DefaultDataAdapter.format_fewshot_template()` actually formats
+      once `few_shot_num > 0`. Omitted when null, same rule as `split`.
+    - `extraction`: not sent. Verified against the pinned EvalScope
+      commit (`2ce95c314ed379a...`, baked into `registry.local/evalscope
+      :2ce95c3` and the Phase 5 dataset rebuild `:2ce95c3-tier1` alike --
+      same commit, more datasets baked in): EvalScope does have a
+      `filters` mechanism (`BenchmarkMeta.filters`,
+      merged by `_update_filters`), but none of IFBench, GSM8K,
+      GPQA-Diamond or MMLU-Pro register or need one -- extraction happens
+      inside each adapter's own `extract_answer()` instead
+      (`GSM8KAdapter` calls `evalscope.metrics.math.parser.extract_answer`;
+      `MultiChoiceAdapter` calls `parse_answers`). `extraction` therefore
+      stays purely descriptive of which extractor the pinned image
+      applies; the field that actually changes scorer behaviour is
+      `metrics[].harness_options`, below (S-D29).
+    - `metrics`: `dataset_args.<task>.metric_list`, via
+      `_metric_list_entries` -- a bare name for a metric with no
+      `harness_options`, or `{name: options}` for one that has them
+      (GSM8K's registered `{'acc': {'numeric': True}}`: dropping
+      `numeric: True` would silently switch `Accuracy` from
+      `math_equal()` comparison to exact string match).
     - `repeats`, `sample_limit`: `repeats`, `limit`.
     - `think_handling`: not sent -- resolved at compatibility-check time
       against the serving profile's `reasoning_parser`
@@ -162,28 +189,47 @@ def _dataset_args(standard: Standard) -> dict[str, Any]:
     actually falling through to EvalScope's own registered default.
     Omitted entirely when `standard.split` is null, same as
     `dataset_revision`'s null: "we don't have one," not "send an empty
-    one."
+    one." `train_split` and `few_shot_prompt_template` follow the exact
+    same rule and the exact same reason (S-T26): both are real
+    `BenchmarkMeta` fields `_update` would otherwise silently overwrite
+    with `None`.
     """
     args: dict[str, Any] = {
         "dataset_id": standard.dataset_name,
         "subset_list": standard.subsets,
         "few_shot_num": standard.few_shot,
         "prompt_template": standard.prompt_template,
-        "metric_list": _metric_names(standard.metrics),
+        "metric_list": _metric_list_entries(standard.metrics),
     }
     if standard.split is not None:
         args["eval_split"] = standard.split
+    if standard.train_split is not None:
+        args["train_split"] = standard.train_split
+    if standard.few_shot_prompt_template is not None:
+        args["few_shot_prompt_template"] = standard.few_shot_prompt_template
     return args
 
 
-def _metric_names(metrics: list[dict[str, Any]]) -> list[str]:
-    """The plain metric names EvalScope's own benchmark registration
-    expects in `dataset_args.<task>.metric_list` -- the part before the
-    `:` in each metric's `harness_key` (e.g. "prompt_level_strict" from
-    "prompt_level_strict:mean"). A named helper rather than an inline
-    comprehension, so the harness_key convention (name:aggregation) is
-    documented once instead of repeated at every call site -- see
-    parser.py, which splits the same string on the same character for
-    the opposite reason (finding a metric in the report).
+def _metric_list_entries(metrics: list[dict[str, Any]]) -> list[str | dict[str, Any]]:
+    """EvalScope's own `dataset_args.<task>.metric_list` entries: a bare
+    metric name where it carries no `harness_options` (IFEval, IFBench,
+    GPQA-Diamond, MMLU-Pro's `acc`), or `{name: options}` where it does
+    (GSM8K's registered `{'acc': {'numeric': True}}`, verified against
+    the pinned commit -- `numeric: True` is what makes `Accuracy` compare
+    via `math_equal()` instead of exact string match, so dropping it
+    would silently score a correct-but-differently-formatted answer as
+    wrong; S-D29).
+
+    The name itself is always the part before `:` in `harness_key` (e.g.
+    "prompt_level_strict" from "prompt_level_strict:mean") -- the
+    name:aggregation convention documented once here rather than
+    repeated at every call site; see parser.py's `_harness_key`, which
+    splits the same string apart for the opposite reason (finding a
+    metric in the report rather than building the request).
     """
-    return [metric["harness_key"].split(":")[0] for metric in metrics]
+    entries: list[str | dict[str, Any]] = []
+    for metric in metrics:
+        name = metric["harness_key"].split(":")[0]
+        options = metric.get("harness_options") or {}
+        entries.append({name: options} if options else name)
+    return entries

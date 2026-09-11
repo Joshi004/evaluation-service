@@ -1,0 +1,162 @@
+# catalog/standards/gpqa_diamond-v1.yaml
+#
+# GPQA-Diamond. 198 graduate-level, "Google-proof" multiple-choice
+# science questions -- docs/STANDARDS_AND_PROFILES_PHASES.md Phase 5's
+# smallest new standard, and the one whose sample count forces a real
+# repeats decision (S-D30) rather than leaving the column at its
+# default.
+
+label: gpqa_diamond/v1
+
+# --- Protocol --------------------------------------------------------------
+
+benchmark: gpqa_diamond
+framework: evalscope
+framework_image: registry.local/evalscope:2ce95c3-tier1
+task_name: gpqa_diamond
+
+dataset_name: AI-ModelScope/gpqa_diamond
+# Source: EvalScope's own adapter registration
+# (evalscope/benchmarks/gpqa/gpqa_adapter.py at the pinned commit), read
+# directly: dataset_id='AI-ModelScope/gpqa_diamond'.
+
+dataset_revision: null
+# Same reasoning as ifeval-v1.yaml's decision D3: no EvalScope
+# dataset_args knob exists for a revision on a ModelScope-hosted set.
+
+split: train
+# source: EvalScope's registered eval_split='train'. Not a naming
+# accident this time -- the adapter's own registration comment says
+# "only have train split" (GPQA-Diamond ships no separate test split;
+# ModelScope's "validation" copy is private).
+train_split: null
+# few_shot: 0 below, and EvalScope registers train_split=None -- there
+# is no few-shot source split to name. The adapter forces few_shot_num
+# to 5 if given anything else non-zero (see few_shot comment below), so
+# a null train_split is only valid alongside few_shot: 0, never a
+# half-configured 5-shot GPQA standard.
+few_shot: 0
+# source: EvalScope's registered few_shot_num=0. GPQAAdapter.__init__
+# forces few_shot_num to 5 if it is passed non-zero and not already 5
+# (confirmed by reading the adapter directly) -- 0 sidesteps that
+# rewrite entirely rather than relying on it silently correcting a
+# different value.
+
+prompt_template: |-
+  Answer the following multiple choice question. The last line of your response should be of the following format: 'ANSWER: [LETTER]' (without quotes) where [LETTER] is one of {letters}. Think step by step before answering.
+
+  {question}
+
+  {choices}
+# Source: EvalScope's own MultipleChoiceTemplate.SINGLE_ANSWER_COT
+# (an alias for SINGLE_ANSWER_TEMPLATE_COT, evalscope/utils/multi_choices.py),
+# evaluated directly from source, not hand-transcribed. A raw Python
+# string (r"""..."""), so no doubled-brace concern here (contrast
+# gsm8k-v1.yaml) -- {letters}, {question} and {choices} are the only
+# placeholders, and all three must survive verbatim: MultiChoiceAdapter.
+# format_prompt_template asserts valid_template(self.prompt_template),
+# which checks for literal "{question}" and "{choices}" substrings
+# (Trap S-T27) and would fail loudly on a template missing either.
+
+few_shot_prompt_template: null
+# few_shot: 0 -- nothing to format. GPQAAdapter does override
+# format_fewshot_template, but that path is only reachable once
+# few_shot_num > 0 (DefaultDataAdapter._should_load_fewshot requires
+# both few_shot_num > 0 and train_split is not None, neither true
+# here), so it is dead code for this standard specifically.
+
+extraction:
+  method: choice_letter
+  # Source: MultiChoiceAdapter's answer path parses the model's stated
+  # "ANSWER: [LETTER]" line back to a choice index (parse_answers,
+  # confirmed from evalscope's multi-choice adapter machinery) -- there
+  # is no separate filters-based extraction step, same S-D29 finding as
+  # gsm8k-v1.yaml. Identity and documentation only: hashed, but not
+  # itself sent to EvalScope (see task_config.py's docstring).
+
+metrics:
+  - name: accuracy
+    display_name: "Accuracy"
+    harness_key: "accuracy:mean"
+    higher_is_better: true
+    is_primary: true
+    harness_options: {}
+    # EvalScope registers metric_list=['acc'] -- a bare string, no
+    # scorer kwargs, so unlike gsm8k-v1.yaml there is nothing for
+    # harness_options to carry. harness_key is "accuracy:mean", not
+    # "acc:mean", for the exact mechanism gsm8k-v1.yaml documents in
+    # full: BenchmarkMeta.__post_init__ normalizes the registered 'acc'
+    # to 'accuracy' before this benchmark's metadata object even exists
+    # in memory (migrate_legacy_identity, confirmed from
+    # evalscope/api/benchmark/meta.py and
+    # evalscope/metrics/semantics/{identity,legacy}.py directly).
+    # Confirm against the first real report.json before publishing
+    # (S-T20).
+
+repeats: 4
+# S-D30. 4 x 198 = 792 generations is cheap, and the pooled mean removes
+# most sampling noise under a thinking profile, which is how GPQA is
+# mostly read. It does nothing for the finite-question interval -- at
+# n=198 the 95% CI on a single-repeat score is already about +/-6.8
+# points from sample size alone, and repeats cannot narrow that; report
+# the interval next to the score, not just the point estimate. Also
+# near-inert under a greedy profile, where repeated generations mostly
+# agree with each other. Both caveats are why this is 4 and not left at
+# the column's default of 1 -- the phase's own item 4 requires the
+# reasoning be written down here, not just the number changed.
+
+sample_limit: null   # null = the full 198 questions. Never null on a published run.
+
+# --- Grading -----------------------------------------------------------------
+
+think_handling: strip
+# Same mechanical reasoning as ifeval-v1.yaml: requires --reasoning-parser
+# qwen3 on the serving profile whenever the picked sampling profile has
+# enable_thinking: true, inert otherwise (Trap T5 of Phase 2). The
+# prompt template above already asks for step-by-step reasoning before
+# the final ANSWER line, so a thinking checkpoint's <think> block is
+# exactly what gets stripped before the choice-letter extraction runs.
+
+sampling_overrides: {}
+# GPQA-Diamond's own published definition mandates nothing about
+# sampling.
+
+# --- Operational -------------------------------------------------------------
+
+subsets: ["default"]
+# source: EvalScope's registration sets no subset_list at all, so the
+# BenchmarkMeta dataclass default applies (subset_list:
+# List[str] = field(default_factory=lambda: ['default']), confirmed
+# from evalscope/api/benchmark/meta.py) -- unlike GSM8K's explicit
+# ['main'], this "default" really is the dataclass default, not a
+# real split name (same shape as IFEval/IFBench).
+
+eval_batch_size: 32
+# Unmeasured default for this benchmark specifically -- see
+# ifeval-v1.yaml's own comment on this column.
+
+request_timeout_seconds: 1800
+# Default. GPQA's chain-of-thought answers run longer than a plain
+# multiple-choice pick; 30 minutes is the same starting budget every
+# other Tier 1 standard uses, revisit if a real run's truncation_rate
+# says otherwise.
+
+# --- Provenance --------------------------------------------------------------
+# New in docs/STANDARDS_AND_PROFILES_PHASES.md Phase 5. Choices are
+# shuffled per question under a seed derived from
+# sha256(question_text) (GPQAAdapter._process_input, confirmed from
+# source) rather than an unseeded global RNG -- reproducible across
+# runs and reruns, which matters here because it is part of what this
+# standard measures, not an implementation detail. Collision note
+# (S-D28, RESEARCH §8): the low-bit team also runs GPQA-Diamond,
+# through lm-eval's gpqa_diamond_zeroshot task -- named "zeroshot"
+# because it is also 0-shot, so once the lm-eval adapter (a later
+# milestone) exists this is the more directly comparable pair among
+# the four collisions this phase notes. Tool-call/EvalScope is
+# canonical here regardless (owner/incumbent, §8's tie-break).
+#
+# Reference checkpoint: Qwen3-4B-allternary-ep03
+#   (/home/shared/agentic_slm/models/Qwen3-4B-allternary-ep03)
+# Reference score under the greedy sampling profile: NOT YET RUN. Get one
+# before publishing anything against this standard; do not fabricate a
+# plausible-looking number here.

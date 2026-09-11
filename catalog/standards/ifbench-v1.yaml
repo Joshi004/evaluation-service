@@ -1,0 +1,135 @@
+# catalog/standards/ifbench-v1.yaml
+#
+# IFBench. AllenAI's out-of-domain instruction-following benchmark,
+# built to resist the overfitting IFEval's fixed constraint set has
+# accumulated. Same checker family and metric shape as IFEval --
+# docs/STANDARDS_AND_PROFILES_PHASES.md Phase 5 adds it first among
+# the four Tier 1 standards because it needs nothing new to get right
+# (contrast GSM8K's harness_options: {numeric: true} below).
+
+label: ifbench/v1
+
+# --- Protocol --------------------------------------------------------------
+
+benchmark: ifbench
+framework: evalscope
+framework_image: registry.local/evalscope:2ce95c3-tier1
+task_name: ifbench
+
+dataset_name: allenai/IFBench_test
+# Source: EvalScope's own adapter registration
+# (evalscope/benchmarks/ifbench/ifbench_adapter.py at the pinned commit,
+# 2ce95c314ed379a...), read directly rather than inferred.
+
+dataset_revision: null
+# Same reasoning as ifeval-v1.yaml's decision D3: EvalScope's dataset_args
+# expose no revision knob for a ModelScope-hosted set, regardless of which
+# one -- there is no real value to put here for any standard this system
+# ships, not just IFEval.
+
+split: train
+# source: EvalScope's registered eval_split='train'. Like IFEval, IFBench's
+# one usable split is oddly named "train" -- confirmed against the same
+# registration, not assumed by analogy.
+train_split: null
+# few_shot: 0 below, and EvalScope registers train_split=None for IFBench
+# -- there is no few-shot source split to name.
+few_shot: 0   # source: EvalScope's registered few_shot_num=0.
+prompt_template: ""
+# source: EvalScope registers no prompt_template at all for IFBench (the
+# BenchmarkMeta field stays at its own default, None). Harmless either
+# way: record_to_sample() wraps every prompt in a one-message
+# ChatMessageUser list, and DefaultDataAdapter's message-list rendering
+# path (_post_process_samples -> process_sample_messages_input) never
+# calls format_prompt_template for a list input in the first place --
+# confirmed from default_data_adapter.py at the pinned commit, the same
+# code path IFEval's own "" takes.
+few_shot_prompt_template: null   # few_shot: 0 -- nothing to format.
+
+extraction:
+  method: none
+  # source: EvalScope. IFBenchAdapter registers no extract_answer override
+  # and no filters; match_score() calls evaluation_lib.process_results()
+  # directly against the (unfiltered) raw completion -- the same "checkers
+  # run against the raw completion" shape as IFEval, confirmed by reading
+  # evalscope/benchmarks/ifbench/ifbench_adapter.py directly.
+
+metrics:
+  - name: prompt_level_strict
+    display_name: "Prompt-level (strict)"
+    harness_key: "prompt_level_strict:mean"
+    higher_is_better: true
+    is_primary: true
+    harness_options: {}
+  - name: inst_level_strict
+    display_name: "Instruction-level (strict)"
+    harness_key: "inst_level_strict:mean"
+    higher_is_better: true
+    is_primary: false
+    harness_options: {}
+  - name: prompt_level_loose
+    display_name: "Prompt-level (loose)"
+    harness_key: "prompt_level_loose:mean"
+    higher_is_better: true
+    is_primary: false
+    harness_options: {}
+  - name: inst_level_loose
+    display_name: "Instruction-level (loose)"
+    harness_key: "inst_level_loose:mean"
+    higher_is_better: true
+    is_primary: false
+    harness_options: {}
+  # Same four names/keys as ifeval-v1.yaml, and for the same reason:
+  # IFBench is deliberately the same checker family under a harder,
+  # out-of-domain constraint set. Source: EvalScope's own registration --
+  # metric_list=['prompt_level_strict', 'inst_level_strict',
+  # 'prompt_level_loose', 'inst_level_loose'], primary_metric=
+  # 'prompt_level_strict'. All four are bare strings in EvalScope's own
+  # metric_list, so harness_options is {} on every one -- contrast
+  # gsm8k-v1.yaml's accuracy, the one metric among the five Tier 1
+  # standards that carries scorer kwargs.
+
+repeats: 1
+# 300 samples, confirmed against the prefetched dataset (the harness
+# image's own build log: "Generating train split: 100%|...| 300/300").
+# Smaller than IFEval's 541 but not small enough to need the
+# repeats-and-variance treatment Phase 5 gives GPQA-Diamond's 198 --
+# rule-based checkers, same as IFEval, where repeats addresses sampling
+# noise in generation, not scoring noise. IFEval's own precedent
+# (repeats: 1) carries over.
+
+sample_limit: null   # null = the full 300 prompts. Never null on a published run.
+
+# --- Grading -----------------------------------------------------------------
+
+think_handling: strip
+# Same mechanical reasoning as ifeval-v1.yaml: requires --reasoning-parser
+# qwen3 on the serving profile whenever the picked sampling profile has
+# enable_thinking: true, and is simply inert otherwise (Trap T5 of Phase 2).
+
+sampling_overrides: {}
+# IFBench's own published definition mandates nothing about sampling,
+# same as IFEval -- the checker only inspects the completion text.
+
+# --- Operational -------------------------------------------------------------
+
+subsets: ["default"]
+# source: EvalScope's registered subset_list=['default'] -- one subset,
+# named literally "default", same as IFEval.
+
+eval_batch_size: 32
+# Unmeasured default (RESEARCH §13 only measured IFEval and MMLU-Pro at
+# this column) -- see ifeval-v1.yaml's own comment; nothing here is tuned.
+
+request_timeout_seconds: 1800
+# Same default as IFEval -- short, single-turn prompts, no evidence yet
+# that IFBench needs a different budget.
+
+# --- Provenance --------------------------------------------------------------
+# New in docs/STANDARDS_AND_PROFILES_PHASES.md Phase 5.
+#
+# Reference checkpoint: Qwen3-4B-allternary-ep03
+#   (/home/shared/agentic_slm/models/Qwen3-4B-allternary-ep03)
+# Reference score under the greedy sampling profile: NOT YET RUN. Get one
+# before publishing anything against this standard; do not fabricate a
+# plausible-looking number here.

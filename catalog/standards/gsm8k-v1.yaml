@@ -1,0 +1,170 @@
+# catalog/standards/gsm8k-v1.yaml
+#
+# GSM8K. Grade-school math word problems, scored on the final numeric
+# answer -- docs/STANDARDS_AND_PROFILES_PHASES.md Phase 5's first
+# standard whose extraction is not `method: none`, and the one that
+# needed a real schema change (harness_options) to score correctly.
+# See S-D29: the phase's original plan was to reach the harness via
+# EvalScope's `filters` mechanism; verified against the pinned commit,
+# that is not what GSM8K's adapter uses at all -- the field that
+# actually controls scoring is metrics[].harness_options below.
+
+label: gsm8k/v1
+
+# --- Protocol --------------------------------------------------------------
+
+benchmark: gsm8k
+framework: evalscope
+framework_image: registry.local/evalscope:2ce95c3-tier1
+task_name: gsm8k
+
+dataset_name: AI-ModelScope/gsm8k
+# Source: EvalScope's own adapter registration
+# (evalscope/benchmarks/gsm8k/gsm8k_adapter.py at the pinned commit),
+# read directly: dataset_id='AI-ModelScope/gsm8k'.
+
+dataset_revision: null
+# Same reasoning as ifeval-v1.yaml's decision D3: no EvalScope dataset_args
+# knob exists for a revision on a ModelScope-hosted set.
+
+split: test         # source: EvalScope's registered eval_split='test'.
+train_split: train
+# source: EvalScope's registered train_split='train' -- the few-shot
+# source split. few_shot: 4 below means this is not null, unlike IFEval/
+# IFBench/GPQA-Diamond: GSM8K is the only one of the four new standards
+# whose few-shot examples come from data rather than a fixed prompt.
+few_shot: 4   # source: EvalScope's registered few_shot_num=4.
+
+prompt_template: |-
+  {question}
+  Please reason step by step, and put your final answer within \boxed{{}}.
+# Source: EvalScope's own PROMPT_TEMPLATE constant, evaluated directly
+# from the pinned commit's source (not hand-transcribed from the repr):
+#   {question}\nPlease reason step by step, and put your final answer
+#   within \boxed{{}}.
+# The doubled braces in \boxed{{}} are load-bearing (Trap S-T25): this
+# value is a .format(question=...) template, and DefaultDataAdapter's
+# format_prompt_template calls exactly that
+# (self.prompt_template.format(question=sample.input)) even at 0-shot,
+# unlike MultiChoiceAdapter. A single-brace \boxed{} here would raise
+# a KeyError/IndexError out of .format(), and collapsing it by hand
+# would silently change the literal instruction the model sees.
+
+few_shot_prompt_template: |-
+  Here are some examples of how to solve similar problems:
+
+  {fewshot}
+
+  {question}
+  Please reason step by step, and put your final answer within \boxed{{}}.
+# Source: EvalScope's own FEWSHOT_TEMPLATE constant
+# (SYSTEM-level intro + {fewshot} + PROMPT_TEMPLATE, concatenated at
+# import time), evaluated directly from source. Formatted via
+# DefaultDataAdapter.format_fewshot_template as
+# self.few_shot_prompt_template.format(fewshot=..., question=...) --
+# the {fewshot} block is EvalScope's own rendering of the 4 sampled
+# training examples (GSM8KAdapter.sample_to_fewshot), not something this
+# standard supplies. Same doubled-brace requirement as prompt_template
+# above, since this template ends with the identical \boxed{{}} suffix.
+
+extraction:
+  method: boxed
+  # Source: GSM8KAdapter.extract_answer() calls
+  # evalscope.metrics.math.parser.extract_answer(prediction), whose
+  # primary path (confirmed by reading parser.py directly) looks for
+  # the literal substring "boxed" and brace-matches the expression that
+  # follows it -- "boxed" is an accurate one-word name for what the
+  # pinned image's extractor actually does, not a guess. This field is
+  # identity and documentation only (S-D29): it is hashed, so changing
+  # the claim mints a new standard, but nothing here is sent to
+  # EvalScope or reaches the harness as a runtime instruction -- see
+  # task_config.py's own docstring for why (S-D29). The extractor also
+  # falls back to a last-number heuristic when no "boxed" substring is
+  # present; that fallback is the harness's behaviour, not a second
+  # extraction method this standard claims to use.
+
+metrics:
+  - name: accuracy
+    display_name: "Accuracy"
+    harness_key: "accuracy:mean"
+    higher_is_better: true
+    is_primary: true
+    harness_options:
+      numeric: true
+      # This is the fix S-D29 exists for. EvalScope registers GSM8K's
+      # metric as metric_list=[{'acc': {'numeric': True}}]. Read
+      # directly: Accuracy.__init__(self, allow_inclusion=False,
+      # numeric=False) (evalscope/metrics/nlp/metrics.py) defaults to
+      # ExactMatch's plain string comparison; numeric: true switches
+      # Accuracy.apply() to
+      # math_equal(prediction, strip_answer_string(reference)) from
+      # evalscope.metrics.math.parser instead. Without this key, our
+      # _metric_list_entries() (task_config.py) would send the bare
+      # string "accuracy" and silently fall through to exact-string
+      # scoring, which fails a correct "72.0" against a gold "72".
+  # harness_key is "accuracy:mean", not "acc:mean" (Trap S-T24), even
+  # though EvalScope's own registration writes 'acc'. Confirmed by
+  # reading evalscope/api/benchmark/meta.py's BenchmarkMeta.__post_init__
+  # directly: it runs _normalize_metric_list() at registration time,
+  # which rewrites the literal 'acc' key to 'accuracy' via
+  # migrate_legacy_identity('acc', 'identity', benchmark_name='gsm8k')
+  # (evalscope/metrics/semantics/identity.py, backed by the exact-alias
+  # manifest in evalscope/metrics/semantics/legacy.py:
+  # LEGACY_METRIC_ALIASES['acc'] = LegacyMetricAlias('accuracy', ...)).
+  # @register_metric(name=['accuracy', 'acc']) registers both spellings
+  # in the scorer registry, so match_score()'s get_metric('accuracy')
+  # resolves correctly regardless -- but the *report*'s identity is
+  # keyed by the already-normalized name, 'accuracy', which is what
+  # parser.py's _harness_key() reconstructs and must match. Confirm
+  # against the first real report.json before publishing (S-T20).
+
+repeats: 1
+# 1,319 test questions -- large enough that per-question sampling noise
+# already averages out; no repeats-and-variance case like
+# GPQA-Diamond's 198 (S-D30).
+
+sample_limit: null   # null = the full 1,319 test questions. Never null on a published run.
+
+# --- Grading -----------------------------------------------------------------
+
+think_handling: strip
+# Same mechanical reasoning as ifeval-v1.yaml: requires --reasoning-parser
+# qwen3 on the serving profile whenever the picked sampling profile has
+# enable_thinking: true, inert otherwise (Trap T5 of Phase 2). GSM8K's
+# own prompt already asks for step-by-step reasoning before the boxed
+# answer, so a thinking-capable checkpoint's <think> block is exactly
+# what this setting strips before extract_answer() ever sees the text.
+
+sampling_overrides: {}
+# GSM8K's own published definition mandates nothing about sampling.
+
+# --- Operational -------------------------------------------------------------
+
+subsets: ["main"]
+# source: EvalScope's registered subset_list=['main'] -- NOT ["default"]
+# (Trap S-T22 generalizes past MMLU-Pro: read the registration, don't
+# assume the dataclass default applies).
+
+eval_batch_size: 32
+# Unmeasured default for this benchmark specifically -- see
+# ifeval-v1.yaml's own comment on this column.
+
+request_timeout_seconds: 1800
+# Default. GSM8K's answers are short relative to MMLU-Pro's, but a
+# thinking-mode checkpoint's reasoning trace can still run long; 30
+# minutes is the same budget every other Tier 1 standard starts at,
+# revisit if a real run's truncation_rate says otherwise.
+
+# --- Provenance --------------------------------------------------------------
+# New in docs/STANDARDS_AND_PROFILES_PHASES.md Phase 5. Collision note
+# (S-D28, RESEARCH §8): the low-bit team also runs GSM8K, through
+# lm-eval rather than EvalScope. Tool-call/EvalScope is canonical here
+# (owner/incumbent, §8's tie-break) -- this standard does not claim to
+# match that team's number until the lm-eval adapter (a later
+# milestone) actually measures the two against each other.
+#
+# Reference checkpoint: Qwen3-4B-allternary-ep03
+#   (/home/shared/agentic_slm/models/Qwen3-4B-allternary-ep03)
+# Reference score under the greedy sampling profile: NOT YET RUN. Get one
+# before publishing anything against this standard; do not fabricate a
+# plausible-looking number here.

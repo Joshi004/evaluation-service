@@ -1,5 +1,5 @@
-"""Prefetches the NLTK corpora IFEval's constraint checkers need, at
-build time rather than on first use.
+"""Prefetches the NLTK corpora IFEval's and IFBench's constraint
+checkers need, at build time rather than on first use.
 
 nltk being installed does not fetch its corpora -- the checkers call
 nltk.download() lazily on first use (confirmed by reading evalscope's
@@ -13,7 +13,11 @@ The package list matches what the reference tool-call harness downloads
 for the same checkers. punkt/punkt_tab are the two this pinned commit's
 IFEval checkers actually call; the other three are harmless to prefetch
 alongside them and keep this list matched to the documented reference
-behaviour rather than to only what one file's grep turned up.
+behaviour rather than to only what one file's grep turned up. IFBench
+(Phase 5) needs no new package here -- its own
+evalscope/benchmarks/ifbench/instructions_util.py calls the same
+check_nltk_data('punkt_tab') and check_nltk_data('stopwords'), confirmed
+against the same pinned commit, both already covered below.
 """
 
 import os

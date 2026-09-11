@@ -286,8 +286,10 @@ class RunStandardDetail(BaseModel):
     dataset_name: str
     dataset_revision: str | None
     split: str | None
+    train_split: str | None
     few_shot: int
     prompt_template: str
+    few_shot_prompt_template: str | None
     extraction: dict[str, Any]
     metrics: list[dict[str, Any]]
     repeats: int

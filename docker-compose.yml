@@ -73,7 +73,8 @@ services:
       # root, by the same convention every other relative path in this
       # file already assumes.
       OUTPUT_ROOT_HOST_PATH: ${OUTPUT_ROOT_HOST_PATH:-${PWD}/runs}
-      HARNESS_IMAGE: ${HARNESS_IMAGE:-registry.local/evalscope:2ce95c3}
+      # -tier1: Phase 5's dataset set (S-D31) -- see harness.image below.
+      HARNESS_IMAGE: ${HARNESS_IMAGE:-registry.local/evalscope:2ce95c3-tier1}
       HARNESS_DOCKER_NETWORK: ${HARNESS_DOCKER_NETWORK:-evaluation-service_default}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
@@ -106,7 +107,10 @@ services:
   # one per eval run (app/services/harness/runner.py).
   harness:
     build: ./harness/evalscope
-    image: ${HARNESS_IMAGE:-registry.local/evalscope:2ce95c3}
+    # -tier1: Phase 5 bakes in IFBench, GSM8K, GPQA-Diamond and MMLU-Pro
+    # alongside IFEval (S-D31) -- decision D3 makes the tag the dataset
+    # pin, so the dataset set changing means the tag changes too.
+    image: ${HARNESS_IMAGE:-registry.local/evalscope:2ce95c3-tier1}
     profiles: ["build-only"]
 
   frontend:

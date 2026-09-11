@@ -95,8 +95,9 @@ def _harness_key(report_metric: dict[str, Any]) -> str:
     """Renders "name:aggregation", e.g. "prompt_level_strict:mean" --
     the same string standard.metrics stores in harness_key, reconstructed
     from a report metric's `identity` block. task_config.py's
-    `_metric_names` splits this same convention apart for the opposite
-    reason (building the request rather than reading the response).
+    `_metric_list_entries` splits this same convention apart for the
+    opposite reason (building the request rather than reading the
+    response).
     """
     identity = report_metric["identity"]
     return f"{identity['name']}:{identity['aggregation']}"
@@ -117,28 +118,50 @@ def compute_truncation_rate(
     sampling_profile: SamplingProfile,
     served_model_name: str,
 ) -> float | None:
-    """The fraction of `predictions/<served_model_name>/<task>_default.jsonl`
+    """The fraction of `predictions/<served_model_name>/<task_name>_*.jsonl`
     records that hit `sampling_profile.max_tokens` before finishing.
     `max_tokens` moved to `sampling_profile` in Phase 3 (it depends on
     the checkpoint, not the benchmark), so this now needs both rows:
-    `standard` for the task_name that names the predictions file,
+    `standard` for the task_name that names the predictions file(s),
     `sampling_profile` for the token budget itself.
 
-    Returns None if the predictions file is missing or empty (a
-    harness failure) rather than 0.0 -- a run that produced no data
-    and a run with no truncation must never look the same, because
+    Globs `<task_name>_*.jsonl` rather than formatting one filename per
+    `standard.subsets` entry (which the single-subset `_default.jsonl`
+    this replaces effectively did): EvalScope writes one predictions
+    file per subset, and MMLU-Pro's 14 subject names contain spaces
+    whose on-disk spelling was never confirmed against a real run
+    (Phase 5) -- glob sidesteps needing to guess it. Every matching
+    file's records are pooled into one rate, since `truncation_rate` is
+    a single column on `eval_run`, not one per subset.
+
+    Returns None if no predictions file matches, or every match is
+    empty (a harness failure), rather than 0.0 -- a run that produced no
+    data and a run with no truncation must never look the same, because
     this is the column that stops the first real number from silently
     measuring our token budget (see Milestone 1's 12-of-12 case in
     docs/IMPLEMENTATION_PHASES.md).
     """
-    predictions_path = (
-        run_dir / "predictions" / served_model_name / f"{standard.task_name}_default.jsonl"
-    )
-    if not predictions_path.exists():
+    predictions_dir = run_dir / "predictions" / served_model_name
+    predictions_paths = sorted(predictions_dir.glob(f"{standard.task_name}_*.jsonl"))
+    if not predictions_paths:
         return None
 
+    # `str.splitlines()` is the wrong tool here -- it treats several
+    # Unicode line-boundary characters (e.g. U+0085 NEL) as breaks, not
+    # just "\n". A real MMLU-Pro question (subject "other", question_id
+    # 5215) carries a literal U+0085 in its source text; EvalScope's
+    # writer leaves it unescaped (valid JSON -- only U+0000-U+001F, `"`
+    # and `\` must be escaped), so splitlines() cut that one record into
+    # two unparseable halves and JSONDecodeError'd a real run (Phase 5).
+    # Splitting on a literal "\n" only matches how the file was actually
+    # written -- one record per real newline -- and produces a single
+    # trailing "" for a file ending in one, already dropped by the
+    # `if line.strip()` below.
     records = [
-        json.loads(line) for line in predictions_path.read_text().splitlines() if line.strip()
+        json.loads(line)
+        for predictions_path in predictions_paths
+        for line in predictions_path.read_text().split("\n")
+        if line.strip()
     ]
     if not records:
         return None
