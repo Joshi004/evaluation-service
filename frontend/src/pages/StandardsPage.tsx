@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch, type StandardSummary } from '../api/client'
+import { CatalogPanel } from '../components/CatalogPanel/CatalogPanel'
 import { EmptyState } from '../components/EmptyState/EmptyState'
 import { buildFieldRows } from './StandardsPage.helper'
 
@@ -18,6 +19,10 @@ export function StandardsPage() {
         (see a run's own detail page) additionally depends on the resolved sampling profile, so two
         runs sharing a standard hash can still not be directly comparable.
       </p>
+
+      <div className="mt-6">
+        <CatalogPanel resourcePath="/standards" listQueryKey={['standards']} entryNoun="standard" />
+      </div>
 
       {isLoading && <p className="mt-6 text-sm text-slate-500">Loading standards…</p>}
 

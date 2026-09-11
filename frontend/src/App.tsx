@@ -1,13 +1,19 @@
 import { NavLink, Outlet } from 'react-router'
 
-// The six pages confirmed by decision D5 (docs/IMPLEMENTATION_PHASES.md):
-// S3 Browser, Compare and Cluster were cut from the original nine.
-// Leaderboard is the front door and lives at "/"; the rest are one level
-// down.
+// The real pages. Leaderboard is the front door and lives at "/"; the
+// rest are one level down. Originally "the six pages confirmed by
+// decision D5" (docs/IMPLEMENTATION_PHASES.md, a file that was never
+// committed -- docs/STANDARDS_AND_PROFILES_PHASES.md Section 0 says not
+// to look for it); Phase 7 of that document split Standards' sampling
+// axis into its own catalog and added the Sampling Profiles and Serving
+// Profiles pages below, so the count is stale and not worth restating
+// here.
 const navItems = [
   { to: '/', label: 'Leaderboard' },
   { to: '/checkpoints', label: 'Checkpoints' },
   { to: '/standards', label: 'Standards' },
+  { to: '/sampling-profiles', label: 'Sampling Profiles' },
+  { to: '/serving-profiles', label: 'Serving Profiles' },
   { to: '/submit', label: 'Submit' },
   { to: '/runs', label: 'Runs' },
   { to: '/endpoints', label: 'Endpoints' },

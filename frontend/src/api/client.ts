@@ -263,6 +263,43 @@ export interface LeaderboardRow {
   finished_at: string
 }
 
+// Catalog status wire shapes (docs/STANDARDS_AND_PROFILES_PHASES.md
+// Section 0.5 and Phase 6's app/schemas/catalog.py) -- shared by all
+// three catalogs (standards, sampling profiles, serving profiles).
+// `state` mirrors that schema's CatalogEntryState exactly; `detail`
+// already carries Phase 6's deletion blockers folded in by
+// annotate_deletability, so the frontend never computes them itself.
+export type CatalogEntryState = 'loaded' | 'new' | 'conflicting' | 'orphaned' | 'ad_hoc' | 'invalid'
+
+// One line of a GET /{resource}/catalog-status report -- a YAML file, a
+// database row, or (the loaded/conflicting states) both at once
+// referring to each other. `file`/`row_id`/`row_hash` are null
+// depending on `state`: a `new` or `invalid` entry has no row yet; an
+// `orphaned` or `ad_hoc` row has no file.
+export interface CatalogEntryStatus {
+  file: string | null
+  label: string | null
+  row_id: number | null
+  row_hash: string | null
+  state: CatalogEntryState
+  detail: string | null
+  deletable: boolean
+}
+
+// GET /{resource}/catalog-status's full response -- what a reload would
+// do to every file, plus every row a reload would leave untouched
+// (orphaned, ad-hoc), in one call.
+export interface CatalogStatus {
+  catalog: string
+  entries: CatalogEntryStatus[]
+}
+
+// POST /{resource}/prune's response -- every id actually removed, not a
+// bare count, so the caller can show exactly what went (S-D31).
+export interface CatalogPruneResult {
+  deleted_ids: number[]
+}
+
 // A sampling field whose value is recorded but has no effect under a
 // given framework -- e.g. a non-zero min_p under evalscope (decision
 // D4). Computed by the backend, not stored. Renamed from
