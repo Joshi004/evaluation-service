@@ -35,10 +35,13 @@ export function CheckpointInferredPanel({ checkpointId }: CheckpointInferredPane
   return (
     <InspectionSummary
       fields={inferredFieldsFromCheckpoint(data.inferred)}
-      // problems is an inspect-time concept (CheckpointInspection.problems)
-      // with no stored counterpart on an already-registered checkpoint --
-      // whatever inspection could not read at registration simply stayed
-      // null among the fields above, so there is nothing to list here.
+      // Both problems and missingRequirements are inspect-time concepts
+      // (CheckpointInspection's own fields) with no stored counterpart on
+      // an already-registered checkpoint -- whatever inspection could not
+      // read at registration simply stayed null among the fields above,
+      // and a checkpoint that had a missing requirement was never
+      // inserted in the first place, so there is nothing to list here.
+      missingRequirements={[]}
       problems={[]}
       sourceConfig={data.inferred.source_config}
     />

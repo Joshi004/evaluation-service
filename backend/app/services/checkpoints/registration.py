@@ -37,9 +37,11 @@ logger = logging.getLogger(__name__)
 _MAX_LINEAGE_DEPTH = 20
 
 
-class UnreadableCheckpointError(Exception):
-    """A fresh inspection could not read config.json -- registering
-    something we cannot read has no upside. The router maps this to 400.
+class IncompleteCheckpointError(Exception):
+    """A fresh inspection found this is not a servable model directory
+    -- missing config, weights, a complete shard set, or a tokenizer.
+    Registering something vLLM cannot serve has no upside. The router
+    maps this to 400.
     """
 
 
@@ -62,7 +64,7 @@ async def register_checkpoint(
     """Validate, inspect fresh, resolve the profile, then insert -- in
     that order, and never the profile step before everything else has
     passed (R-T18). Raises `InvalidReferenceError` (from
-    `validate_reference`), `UnreadableCheckpointError`,
+    `validate_reference`), `IncompleteCheckpointError`,
     `RegistrationTargetNotFoundError`, or `CheckpointConflictError`; the
     router maps each to its status code.
     """
@@ -84,10 +86,20 @@ async def register_checkpoint(
 
     discovery = get_model_discovery()
     inspection = await discovery.inspect_checkpoint(validated_reference)
-    if not inspection.readable:
-        raise UnreadableCheckpointError(
-            f"{validated_reference} could not be read: {'; '.join(inspection.problems)}"
+    if inspection.missing_requirements:
+        raise IncompleteCheckpointError(
+            f"{inspection.reference} is not a servable model directory: "
+            f"{'; '.join(inspection.missing_requirements)}"
         )
+
+    # inspect_checkpoint resolves symlinks, so the path about to be
+    # stored can differ from the one _reject_duplicate_path already
+    # checked above. Two spellings of one directory must still be one
+    # checkpoint (R-D23) -- this is the only case the pre-check above
+    # cannot see, since resolving a symlink needs the SSH round trip
+    # that check runs before paying for (R-T17).
+    if inspection.reference != validated_reference:
+        await _reject_duplicate_path(db, inspection.reference)
 
     if request.serving_profile.existing_profile_id is not None:
         default_serving_profile_id = request.serving_profile.existing_profile_id

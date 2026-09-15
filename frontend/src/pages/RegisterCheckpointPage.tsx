@@ -13,6 +13,7 @@ import {
 import { CandidateBrowser } from '../components/CandidateBrowser/CandidateBrowser'
 import { InspectionSummary } from '../components/InspectionSummary/InspectionSummary'
 import { inferredFieldsFromInspection } from '../components/InspectionSummary/InspectionSummary.helper'
+import { PathReferenceInput } from '../components/PathReferenceInput/PathReferenceInput'
 import { RegistrationSummary } from '../components/RegistrationSummary/RegistrationSummary'
 import { ServingProfilePicker } from '../components/ServingProfilePicker/ServingProfilePicker'
 import {
@@ -149,8 +150,8 @@ export function RegisterCheckpointPage() {
     <div>
       <h1 className="text-2xl font-semibold">Register checkpoint</h1>
       <p className="mt-2 max-w-2xl text-slate-400">
-        Browse a candidate on the cluster, review what the service can read about it, choose a
-        serving profile, and confirm.
+        Browse a candidate on the cluster or paste its absolute path, review what the service can
+        read about it, choose a serving profile, and confirm.
       </p>
 
       <ol className="mt-6 flex flex-wrap gap-x-6 gap-y-1 text-sm">
@@ -163,14 +164,20 @@ export function RegisterCheckpointPage() {
 
       <section className="mt-4 rounded-lg border border-slate-800 bg-slate-900 p-4">
         {step === 1 && (
-          <CandidateBrowser
-            candidates={candidates.data}
-            isLoading={candidates.isLoading}
-            isError={candidates.isError}
-            error={candidates.error}
-            selectedReference={selectedCandidate?.reference ?? null}
-            onSelect={handleSelectCandidate}
-          />
+          <div className="space-y-4">
+            <PathReferenceInput
+              selectedReference={selectedCandidate?.reference ?? null}
+              onSelect={handleSelectCandidate}
+            />
+            <CandidateBrowser
+              candidates={candidates.data}
+              isLoading={candidates.isLoading}
+              isError={candidates.isError}
+              error={candidates.error}
+              selectedReference={selectedCandidate?.reference ?? null}
+              onSelect={handleSelectCandidate}
+            />
+          </div>
         )}
 
         {step === 2 && (
@@ -185,9 +192,10 @@ export function RegisterCheckpointPage() {
 
             {inspection.data && (
               <div className="space-y-4">
-                {!inspection.data.readable && (
-                  <p className="rounded border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
-                    This checkpoint cannot be registered: config.json could not be read.
+                {selectedCandidate && inspection.data.reference !== selectedCandidate.reference && (
+                  <p className="rounded border border-slate-700 bg-slate-800/50 p-3 text-xs text-slate-400">
+                    This path resolved to{' '}
+                    <span className="font-mono text-slate-300">{inspection.data.reference}</span>.
                   </p>
                 )}
 
@@ -228,6 +236,7 @@ export function RegisterCheckpointPage() {
 
                 <InspectionSummary
                   fields={inferredFieldsFromInspection(inspection.data)}
+                  missingRequirements={inspection.data.missing_requirements}
                   problems={inspection.data.problems}
                   sourceConfig={inspection.data.source_config}
                 />

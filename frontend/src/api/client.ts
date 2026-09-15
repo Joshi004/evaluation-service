@@ -202,6 +202,9 @@ export interface CheckpointInspection {
   source_config: Record<string, unknown> | null
   readable: boolean
   problems: string[]
+  // Blocking, unlike `problems` above: registration refuses a candidate
+  // whenever this is non-empty.
+  missing_requirements: string[]
   recommendation: ServingProfileRecommendation | null
   sampling_recommendation: SamplingProfileRecommendation | null
 }

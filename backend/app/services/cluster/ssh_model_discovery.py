@@ -100,7 +100,9 @@ class SshModelDiscovery:
         return candidates
 
     async def inspect_checkpoint(self, reference: str) -> CheckpointInspection:
-        """Validates the reference (R-D10), then reads config.json,
+        """Validates the reference (R-D10), resolves it to its canonical
+        form (symlinks included -- R-D23: two spellings of one directory
+        must read as one checkpoint), then reads config.json,
         generation_config.json, adapter_config.json, and
         model.safetensors.index.json over one SFTP session (R-D9),
         lists the directory to determine weight format and shard count,
@@ -110,12 +112,13 @@ class SshModelDiscovery:
         connection escapes this method.
         """
         validated = validate_reference(reference)
-        display_name = posixpath.basename(validated)
+        canonical = await self._canonical_reference(validated)
+        display_name = posixpath.basename(canonical)
 
-        config_path = posixpath.join(validated, "config.json")
-        generation_config_path = posixpath.join(validated, "generation_config.json")
-        adapter_config_path = posixpath.join(validated, "adapter_config.json")
-        index_path = posixpath.join(validated, "model.safetensors.index.json")
+        config_path = posixpath.join(canonical, "config.json")
+        generation_config_path = posixpath.join(canonical, "generation_config.json")
+        adapter_config_path = posixpath.join(canonical, "adapter_config.json")
+        index_path = posixpath.join(canonical, "model.safetensors.index.json")
         texts = await connector.read_remote_texts(
             [config_path, generation_config_path, adapter_config_path, index_path]
         )
@@ -146,8 +149,8 @@ class SshModelDiscovery:
         if texts[index_path] is not None and safetensors_index is None:
             problems.append("model.safetensors.index.json is not valid JSON")
 
-        listings = await connector.list_remote_directories([validated])
-        entries = listings.get(validated, [])
+        listings = await connector.list_remote_directories([canonical])
+        entries = listings.get(canonical, [])
         if not entries:
             problems.append("directory listing failed or returned no entries")
         filenames = [entry.name for entry in entries if not entry.is_directory]
@@ -158,12 +161,12 @@ class SshModelDiscovery:
         if weight_layout.missing_shards:
             problems.append(f"missing shard(s): {', '.join(weight_layout.missing_shards)}")
 
-        size_bytes = await self._checkpoint_size_bytes(validated)
+        size_bytes = await self._checkpoint_size_bytes(canonical)
         if size_bytes is None:
             problems.append("could not determine checkpoint size (du failed)")
 
         return CheckpointInspection(
-            reference=validated,
+            reference=canonical,
             display_name=display_name,
             model_type=inspection.infer_model_type(config) if config is not None else None,
             architecture=inspection.infer_architecture(config) if config is not None else None,
@@ -184,6 +187,9 @@ class SshModelDiscovery:
             source_config=config,
             readable=config is not None,
             problems=problems,
+            missing_requirements=inspection.missing_model_requirements(
+                config, weight_layout, filenames
+            ),
         )
 
     async def validate_checkpoint(self, reference: str) -> CheckpointAvailability:
@@ -260,3 +266,22 @@ class SshModelDiscovery:
             return int(result.stdout.split(maxsplit=1)[0])
         except ValueError:
             return None
+
+    async def _canonical_reference(self, validated_reference: str) -> str:
+        """The reference with every symlink resolved, so two spellings
+        of one directory cannot become two checkpoints (R-D23). Now that
+        a reference can name anything rather than only paths under one
+        curated root, an automount alias or a convenience symlink in a
+        home directory is a realistic way to register the same weights
+        twice under two names.
+
+        Falls back to the reference as given when `readlink -f` fails --
+        a path that does not resolve is something the inspection this
+        feeds should report as a missing config, not a reason to refuse
+        to look at all.
+        """
+        result = await connector.run_command(f"readlink -f {shlex.quote(validated_reference)}")
+        canonical = result.stdout.strip()
+        if result.exit_status != 0 or not canonical:
+            return validated_reference
+        return validate_reference(canonical)

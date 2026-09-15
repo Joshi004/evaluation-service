@@ -122,3 +122,39 @@ def infer_weight_layout(
         return WeightLayout(weight_format="bin", shard_count=len(bin_files), missing_shards=[])
 
     return WeightLayout(weight_format=None, shard_count=None, missing_shards=[])
+
+
+# Any one of these satisfies "has a tokenizer" -- which file a given
+# checkpoint ships depends on its tokenizer type (fast vs. sentencepiece),
+# not on how complete the checkpoint is.
+_TOKENIZER_FILENAMES = ("tokenizer.json", "tokenizer.model", "tokenizer_config.json")
+
+
+def missing_model_requirements(
+    config: dict[str, Any] | None,
+    weight_layout: WeightLayout,
+    filenames: list[str],
+) -> list[str]:
+    """Every reason this directory is not a servable model repository, or
+    an empty list when it is registerable.
+
+    Kept separate from an inspection's `problems` list because the two
+    answer different questions: a missing generation_config.json is
+    worth reporting and worth registering anyway, while no weights or no
+    tokenizer means vLLM cannot serve this directory at all, no matter
+    how confidently a person clicks register.
+    """
+    missing: list[str] = []
+
+    if config is None:
+        missing.append("config.json is missing or not valid JSON")
+    if weight_layout.weight_format is None:
+        missing.append("no weight files found (.safetensors or .bin)")
+    if weight_layout.missing_shards:
+        missing.append(f"missing shard(s): {', '.join(weight_layout.missing_shards)}")
+    if not any(filename in filenames for filename in _TOKENIZER_FILENAMES):
+        missing.append(
+            f"no tokenizer file found (expected one of: {', '.join(_TOKENIZER_FILENAMES)})"
+        )
+
+    return missing

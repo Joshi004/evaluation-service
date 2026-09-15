@@ -55,6 +55,11 @@ class CheckpointInspection(BaseModel):
     source_config: dict[str, Any] | None
     readable: bool
     problems: list[str]
+    # Blocking, unlike `problems` above: registration refuses a
+    # candidate whenever this is non-empty. Separate fields because the
+    # two answer different questions -- see
+    # services.discovery.inspection.missing_model_requirements.
+    missing_requirements: list[str]
     # Set by the controller, not the port (mirrors `already_registered`
     # on `CheckpointCandidate` above): recommending a profile needs the
     # database, and `ModelDiscovery` implementations never touch it

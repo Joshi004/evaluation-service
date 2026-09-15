@@ -21,8 +21,8 @@ from app.schemas.discovery import (
 )
 from app.services.checkpoints.registration import (
     CheckpointConflictError,
+    IncompleteCheckpointError,
     RegistrationTargetNotFoundError,
-    UnreadableCheckpointError,
 )
 from app.services.cluster.ports import ClusterUnreachableError
 from app.services.discovery.references import InvalidReferenceError
@@ -78,7 +78,7 @@ async def register_checkpoint(
         return await checkpoints_controller.register_checkpoint(db, request)
     except InvalidReferenceError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except UnreadableCheckpointError as exc:
+    except IncompleteCheckpointError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except RegistrationTargetNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

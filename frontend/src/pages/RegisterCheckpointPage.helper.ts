@@ -64,14 +64,14 @@ export function canAdvanceFromStep(step: WizardStep, context: WizardStepContext)
     return context.selectedCandidate !== null
   }
   if (step === 2) {
-    // Blocking Next on `readable` here, not just at the final POST,
-    // means an unreadable candidate is caught right next to the
-    // `problems` list that explains why, rather than several steps
+    // Blocking Next on `missing_requirements` here, not just at the
+    // final POST, means an unregisterable candidate is caught right
+    // next to the list that explains why, rather than several steps
     // later as a 400 the user can no longer see the cause of.
     return (
       !context.isInspectionLoading &&
       context.inspection !== undefined &&
-      context.inspection.readable &&
+      context.inspection.missing_requirements.length === 0 &&
       context.name.trim() !== ''
     )
   }
