@@ -251,10 +251,19 @@ async def _status_for_file(
 
 def _status_for_unclaimed_row(row: RowT) -> CatalogEntryStatus:
     """A row with no file claiming it: `orphaned` if it was a reviewed
-    catalog entry (`label` set) -- a delete candidate once Phase 6 ships
-    deletion -- or `ad_hoc` if it was minted by resolving a user
-    customisation (`label IS NULL`), which never had a file to begin
-    with.
+    catalog entry (`label` set), or `ad_hoc` if it was minted by
+    resolving a user customisation with no label at all (`label IS
+    NULL`), which never had a file to begin with.
+
+    A YAML file is how a config gets into the system cold -- reviewed,
+    versioned, reloadable -- not something every labelled row must have:
+    a submit-time override can now be named directly (the label
+    pre-flight checks in `app.services.runs.submit`), and that row is
+    `orphaned` the same as a shipped standard whose file got deleted,
+    without being a delete candidate for the same reason. `deletable`
+    (`annotate_deletability`, below) is what actually decides that, from
+    references and `_source_file_blocker` alone -- this state is a
+    report, not a verdict.
     """
     if row.label is not None:
         return CatalogEntryStatus(
@@ -263,7 +272,10 @@ def _status_for_unclaimed_row(row: RowT) -> CatalogEntryStatus:
             row_id=row.id,
             row_hash=row.hash,
             state="orphaned",
-            detail=f"no catalog file produces label {row.label!r}",
+            detail=(
+                f"no catalog file produces label {row.label!r} -- either its file was "
+                "removed, or this row was named directly rather than loaded from one"
+            ),
             deletable=False,
         )
     return CatalogEntryStatus(

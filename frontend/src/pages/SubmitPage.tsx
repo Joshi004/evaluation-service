@@ -8,19 +8,27 @@ import {
   type RunPreview,
   type RunSubmission,
   type SamplingProfileSummary,
+  type ServingProfileSummary,
   type StandardSummary,
 } from '../api/client'
 import { DryRunPreview } from '../components/DryRunPreview/DryRunPreview'
-import { OverrideEditor } from '../components/OverrideEditor/OverrideEditor'
-import {
-  buildOverridesFromDraft,
-  EMPTY_OVERRIDE_DRAFT,
-  type OverrideDraft,
-} from '../components/OverrideEditor/OverrideEditor.helper'
-import { SamplingProfilePicker } from '../components/SamplingProfilePicker/SamplingProfilePicker'
-import type { SamplingProfileChoice } from '../components/SamplingProfilePicker/SamplingProfilePicker.helper'
 import { SubmitGrid } from '../components/SubmitGrid/SubmitGrid'
-import { checkpointsById, samplingProfilesById, standardsById, useDebouncedValue } from './SubmitPage.helper'
+import {
+  buildRequestOverrides,
+  EMPTY_SUBMIT_OVERRIDE_DRAFTS,
+  resolveSamplingLabels,
+  resolveServingLabels,
+  resolveStandardLabels,
+  type SubmitOverrideDrafts,
+} from '../components/SubmitOverrides/SubmitOverrides.helper'
+import { SubmitOverrides } from '../components/SubmitOverrides/SubmitOverrides'
+import {
+  checkpointsById,
+  samplingProfilesById,
+  servingProfilesById,
+  standardsById,
+  useDebouncedValue,
+} from './SubmitPage.helper'
 
 export function SubmitPage() {
   const queryClient = useQueryClient()
@@ -28,21 +36,15 @@ export function SubmitPage() {
 
   const [selectedCheckpointIds, setSelectedCheckpointIds] = useState<number[]>([])
   const [selectedStandardIds, setSelectedStandardIds] = useState<number[]>([])
-  // null = "use each checkpoint's default" (S-D9's fallback, S-D35's
-  // first case) -- the default choice, so a submit that never touches
-  // this picker behaves exactly as it did before Phase 8.
-  const [samplingProfileChoice, setSamplingProfileChoice] = useState<SamplingProfileChoice>(null)
-  const [draft, setDraft] = useState<OverrideDraft>(EMPTY_OVERRIDE_DRAFT)
+  const [overrideDrafts, setOverrideDrafts] = useState<SubmitOverrideDrafts>(EMPTY_SUBMIT_OVERRIDE_DRAFTS)
   const [runName, setRunName] = useState('')
   const [submittedBy, setSubmittedBy] = useState('')
 
-  // Debounced on the raw draft, not the derived overrides --
-  // buildOverridesFromDraft returns a new object every call, and
+  // Debounced on the raw drafts, not the derived overrides --
+  // buildRequestOverrides returns a new object every call, and
   // debouncing *that* would restart the timer on every unrelated
   // re-render instead of only when the user actually types.
-  const debouncedDraft = useDebouncedValue(draft, 400)
-  const overrides = buildOverridesFromDraft(draft)
-  const debouncedOverrides = buildOverridesFromDraft(debouncedDraft)
+  const debouncedOverrideDrafts = useDebouncedValue(overrideDrafts, 400)
 
   const checkpoints = useQuery({
     queryKey: ['checkpoints'],
@@ -64,18 +66,74 @@ export function SubmitPage() {
     queryFn: () => apiFetch<SamplingProfileSummary[]>('/sampling-profiles'),
   })
 
+  // Same query key as ServingProfilesPage's and RegisterCheckpointPage's
+  // own list queries, so all three share one cache entry.
+  const servingProfiles = useQuery({
+    queryKey: ['serving-profiles'],
+    queryFn: () => apiFetch<ServingProfileSummary[]>('/serving-profiles'),
+  })
+
   const gridReady = selectedCheckpointIds.length > 0 && selectedStandardIds.length > 0
   const selectedCheckpoints = (checkpoints.data ?? []).filter((checkpoint) =>
     selectedCheckpointIds.includes(checkpoint.id),
   )
+  const selectedStandards = (standards.data ?? []).filter((standard) =>
+    selectedStandardIds.includes(standard.id),
+  )
+
+  // Computed once per render, not inline at each call site -- unlike
+  // checkpointsById below (used only once, for DryRunPreview), each of
+  // these three feeds both a resolveXLabels call below and a component
+  // prop further down, so hoisting avoids rebuilding the same Map twice.
+  const standardsMap = standardsById(standards.data)
+  const samplingProfilesMap = samplingProfilesById(samplingProfiles.data)
+  const servingProfilesMap = servingProfilesById(servingProfiles.data)
+
+  // Overrides are per-axis (Phase 8): a standard's shape belongs to
+  // that standard, a checkpoint's sampling and serving each belong to
+  // that checkpoint. Filtered to the *current* selection here -- see
+  // buildRequestOverrides' own docstring on why a draft for an item
+  // just unchecked must never reach the request body.
+  //
+  // The label resolved for a new row is computed twice more, here --
+  // once for each of the live and debounced drafts, mirroring
+  // requestOverrides/debouncedRequestOverrides themselves -- besides
+  // the once SubmitOverrides.tsx already does on the live drafts to
+  // render each card's own label box. All three calls are the same
+  // pure computation over a small selection; recomputing it is cheaper
+  // than plumbing its result through as three more props.
+  const requestOverrides = buildRequestOverrides(
+    overrideDrafts,
+    selectedCheckpointIds,
+    selectedStandardIds,
+    resolveStandardLabels(selectedStandards, standardsMap, overrideDrafts),
+    resolveSamplingLabels(selectedCheckpoints, samplingProfilesMap, overrideDrafts),
+    resolveServingLabels(selectedCheckpoints, servingProfilesMap, overrideDrafts),
+  )
+  const debouncedRequestOverrides = buildRequestOverrides(
+    debouncedOverrideDrafts,
+    selectedCheckpointIds,
+    selectedStandardIds,
+    resolveStandardLabels(selectedStandards, standardsMap, debouncedOverrideDrafts),
+    resolveSamplingLabels(selectedCheckpoints, samplingProfilesMap, debouncedOverrideDrafts),
+    resolveServingLabels(selectedCheckpoints, servingProfilesMap, debouncedOverrideDrafts),
+  )
 
   const preview = useQuery({
+    // Lists the exact fields the request body below sends, not the
+    // whole debouncedRequestOverrides object -- that object also
+    // carries the three label maps (create-only, RunPreviewRequest has
+    // no such fields), and keying on it wholesale would refetch an
+    // identical preview every time a label box's contents changed.
     queryKey: [
       'runs-preview',
       selectedCheckpointIds,
       selectedStandardIds,
-      debouncedOverrides,
-      samplingProfileChoice,
+      debouncedRequestOverrides.standardOverridesByStandardId,
+      debouncedRequestOverrides.samplingOverridesByCheckpointId,
+      debouncedRequestOverrides.samplingProfileIdByCheckpointId,
+      debouncedRequestOverrides.servingOverridesByCheckpointId,
+      debouncedRequestOverrides.servingProfileIdByCheckpointId,
     ],
     queryFn: () =>
       apiFetch<RunPreview>('/runs/preview', {
@@ -84,9 +142,11 @@ export function SubmitPage() {
         body: JSON.stringify({
           checkpoint_ids: selectedCheckpointIds,
           standard_ids: selectedStandardIds,
-          standard_overrides: debouncedOverrides.standardOverrides,
-          sampling_overrides: debouncedOverrides.samplingOverrides,
-          sampling_profile_id: samplingProfileChoice,
+          standard_overrides_by_standard_id: debouncedRequestOverrides.standardOverridesByStandardId,
+          sampling_overrides_by_checkpoint_id: debouncedRequestOverrides.samplingOverridesByCheckpointId,
+          sampling_profile_id_by_checkpoint_id: debouncedRequestOverrides.samplingProfileIdByCheckpointId,
+          serving_overrides_by_checkpoint_id: debouncedRequestOverrides.servingOverridesByCheckpointId,
+          serving_profile_id_by_checkpoint_id: debouncedRequestOverrides.servingProfileIdByCheckpointId,
         }),
       }),
     // POST /runs/preview 422s on an empty checkpoint_ids or standard_ids
@@ -119,9 +179,14 @@ export function SubmitPage() {
       name: runName.trim(),
       checkpoint_ids: selectedCheckpointIds,
       standard_ids: selectedStandardIds,
-      standard_overrides: overrides.standardOverrides,
-      sampling_overrides: overrides.samplingOverrides,
-      sampling_profile_id: samplingProfileChoice,
+      standard_overrides_by_standard_id: requestOverrides.standardOverridesByStandardId,
+      sampling_overrides_by_checkpoint_id: requestOverrides.samplingOverridesByCheckpointId,
+      sampling_profile_id_by_checkpoint_id: requestOverrides.samplingProfileIdByCheckpointId,
+      serving_overrides_by_checkpoint_id: requestOverrides.servingOverridesByCheckpointId,
+      serving_profile_id_by_checkpoint_id: requestOverrides.servingProfileIdByCheckpointId,
+      standard_label_by_standard_id: requestOverrides.standardLabelByStandardId,
+      sampling_label_by_checkpoint_id: requestOverrides.samplingLabelByCheckpointId,
+      serving_label_by_checkpoint_id: requestOverrides.servingLabelByCheckpointId,
       submitted_by: trimmedSubmittedBy === '' ? null : trimmedSubmittedBy,
     })
   }
@@ -170,39 +235,40 @@ export function SubmitPage() {
       </section>
 
       <section className="mt-6 rounded-lg border border-slate-800 bg-slate-900 p-4">
-        <h2 className="text-sm font-medium text-slate-300">Sampling profile</h2>
-        <p className="mt-1 text-xs text-slate-500">
-          Applies to the whole grid, not one pick per pair. The default lets each checkpoint speak
-          however it normally does; picking a named profile applies it uniformly and can change every
-          pair's comparison hash -- the dry run below shows exactly which.
-        </p>
-        <div className="mt-3">
-          {samplingProfiles.isLoading ? (
-            <p className="text-sm text-slate-500">Loading sampling profiles…</p>
-          ) : samplingProfiles.isError ? (
-            <p className="text-sm text-red-400">
-              Could not load sampling profiles: {String(samplingProfiles.error)}
-            </p>
-          ) : (
-            <SamplingProfilePicker
-              profiles={samplingProfiles.data ?? []}
-              selectedCheckpoints={selectedCheckpoints}
-              choice={samplingProfileChoice}
-              onChoiceChange={setSamplingProfileChoice}
-            />
-          )}
-        </div>
-      </section>
-
-      <section className="mt-6 rounded-lg border border-slate-800 bg-slate-900 p-4">
         <h2 className="text-sm font-medium text-slate-300">Overrides</h2>
         <p className="mt-1 text-xs text-slate-500">
-          Applies to every selected standard. A blank field means "leave it as the standard (or its
-          resolved sampling profile) already has it" -- this mints a new, unlabelled standard and/or
-          sampling profile only for the fields actually changed here.
+          One card per selected checkpoint and per selected standard, below -- each field&apos;s
+          placeholder is its own resolved default. A blank field means "leave it at that default"; a
+          typed value (marked with a dot, and resettable) mints a new standard, sampling profile
+          and/or serving profile only for the fields actually changed on that card. Change at least one
+          field on a card to name the row it would create, or leave it unlabelled.
         </p>
         <div className="mt-3">
-          <OverrideEditor draft={draft} onChange={setDraft} />
+          {checkpoints.isLoading ||
+          standards.isLoading ||
+          samplingProfiles.isLoading ||
+          servingProfiles.isLoading ? (
+            <p className="text-sm text-slate-500">
+              Loading checkpoints, standards, sampling profiles, and serving profiles…
+            </p>
+          ) : checkpoints.isError || standards.isError || samplingProfiles.isError || servingProfiles.isError ? (
+            <p className="text-sm text-red-400">
+              Could not load checkpoints, standards, sampling profiles, or serving profiles:{' '}
+              {String(checkpoints.error ?? standards.error ?? samplingProfiles.error ?? servingProfiles.error)}
+            </p>
+          ) : (
+            <SubmitOverrides
+              selectedCheckpoints={selectedCheckpoints}
+              selectedStandards={selectedStandards}
+              standardsById={standardsMap}
+              samplingProfiles={samplingProfiles.data ?? []}
+              samplingProfilesById={samplingProfilesMap}
+              servingProfiles={servingProfiles.data ?? []}
+              servingProfilesById={servingProfilesMap}
+              drafts={overrideDrafts}
+              onDraftsChange={setOverrideDrafts}
+            />
+          )}
         </div>
       </section>
 
@@ -240,14 +306,15 @@ export function SubmitPage() {
               isLoading={preview.isLoading}
               isError={preview.isError}
               error={preview.error}
-              standardsById={standardsById(standards.data)}
+              standardsById={standardsMap}
               checkpointsById={checkpointsById(checkpoints.data)}
-              samplingProfilesById={samplingProfilesById(samplingProfiles.data)}
-              // Debounced, not the immediate `overrides` -- this must
-              // describe the same request that produced `preview.data`,
-              // and the preview query itself fires on the debounced
-              // value.
-              userSamplingOverrides={debouncedOverrides.samplingOverrides}
+              samplingProfilesById={samplingProfilesMap}
+              servingProfilesById={servingProfilesMap}
+              // Debounced, not the immediate `requestOverrides` -- this
+              // must describe the same request that produced
+              // `preview.data`, and the preview query itself fires on
+              // the debounced value.
+              userSamplingOverridesByCheckpointId={debouncedRequestOverrides.samplingOverridesByCheckpointId}
             />
           ) : (
             <p className="text-sm text-slate-500">Select at least one checkpoint and one standard.</p>

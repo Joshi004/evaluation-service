@@ -86,16 +86,16 @@ async def insert_serving_profile(
     db: AsyncSession, config: ServingProfileConfig, hash_value: str, label: str | None = None
 ) -> ServingProfile:
     """Insert a new, immutable serving profile row. `label` defaults to
-    `None` because `resolve_serving_profile` mints one from a bare
-    `ServingProfileConfig` with no label of its own, and every profile
-    it inserts is, by definition, an ad-hoc customisation rather than a
-    reviewed standard (R-D16) -- that defaulted parameter is the entire
-    widening this phase makes here (S-T4). The only caller that ever
-    passes a real label is `app.services.serving_profiles.repository`,
-    loading a reviewed `catalog/serving-profiles/*.yaml` file. Built via
-    `**config.model_dump()` so any drift between `ServingProfileConfig`'s
-    fields and the model's actual columns fails loudly (`TypeError`)
-    rather than silently hashing the wrong thing.
+    `None` for an ad-hoc customisation with no name of its own (R-D16)
+    -- that defaulted parameter is the entire widening this phase makes
+    here (S-T4). Two callers pass a real one:
+    `app.services.serving_profiles.repository`, loading a reviewed
+    `catalog/serving-profiles/*.yaml` file, and `resolve_serving_profile`
+    (app/services/runs/submit.py) forwarding a name typed into a
+    submit-time override card. Built via `**config.model_dump()` so any
+    drift between `ServingProfileConfig`'s fields and the model's actual
+    columns fails loudly (`TypeError`) rather than silently hashing the
+    wrong thing.
     """
     profile = ServingProfile(**config.model_dump(), hash=hash_value, label=label)
     db.add(profile)

@@ -30,11 +30,20 @@ export interface CheckpointListItem {
   // See utils/servingProfileDisplayName.ts for the label-or-hash rule.
   serving_profile_label: string | null
   serving_profile_hash: string
+  // The id itself -- Submit's per-checkpoint serving card looks this
+  // checkpoint's own default profile up in the already-fetched
+  // serving-profiles list by this id, the same reason
+  // default_sampling_profile_id exists below.
+  default_serving_profile_id: number
   // Joined in from sampling_profile, same reasoning -- named with the
   // default_ prefix (unlike serving_profile_label/_hash above) because
   // docs/STANDARDS_AND_PROFILES_PHASES.md Phase 2 names it explicitly.
   default_sampling_profile_label: string | null
   default_sampling_profile_hash: string
+  // The id itself -- Submit's per-checkpoint sampling card looks this
+  // checkpoint's own default profile up in the already-fetched
+  // sampling-profiles list by this id.
+  default_sampling_profile_id: number
   created_at: string
   availability_status: CheckpointAvailabilityStatus
   availability_checked_at: string | null
@@ -445,19 +454,53 @@ export interface SamplingOverrides {
   seed?: number | null
 }
 
+// A user override of a resolved serving profile's fields -- see
+// app/schemas/runs.py's ServingOverrides, the submit-time analogue of
+// SamplingOverrides. Only the eight fields that actually change how the
+// engine launches -- engine, engine_version and engine_options are
+// excluded because the cluster's serve script pins the vLLM binary
+// itself, so overriding those would move this override's hash without
+// moving what launch actually runs.
+export interface ServingOverrides {
+  gpus?: number | null
+  tensor_parallel_size?: number | null
+  pipeline_parallel_size?: number | null
+  max_model_len?: number | null
+  reasoning_parser?: string | null
+  dtype?: string | null
+  quantization?: string | null
+  gpu_memory_utilization?: number | null
+}
+
 // POST /api/v1/runs body -- every (checkpoint, standard) pair in the
 // cartesian product of checkpoint_ids x standard_ids becomes one queued
-// run, all sharing one new run_group. sampling_profile_id is optional
-// (S-D9): omitted means each checkpoint's own
-// default_sampling_profile_id; given, it overrides that default for
-// every checkpoint in the grid uniformly.
+// run, all sharing one new run_group.
+//
+// Overrides are keyed per-axis, not one grid-wide value each -- see
+// app/schemas/runs.py's CreateRunsRequest: a standard's shape belongs
+// to that standard alone, and a sampling override or an explicit
+// profile choice belongs to that checkpoint alone. A checkpoint id
+// absent from sampling_profile_id_by_checkpoint_id falls back to that
+// checkpoint's own default_sampling_profile_id (S-D9). Keys must be a
+// subset of standard_ids / checkpoint_ids respectively, or the backend
+// 422s.
 export interface CreateRunsRequest {
   name: string
   checkpoint_ids: number[]
   standard_ids: number[]
-  standard_overrides: StandardOverrides
-  sampling_overrides: SamplingOverrides
-  sampling_profile_id?: number | null
+  standard_overrides_by_standard_id: Record<number, StandardOverrides>
+  sampling_overrides_by_checkpoint_id: Record<number, SamplingOverrides>
+  sampling_profile_id_by_checkpoint_id: Record<number, number>
+  serving_overrides_by_checkpoint_id: Record<number, ServingOverrides>
+  serving_profile_id_by_checkpoint_id: Record<number, number>
+  // Applied to whichever row this submit actually mints for that id --
+  // a hash hit reuses an existing row untouched, so a label here only
+  // ever attaches to a brand new row. Omit a key, never send `''`: the
+  // backend rejects an empty label with a 422 (it would only ever be a
+  // bug, never a real name).
+  standard_label_by_standard_id: Record<number, string>
+  sampling_label_by_checkpoint_id: Record<number, string>
+  serving_label_by_checkpoint_id: Record<number, string>
   submitted_by?: string | null
 }
 
@@ -471,14 +514,17 @@ export interface RunGroupCancellation {
   cancelled_run_ids: number[]
 }
 
-// POST /api/v1/runs/preview body -- the same grid shape as
-// CreateRunsRequest minus `name` and `submitted_by`.
+// POST /api/v1/runs/preview body -- the same grid shape and the same
+// per-axis override maps as CreateRunsRequest above, minus `name` and
+// `submitted_by`.
 export interface RunPreviewRequest {
   checkpoint_ids: number[]
   standard_ids: number[]
-  standard_overrides: StandardOverrides
-  sampling_overrides: SamplingOverrides
-  sampling_profile_id?: number | null
+  standard_overrides_by_standard_id: Record<number, StandardOverrides>
+  sampling_overrides_by_checkpoint_id: Record<number, SamplingOverrides>
+  sampling_profile_id_by_checkpoint_id: Record<number, number>
+  serving_overrides_by_checkpoint_id: Record<number, ServingOverrides>
+  serving_profile_id_by_checkpoint_id: Record<number, number>
 }
 
 // One compatibility rule's result -- see app/schemas/compatibility.py's
@@ -549,6 +595,23 @@ export interface ResolvedSamplingPreview {
   warnings: SamplingFieldWarning[]
 }
 
+// What resolve_serving_profile would do for one checkpoint's serving
+// override, without actually doing it -- mirrors ResolvedStandardPreview,
+// but keyed by checkpoint_id alone rather than a pair: nothing about a
+// standard feeds into serving, so one checkpoint resolves to exactly one
+// serving profile regardless of which standards are selected alongside
+// it. `gpus` is carried here (not just inside changed_fields) because
+// RunPreview.gpu_count below is summed over exactly these resolved
+// profiles -- a gpus override must move the number shown before submit.
+export interface ResolvedServingPreview {
+  checkpoint_id: number
+  base_serving_profile_id: number
+  hash: string
+  is_new_serving_profile: boolean
+  changed_fields: FieldChange[]
+  gpus: number
+}
+
 // Response for POST /api/v1/runs/preview -- everything the Submit page
 // needs to render before anything POSTs.
 export interface RunPreview {
@@ -557,6 +620,7 @@ export interface RunPreview {
   pairs: RunPreviewPair[]
   resolved_standards: ResolvedStandardPreview[]
   resolved_sampling: ResolvedSamplingPreview[]
+  resolved_serving: ResolvedServingPreview[]
 }
 
 export interface RunMetric {

@@ -78,12 +78,11 @@ async def insert_sampling_profile(
     db: AsyncSession, config: SamplingProfileConfig, hash_value: str, label: str | None = None
 ) -> SamplingProfile:
     """Insert a new, immutable sampling profile row. `label` defaults to
-    `None` because a future resolve step (Phase 3) mints one from a bare
-    `SamplingProfileConfig` with no label of its own -- every profile it
-    inserts is, by definition, an ad-hoc customisation rather than a
-    reviewed catalog entry. The only caller that passes a real label
-    today is `app.services.sampling_profiles.repository`, loading a
-    reviewed `catalog/sampling-profiles/*.yaml` file. Built via
+    `None` for an ad-hoc customisation with no name of its own. Two
+    callers pass a real one: `app.services.sampling_profiles.repository`,
+    loading a reviewed `catalog/sampling-profiles/*.yaml` file, and
+    `resolve_sampling_profile` (app/services/runs/submit.py) forwarding a
+    name typed into a submit-time override card. Built via
     `**config.model_dump()` so any drift between `SamplingProfileConfig`'s
     fields and the model's actual columns fails loudly (`TypeError`)
     rather than silently hashing the wrong thing.

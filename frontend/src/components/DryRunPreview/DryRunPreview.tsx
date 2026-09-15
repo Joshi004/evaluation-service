@@ -5,6 +5,7 @@ import type {
   RunPreview,
   SamplingOverrides,
   SamplingProfileSummary,
+  ServingProfileSummary,
   StandardSummary,
 } from '../../api/client'
 import {
@@ -14,6 +15,7 @@ import {
   type GroupedFinding,
 } from './DryRunPreview.helper'
 import { ResolvedSamplingCard } from './ResolvedSamplingCard'
+import { ResolvedServingCard } from './ResolvedServingCard'
 
 interface DryRunPreviewProps {
   preview: RunPreview | undefined
@@ -23,10 +25,14 @@ interface DryRunPreviewProps {
   standardsById: Map<number, StandardSummary>
   checkpointsById: Map<number, CheckpointListItem>
   samplingProfilesById: Map<number, SamplingProfileSummary>
-  // The submit's own sampling overrides (OverrideEditor's sampling
-  // half) -- the same object for every card, since S-D35 applies one
-  // sampling choice to the whole grid, not one per pair.
-  userSamplingOverrides: SamplingOverrides
+  servingProfilesById: Map<number, ServingProfileSummary>
+  // The submit's own sampling overrides, keyed by checkpoint_id -- a
+  // checkpoint's sampling overrides belong to that checkpoint alone
+  // (Phase 8's per-axis split, app/schemas/runs.py's
+  // sampling_overrides_by_checkpoint_id), so each resolved-sampling
+  // card below looks up its own pair's checkpoint_id here rather than
+  // every card sharing one grid-wide object.
+  userSamplingOverridesByCheckpointId: Record<number, SamplingOverrides>
 }
 
 interface FindingGroupItemProps {
@@ -118,8 +124,8 @@ function ResolvedStandardCard({ resolved, standardsById }: ResolvedStandardCardP
 // and GPUs (Trap T1 -- GPUs are per distinct checkpoint, not per run,
 // so this is the one number a human will actually act on), which
 // findings block or merely warn and why, and what each selected
-// standard and each resolved sampling profile would actually resolve
-// to. All of it comes straight from POST /runs/preview
+// standard and each resolved sampling and serving profile would
+// actually resolve to. All of it comes straight from POST /runs/preview
 // (backend/app/services/runs/preview.py) -- this component never
 // recomputes any of it, so Submit and the Standards page can never
 // disagree about what a value does.
@@ -131,7 +137,8 @@ export function DryRunPreview({
   standardsById,
   checkpointsById,
   samplingProfilesById,
-  userSamplingOverrides,
+  servingProfilesById,
+  userSamplingOverridesByCheckpointId,
 }: DryRunPreviewProps) {
   if (isLoading) {
     return <p className="text-sm text-slate-500">Checking…</p>
@@ -215,8 +222,20 @@ export function DryRunPreview({
             standardsById={standardsById}
             checkpointsById={checkpointsById}
             samplingProfilesById={samplingProfilesById}
-            userSamplingOverrides={userSamplingOverrides}
+            userSamplingOverrides={userSamplingOverridesByCheckpointId[resolved.checkpoint_id] ?? {}}
             comparisonHash={comparisonHashes.get(`${resolved.checkpoint_id}-${resolved.standard_id}`)}
+          />
+        ))}
+      </div>
+
+      <div className="mt-4 space-y-3">
+        <h3 className="text-xs font-medium text-slate-400">Resolved serving</h3>
+        {preview.resolved_serving.map((resolved) => (
+          <ResolvedServingCard
+            key={resolved.checkpoint_id}
+            resolved={resolved}
+            checkpointsById={checkpointsById}
+            servingProfilesById={servingProfilesById}
           />
         ))}
       </div>

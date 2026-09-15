@@ -14,8 +14,18 @@ from app.services.standards import queries as standards_queries
 from app.services.standards.hashing import standard_hash
 
 
-async def resolve_standard(db: AsyncSession, base: Standard, overrides: dict[str, Any]) -> Standard:
-    """A user override is not a special case. It's just a different standard."""
+async def resolve_standard(
+    db: AsyncSession, base: Standard, overrides: dict[str, Any], label: str | None = None
+) -> Standard:
+    """A user override is not a special case. It's just a different
+    standard.
+
+    `label` defaults to `None` (today's ad-hoc behaviour) and only ever
+    attaches to a row this call actually inserts below -- a hash hit
+    returns the existing row exactly as it is, labelled or not, since
+    rows are immutable (S-D3) and a caller cannot rename one after the
+    fact by resubmitting the same override with a label attached.
+    """
     config = base.as_hashable_dict() | overrides
     hash_value = standard_hash(config)
     existing = await standards_queries.get_standard_by_hash(db, hash_value)
@@ -32,5 +42,5 @@ async def resolve_standard(db: AsyncSession, base: Standard, overrides: dict[str
         "request_timeout_seconds": base.request_timeout_seconds,
     }
     return await standards_queries.insert_standard(
-        db, config | unhashed_config, hash_value, label=None
+        db, config | unhashed_config, hash_value, label=label
     )

@@ -21,6 +21,11 @@ class CheckpointListItem(BaseModel):
     # and has no reason to look up the profile separately for that.
     serving_profile_label: str | None
     serving_profile_hash: str
+    # The id itself, not just its label/hash above -- Submit's per-
+    # checkpoint serving card needs it to look this checkpoint's own
+    # default profile up in the already-fetched serving-profiles list,
+    # the same reason default_sampling_profile_id exists below.
+    default_serving_profile_id: int
     # Joined in from sampling_profile, same reasoning -- named with the
     # default_ prefix (unlike serving_profile_label/_hash above) because
     # docs/STANDARDS_AND_PROFILES_PHASES.md Phase 2 names it explicitly;
@@ -28,6 +33,13 @@ class CheckpointListItem(BaseModel):
     # triggering a rename outside this phase's scope.
     default_sampling_profile_label: str | None
     default_sampling_profile_hash: str
+    # The id itself, not just its label/hash above -- Submit's per-
+    # checkpoint sampling card (docs/STANDARDS_AND_PROFILES_PHASES.md
+    # Phase 8) needs it to look this checkpoint's own default profile up
+    # in the already-fetched sampling-profiles list, the same way
+    # SamplingProfilePicker.helper.ts's old grid-wide picker did with
+    # `sampling_profile_id`.
+    default_sampling_profile_id: int
     created_at: datetime
     # Independent of registration (R-D1): a row stays even if the
     # weights behind it later vanish. 'unknown' for a checkpoint nobody

@@ -42,9 +42,23 @@ async def submit_runs(db: AsyncSession, request: CreateRunsRequest) -> RunSubmis
         name=request.name,
         checkpoint_ids=request.checkpoint_ids,
         standard_ids=request.standard_ids,
-        standard_overrides=request.standard_overrides.model_dump(exclude_unset=True),
-        sampling_overrides=request.sampling_overrides.model_dump(exclude_unset=True),
-        sampling_profile_id=request.sampling_profile_id,
+        standard_overrides_by_standard_id={
+            standard_id: overrides.model_dump(exclude_unset=True)
+            for standard_id, overrides in request.standard_overrides_by_standard_id.items()
+        },
+        sampling_overrides_by_checkpoint_id={
+            checkpoint_id: overrides.model_dump(exclude_unset=True)
+            for checkpoint_id, overrides in request.sampling_overrides_by_checkpoint_id.items()
+        },
+        sampling_profile_id_by_checkpoint_id=request.sampling_profile_id_by_checkpoint_id,
+        serving_overrides_by_checkpoint_id={
+            checkpoint_id: overrides.model_dump(exclude_unset=True)
+            for checkpoint_id, overrides in request.serving_overrides_by_checkpoint_id.items()
+        },
+        serving_profile_id_by_checkpoint_id=request.serving_profile_id_by_checkpoint_id,
+        standard_label_by_standard_id=request.standard_label_by_standard_id,
+        sampling_label_by_checkpoint_id=request.sampling_label_by_checkpoint_id,
+        serving_label_by_checkpoint_id=request.serving_label_by_checkpoint_id,
         submitted_by=request.submitted_by,
     )
     if submission is None:
@@ -66,9 +80,20 @@ async def preview_runs(db: AsyncSession, request: RunPreviewRequest) -> RunPrevi
         db,
         checkpoint_ids=request.checkpoint_ids,
         standard_ids=request.standard_ids,
-        standard_overrides=request.standard_overrides.model_dump(exclude_unset=True),
-        sampling_overrides=request.sampling_overrides.model_dump(exclude_unset=True),
-        sampling_profile_id=request.sampling_profile_id,
+        standard_overrides_by_standard_id={
+            standard_id: overrides.model_dump(exclude_unset=True)
+            for standard_id, overrides in request.standard_overrides_by_standard_id.items()
+        },
+        sampling_overrides_by_checkpoint_id={
+            checkpoint_id: overrides.model_dump(exclude_unset=True)
+            for checkpoint_id, overrides in request.sampling_overrides_by_checkpoint_id.items()
+        },
+        sampling_profile_id_by_checkpoint_id=request.sampling_profile_id_by_checkpoint_id,
+        serving_overrides_by_checkpoint_id={
+            checkpoint_id: overrides.model_dump(exclude_unset=True)
+            for checkpoint_id, overrides in request.serving_overrides_by_checkpoint_id.items()
+        },
+        serving_profile_id_by_checkpoint_id=request.serving_profile_id_by_checkpoint_id,
     )
 
 

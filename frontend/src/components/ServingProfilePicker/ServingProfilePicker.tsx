@@ -28,8 +28,8 @@ interface DraftFieldProps {
 }
 
 // One customisation field. Local to this component: nothing else
-// renders a bare labelled input this way -- mirrors OverrideEditor's
-// own NumberField for the same reason.
+// renders a bare labelled input this way -- mirrors OverrideField.tsx's
+// own fields for the same reason.
 function DraftField({ label, value, onValueChange, type = 'text', step, placeholder }: DraftFieldProps) {
   return (
     <label className="block">
@@ -50,8 +50,8 @@ function DraftField({ label, value, onValueChange, type = 'text', step, placehol
 // different existing profile, or customise. Whichever is active, the
 // component reports a complete ServingProfileChoice to the parent
 // rather than owning any of this state itself (R-D31's controlled-input
-// idiom, same as OverrideEditor) -- the parent is what assembles the
-// final RegisterCheckpointRequest.
+// idiom) -- the parent is what assembles the final
+// RegisterCheckpointRequest.
 export function ServingProfilePicker({
   recommendation,
   profiles,

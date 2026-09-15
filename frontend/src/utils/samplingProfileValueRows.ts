@@ -1,8 +1,12 @@
 // Reshapes a SamplingProfileSummary into the label/value rows a value
 // table renders. Promoted here from SamplingProfilesPage.helper.ts once
-// SamplingProfilePicker needed the same rows for its read-only display
-// of the chosen profile (frontend-components.mdc: a second consumer is
-// what promotes page-local logic to src/utils/).
+// the old grid-wide SamplingProfilePicker (removed by Phase 8's
+// per-checkpoint override cards) needed the same rows for its read-only
+// display of the chosen profile (frontend-components.mdc: a second
+// consumer is what promotes page-local logic to src/utils/). Stays here
+// now that SamplingProfilesPage.tsx is its only consumer again --
+// nothing demotes a helper back once promoted, and a second consumer
+// may well return.
 import type { SamplingProfileSummary } from '../api/client'
 
 export interface SamplingProfileValueRow {

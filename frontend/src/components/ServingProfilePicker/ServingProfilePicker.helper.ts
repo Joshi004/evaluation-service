@@ -15,8 +15,9 @@ export type ServingProfileChoice =
   | { kind: 'customised'; draft: ServingProfileDraft }
 
 // Every ServingProfileConfig field as a plain string, since that's what
-// <input>/<select> bind to -- the OverrideEditor idiom. Unlike
-// OverrideDraft, a blank field here is not "leave unchanged": this is a
+// <input>/<select> bind to -- the same controlled-input idiom Submit's
+// own override drafts use (SubmitOverrides.helper.ts). Unlike those
+// drafts, a blank field here is not "leave unchanged": this is a
 // complete config, not a sparse delta, so every field needs a concrete
 // value before it can be submitted (buildConfigFromDraft below returns
 // null until it does). engine_options is carried through opaquely

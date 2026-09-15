@@ -20,12 +20,19 @@ async def resolve_sampling_profile(
     base: SamplingProfile,
     standard_overrides: dict[str, Any],
     user_overrides: dict[str, Any],
+    label: str | None = None,
 ) -> SamplingProfile:
     """Merge, key by key, in the order S-D4 fixes: what the checkpoint
     speaks like by default (or whichever profile a submit picked
     explicitly), overridden by what the benchmark's standard mandates,
     overridden by what the caller actually asked for. A user override
     is not a special case. It's just a different profile.
+
+    `label` defaults to `None` (today's ad-hoc behaviour) and only ever
+    attaches to a row this call actually inserts below -- a hash hit
+    returns the existing row exactly as it is, labelled or not, since
+    rows are immutable (S-D3) and a caller cannot rename one after the
+    fact by resubmitting the same overrides with a label attached.
     """
     config = base.as_hashable_dict() | standard_overrides | user_overrides
     hash_value = sampling_profile_hash(config)
@@ -33,5 +40,5 @@ async def resolve_sampling_profile(
     if existing:
         return existing
     return await sampling_profiles_queries.insert_sampling_profile(
-        db, SamplingProfileConfig(**config), hash_value, label=None
+        db, SamplingProfileConfig(**config), hash_value, label=label
     )
