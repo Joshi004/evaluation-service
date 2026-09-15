@@ -57,6 +57,12 @@ services:
       # Discovery (Phase 2 of CHECKPOINT_REGISTRATION_PHASES.md).
       CLUSTER_MODELS_ROOT: ${CLUSTER_MODELS_ROOT:-/home/shared/agentic_slm/models}
       DISCOVERY_MAX_DEPTH: ${DISCOVERY_MAX_DEPTH:-2}
+      # The vLLM venv and CUDA toolkit on a compute node -- serve_job.py
+      # puts both bin/ dirs on the serve job's own PATH, since FlashInfer's
+      # JIT compiler shells out to bare `ninja`/`nvcc`, neither of which is
+      # on a compute node's default PATH otherwise.
+      CLUSTER_VLLM_VENV_PATH: ${CLUSTER_VLLM_VENV_PATH:-/home/shared/agentic_slm/qvac-research-tool-call/evaluation/venv/vllm}
+      CLUSTER_CUDA_HOME: ${CLUSTER_CUDA_HOME:-/usr/local/cuda}
       # Fixed container-side paths -- not meant to vary. What varies is
       # where they're mounted FROM, below.
       CLUSTER_SSH_KEY_PATH: /secrets/cluster_ssh_key

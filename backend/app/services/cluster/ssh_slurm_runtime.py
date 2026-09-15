@@ -41,7 +41,9 @@ class SshSlurmClusterRuntime:
     """
 
     async def submit_job(self, spec: ServeJobSpec) -> JobHandle:
-        script = serve_job.render_serve_script(spec)
+        script = serve_job.render_serve_script(
+            spec, settings.cluster_vllm_venv_path, settings.cluster_cuda_home
+        )
         job_id = await connector.submit(script)
         return JobHandle(job_id=job_id)
 

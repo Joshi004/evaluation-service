@@ -2,11 +2,13 @@
 
 See docs/IMPLEMENTATION_PHASES.md Phase 3, Appendix A. Appendix A's
 script is what was validated on the cluster (job 285727, READY after
-350s) -- this parameterises it, it does not rewrite it. Only the fields
-on `ServeJobSpec` (docs/CHECKPOINT_REGISTRATION_PHASES.md Phase 1) vary
-per call; the readiness poll, the liveness check, and the port formula
-are unchanged. This module knows no ORM model -- the adapter builds a
-spec from `Checkpoint` / `ServingProfile` rows before calling here.
+350s) -- this parameterises it, it does not rewrite it. The fields on
+`ServeJobSpec` (docs/CHECKPOINT_REGISTRATION_PHASES.md Phase 1) vary per
+call; `vllm_venv_path` and `cuda_home` vary per deployment (Settings,
+not the spec) -- either way the readiness poll, the liveness check, and
+the port formula are unchanged. This module knows no ORM model -- the
+adapter builds a spec from `Checkpoint` / `ServingProfile` rows before
+calling here.
 """
 
 import re
@@ -18,12 +20,6 @@ from app.services.cluster.ports import ServeJobSpec
 # Feeds SLURM's %x-%j.out/.err filenames -- one constant so the template
 # and services/endpoints/lifecycle.py's log path can't drift apart.
 JOB_NAME = "evalsvc-vllm"
-
-# Hardcoded to match Appendix A: there is exactly one known vLLM install,
-# and it isn't in the doc's list of what to parameterise (model path,
-# served name, GPUs, --time, engine args).
-_EVAL_HOME = "/home/shared/agentic_slm/qvac-research-tool-call/evaluation"
-_VLLM_BIN = f"{_EVAL_HOME}/venv/vllm/bin/vllm"
 
 _READINESS_LOOP = """
 VLLM_PID=$!
@@ -83,9 +79,13 @@ def _format_walltime(seconds: int) -> str:
     return f"{hours:02d}:{minutes:02d}:{secs:02d}"
 
 
-def render_serve_script(spec: ServeJobSpec) -> str:
+def render_serve_script(spec: ServeJobSpec, vllm_venv_path: str, cuda_home: str) -> str:
     """Renders a submittable sbatch script for this spec. Passed to
     connector.submit() over stdin -- nothing is staged on the cluster.
+
+    `vllm_venv_path` and `cuda_home` come from Settings rather than being
+    hardcoded here, so a different cluster -- a different vLLM install, a
+    different CUDA location -- is a config change, not a code change.
     """
     header = (
         "#!/bin/bash\n"
@@ -106,7 +106,19 @@ def render_serve_script(spec: ServeJobSpec) -> str:
         "\n"
         "set -u\n"
         "\n"
-        f'VLLM="{_VLLM_BIN}"\n'
+        # FlashInfer JIT-compiles the GDN prefill kernel the first time a
+        # model that needs it runs, and shells out to the bare commands
+        # `ninja` and `nvcc` to do it. Neither is on a compute node's
+        # default PATH, even though both exist under the two roots below
+        # -- confirmed on health-0 and health-2 (11 and 15 Sep), where the
+        # missing compiler killed the vLLM engine on its first real
+        # inference request rather than at startup, so the readiness poll
+        # below saw a healthy server and every eval sample after that got
+        # a connection error instead.
+        f'export PATH="{vllm_venv_path}/bin:{cuda_home}/bin:${{PATH}}"\n'
+        f'export CUDA_HOME="{cuda_home}"\n'
+        "\n"
+        f'VLLM="{vllm_venv_path}/bin/vllm"\n'
         f'MODEL_PATH="{spec.model_reference}"\n'
         f'SERVED_NAME="{spec.served_name}"\n'
         "\n"

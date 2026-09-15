@@ -45,6 +45,20 @@ class Settings(BaseSettings):
     # directly under it; candidates can also nest below that, e.g. in
     # rl/ and sft/ subdirectories.
     cluster_models_root: str = "/home/shared/agentic_slm/models"
+    # The vLLM virtualenv on the cluster -- serve_job.py both invokes
+    # {this}/bin/vllm directly and puts {this}/bin on the serve job's own
+    # PATH, because FlashInfer's JIT compiler shells out to the bare
+    # command `ninja`, which otherwise isn't found on a compute node's
+    # default PATH (confirmed on health-0 and health-2, 11 and 15 Sep --
+    # the GDN prefill kernel's JIT compile failed, the vLLM engine died on
+    # first inference, and every request after that got a 500).
+    cluster_vllm_venv_path: str = (
+        "/home/shared/agentic_slm/qvac-research-tool-call/evaluation/venv/vllm"
+    )
+    # CUDA toolkit root on a compute node. Its bin/ supplies `nvcc`, the
+    # other half of that same JIT compile -- also missing from the
+    # default PATH.
+    cluster_cuda_home: str = "/usr/local/cuda"
     # How deep below cluster_models_root to look for a candidate
     # directory. config.json sits one level below the candidate itself,
     # so the `find` bound used by discovery is this value plus one.
