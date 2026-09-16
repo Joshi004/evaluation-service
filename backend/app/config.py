@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     cluster_ssh_known_hosts_path: str = "/root/.ssh/known_hosts"
     cluster_ssh_port: int = 22
     cluster_proxy_jump: str = "login-6"
-    slurm_partition: str = "main"
+    slurm_partition: str = "background"
     slurm_walltime_seconds: int = 7200
     cluster_log_root: str = "/home/shared/eval-service/logs"
     # The configured models area (Phase 2). The seeded checkpoint lives
