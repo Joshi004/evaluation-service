@@ -1,32 +1,19 @@
-// Non-DOM logic for SubmitPage.tsx: debouncing the override drafts
-// object before it feeds the dry-run preview query, so typing into one
-// of Submit's per-checkpoint or per-standard override fields
-// (SubmitOverrides.tsx) doesn't fire a POST /runs/preview per keystroke
-// (the plan's own ~400ms figure); and building the id -> row lookups
-// DryRunPreview needs to label its resolved-standard,
-// resolved-sampling and resolved-serving cards, and SubmitOverrides
-// needs to suggest a collision-free label for a new row on any of the
-// three axes. Checkpoint/standard selection is not debounced -- a
-// checkbox click is already a discrete event, not continuous typing.
+// Non-DOM logic for SubmitPage.tsx: building the id -> row lookups
+// DryRunPreview needs to label its resolved-standard, resolved-sampling
+// and resolved-serving cards, and SubmitOverrides needs to suggest a
+// collision-free label for a new row on any of the three axes.
+// Checkpoint/standard selection is not debounced -- a checkbox click is
+// already a discrete event, not continuous typing. The debounce itself
+// (for the override drafts, ~400ms) lives in
+// ../utils/useDebouncedValue.ts -- promoted there once SampleFilters
+// needed the same logic.
 
-import { useEffect, useState } from 'react'
 import type {
   CheckpointListItem,
   SamplingProfileSummary,
   ServingProfileSummary,
   StandardSummary,
 } from '../api/client'
-
-export function useDebouncedValue<T>(value: T, delayMs: number): T {
-  const [debounced, setDebounced] = useState(value)
-
-  useEffect(() => {
-    const timeout = setTimeout(() => setDebounced(value), delayMs)
-    return () => clearTimeout(timeout)
-  }, [value, delayMs])
-
-  return debounced
-}
 
 export function standardsById(standards: StandardSummary[] | undefined): Map<number, StandardSummary> {
   return new Map((standards ?? []).map((standard) => [standard.id, standard]))

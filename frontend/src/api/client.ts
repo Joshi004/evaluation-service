@@ -262,6 +262,10 @@ export interface EndpointListItem {
 // job, not this type's.
 export interface LeaderboardRow {
   checkpoint_id: number
+  // The specific eval_run this row's metric came from -- what lets a
+  // leaderboard cell link straight to its run page
+  // (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md Phase 1).
+  eval_run_id: number
   standard_id: number
   benchmark: string
   standard_hash: string
@@ -633,6 +637,83 @@ export interface RunMetric {
   is_primary: boolean
 }
 
+// The harness's own rendering hint for one metric -- read from
+// results_json["metrics"][i]["semantics"] on the backend
+// (app/schemas/diagnostics.py's MetricDisplay). What lets a benchmark
+// that reports seconds or tokens-per-second render correctly with no
+// frontend change, instead of every page hardcoding percent formatting.
+export interface MetricDisplay {
+  display_kind: string
+  display_multiplier: number | null
+  display_unit: string | null
+  display_precision: number
+  direction: string
+}
+
+// A 95% Wilson interval over a pass-rate metric's value and n_samples --
+// only set on a metric that is a genuine per-sample pass rate. See
+// MetricPerformance.confidence_interval below.
+export interface ConfidenceInterval {
+  lower: number
+  upper: number
+}
+
+// One of the run's metric rows, enriched with a pass count, a
+// confidence interval, and a display hint (app/schemas/diagnostics.py's
+// MetricPerformance). `passed`/`failed`/`confidence_interval` are null
+// for every non-primary metric -- IFEval/IFBench's inst_level_* metrics
+// are a macro average of each sample's own pass ratio, not a pooled
+// pass/fail count, so deriving a count from one would count
+// instructions that were never separately tallied.
+export interface MetricPerformance {
+  name: string
+  display_name: string
+  value: number
+  n_samples: number | null
+  is_primary: boolean
+  passed: number | null
+  failed: number | null
+  confidence_interval: ConfidenceInterval | null
+  display: MetricDisplay | null
+}
+
+// results_json["perf_metrics"]["summary"]["latency"] -- the five
+// percentiles the run page's health line shows.
+export interface LatencySeconds {
+  mean: number
+  p50: number
+  p90: number
+  p99: number
+  max: number
+}
+
+// results_json["perf_metrics"]["summary"]["usage"]["output_tokens"]
+// plus the run-wide total from usage.total_output_tokens.
+export interface OutputTokens {
+  mean: number
+  max: number
+  total: number
+}
+
+// results_json["perf_metrics"]["summary"]["throughput"].
+export interface Throughput {
+  output_tokens_per_second: number
+  requests_per_second: number
+}
+
+// RunDetail.performance -- null for a queued, running, failed or
+// cancelled run (no results_json yet). Computed entirely from data
+// already in Postgres (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md Phase
+// 1); rendered by RunHealthBand.
+export interface RunPerformanceSummary {
+  n_samples: number | null
+  primary_metric_name: string | null
+  metrics: MetricPerformance[]
+  latency_seconds: LatencySeconds | null
+  output_tokens: OutputTokens | null
+  throughput: Throughput | null
+}
+
 // The vLLM server a run ran against -- just enough to show whether it's
 // still live, not the full EndpointListItem shape (checkpoint_name and
 // gpus are already known from the run itself).
@@ -717,6 +798,278 @@ export interface RunDetail extends RunListItem {
   serving: ServingProfileSummary
   endpoint: RunEndpointSummary | null
   metrics: RunMetric[]
+  performance: RunPerformanceSummary | null
+}
+
+// --- Phase 3 of docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md: the
+// diagnostics API -------------------------------------------------------
+//
+// Everything below mirrors app/schemas/diagnostics.py field for field.
+// Layer 4 (RunDiagnosticsPage, Phase 4) is the first page to read these.
+
+// One of DiagnosticsSummary.metrics -- mirrors DiagnosticsMetric.
+// `passed` is null for a macro-averaged metric (e.g. IFEval's
+// inst_level_strict), same rule as MetricPerformance.passed above.
+export interface DiagnosticsMetric {
+  name: string
+  display_name: string
+  value: number
+  n_samples: number
+  passed: number | null
+}
+
+// One subset's counts -- mirrors DiagnosticsSubset. IFEval has exactly
+// one subset ("default"); MMLU-Pro has 14, including one with a space
+// in its name ("computer science").
+export interface DiagnosticsSubset {
+  name: string
+  n_samples: number
+  passed: number
+}
+
+// Mirrors DiagnosticsHealth. Reuses LatencySeconds/OutputTokens above
+// field-for-field, the same reuse the backend schema documents.
+export interface DiagnosticsHealth {
+  truncated: number
+  empty_answers: number
+  errored_requests: number
+  latency_seconds: LatencySeconds | null
+  output_tokens: OutputTokens | null
+}
+
+// Mirrors DiagnosticsInstructionLevel (Phase 5). Reconciles the
+// harness's own macro-averaged instruction-level score against the
+// pooled (micro) view a bucket breakdown necessarily is -- `null` for
+// a benchmark with no instruction-level metrics at all (GSM8K,
+// GPQA-Diamond, MMLU-Pro). `recheck_passed` is `null` when the recheck
+// never ran for this run, and is expected to differ from
+// `micro_passed` by a couple of samples even when it did (decision
+// 4's two random-letter samples, never reconciled).
+export interface DiagnosticsInstructionLevel {
+  macro_metric_name: string
+  macro_value: number
+  micro_value: number
+  micro_passed: number
+  micro_total: number
+  recheck_passed: number | null
+}
+
+// Mirrors DiagnosticsTagCount (Phase 8) -- how many failing samples
+// carry each tag, sorted by count descending then tag name ascending.
+export interface DiagnosticsTagCount {
+  tag: string
+  n_samples: number
+}
+
+// Mirrors DiagnosticsSummary. `tag_counts`/`narrative` are Phase 8's
+// failure tags and deterministic written summary -- `narrative` still
+// carries one "All N samples passed." sentence even for a run with no
+// failures, so it is never empty once a Phase 8 build has run.
+export interface DiagnosticsSummary {
+  n_samples: number
+  primary_metric_name: string
+  primary_metric_display_name: string
+  passed: number
+  failed: number
+  metrics: DiagnosticsMetric[]
+  health: DiagnosticsHealth
+  subsets: DiagnosticsSubset[]
+  instruction_level: DiagnosticsInstructionLevel | null
+  tag_counts: DiagnosticsTagCount[]
+  narrative: string[]
+}
+
+// Mirrors DiagnosticsSource.
+export interface DiagnosticsSource {
+  eval_run_id: number
+  benchmark: string
+  task_name: string
+  served_model_name: string
+  harness_image: string
+  reviews_files: string[]
+}
+
+// One row of Layer 3's breakdown table -- mirrors DiagnosticsBucket
+// (Phase 5). `level` distinguishes which table a row belongs to
+// ("family" or "rule" for IFEval/IFBench; "subject" for MMLU-Pro).
+// `passed`/`pass_rate` are `null` when the only thing known is which
+// instructions exist in this bucket, not how many passed -- a failed
+// recheck still produces buckets from `instruction_id_list` alone,
+// with per-rule detail marked unavailable rather than guessed at.
+export interface DiagnosticsBucket {
+  name: string
+  level: string
+  n_instructions: number
+  passed: number | null
+  pass_rate: number | null
+}
+
+// GET /runs/{id}/diagnostics and the rebuild endpoint's response --
+// summary and buckets, deliberately with no samples array (Section
+// 3.5 of the phases doc).
+export interface RunDiagnostics {
+  schema_version: number
+  generated_at: string
+  source: DiagnosticsSource
+  summary: DiagnosticsSummary
+  buckets: DiagnosticsBucket[]
+}
+
+// One of summary.samples -- mirrors DiagnosticsSample field for field.
+// `benchmark_details` stays opaque here too: only a benchmark module
+// and the Layer 5 renderer (both later phases) look inside it.
+export interface DiagnosticsSample {
+  sample_key: string
+  index: number
+  subset: string
+  passed: boolean
+  scores: Record<string, number>
+  input_preview: string
+  output_preview: string
+  target: string
+  tokens_in: number | null
+  tokens_out: number | null
+  latency_seconds: number | null
+  stop_reason: string | null
+  has_reasoning: boolean
+  tags: string[]
+  benchmark_details: Record<string, unknown>
+}
+
+// GET /runs/{id}/samples -- `total` is the count after filtering,
+// before paging (Section 3.5), so a caller pages through exactly what
+// `total` promises.
+export interface SamplePage {
+  total: number
+  items: DiagnosticsSample[]
+}
+
+// --- Phase 7 of docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md: the sample
+// detail page ---------------------------------------------------------
+//
+// Mirrors app/schemas/diagnostics.py field for field, same as the
+// Phase 3 block above.
+
+// Mirrors RuleCheck. `strict`/`loose` are null when the sample's own
+// rule_results was never filled in (a recheck that failed, or a
+// benchmark without one) -- the checklist still lists every rule,
+// just without ticks.
+export interface RuleCheck {
+  rule_id: string
+  description: string
+  strict: boolean | null
+  loose: boolean | null
+}
+
+// Mirrors SampleText. Read from the reviews file on demand, by index
+// -- never part of the diagnostics file itself (Section 3.2), so this
+// only ever arrives on DiagnosticsSampleDetail, not DiagnosticsSample.
+export interface SampleText {
+  prompt: string
+  answer: string
+  reasoning: string
+  target: string
+  extracted_prediction: string
+  explanation: string | null
+}
+
+// GET /runs/{id}/samples/{sample_key}'s real response shape -- every
+// field DiagnosticsSample already carries, plus the full text and,
+// for IFEval/IFBench, the per-rule checklist. `rules` is `[]` for
+// every benchmark without one (Section 3.4), not null -- same "empty
+// means nothing to show" convention as RunDiagnostics.buckets.
+export interface DiagnosticsSampleDetail extends DiagnosticsSample {
+  text: SampleText | null
+  rules: RuleCheck[]
+}
+
+// --- Phase 9 of docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md: the compare
+// page ------------------------------------------------------------------
+//
+// Mirrors app/schemas/diagnostics.py's own Phase 9 block field for field.
+
+// One run's own identity and primary score, as shown on its own score
+// card. Mirrors ComparisonSide -- confidence_interval reuses the same
+// Wilson interval shape MetricPerformance already carries.
+export interface ComparisonSide {
+  eval_run_id: number
+  benchmark: string
+  served_model_name: string
+  primary_metric_name: string
+  primary_metric_display_name: string
+  value: number
+  n_samples: number
+  passed: number
+  failed: number
+  confidence_interval: ConfidenceInterval | null
+}
+
+// How much of each run's own sample set the join actually covers --
+// mirrors ComparisonOverlap. Populated even on a refusal, so a refused
+// comparison still says why instead of just stopping.
+export interface ComparisonOverlap {
+  n_shared: number
+  left_only: number
+  right_only: number
+}
+
+// Mirrors ComparisonDelta. `value` is right.value - left.value;
+// `is_significant` is the two-proportion test against both runs' own
+// Wilson half-widths combined in quadrature, not a simple
+// interval-overlap check.
+export interface ComparisonDelta {
+  value: number
+  combined_half_width: number
+  is_significant: boolean
+}
+
+// One row of a flip list -- mirrors FlipSample. `subset`/`input_preview`
+// come from the left run's own record (identical on the right for any
+// sample sharing a sample_key); `left_score`/`right_score` are each
+// side's own primary-metric value, almost always 0.0 or 1.0.
+export interface FlipSample {
+  sample_key: string
+  subset: string
+  input_preview: string
+  left_output_preview: string
+  right_output_preview: string
+  left_score: number | null
+  right_score: number | null
+}
+
+// One row of the bucket-delta table -- mirrors ComparisonBucketDelta, a
+// full outer join on (level, name) across both runs' own buckets.
+// Per-side fields are null when that bucket doesn't exist on that side
+// at all, never guessed at.
+export interface ComparisonBucketDelta {
+  name: string
+  level: string
+  left_n_instructions: number | null
+  left_passed: number | null
+  left_pass_rate: number | null
+  right_n_instructions: number | null
+  right_passed: number | null
+  right_pass_rate: number | null
+  pass_rate_delta: number | null
+}
+
+// GET /runs/{run_id}/compare/{other_run_id}'s response -- mirrors
+// RunComparison. comparable=false means delta is null and both flip
+// lists are [] -- refusal_reason is the plain-English reason why
+// (different benchmarks, or too little sample-key overlap), and
+// overlap is still populated either way.
+export interface RunComparison {
+  left: ComparisonSide
+  right: ComparisonSide
+  overlap: ComparisonOverlap
+  comparable: boolean
+  refusal_reason: string | null
+  delta: ComparisonDelta | null
+  fail_to_pass: FlipSample[]
+  pass_to_fail: FlipSample[]
+  unchanged_passed: number
+  unchanged_failed: number
+  bucket_deltas: ComparisonBucketDelta[]
 }
 
 // FastAPI's HTTPException puts the human-readable reason in a `detail`
@@ -731,12 +1084,29 @@ function extractErrorDetail(body: unknown): string | null {
   return null
 }
 
+// A plain Error carries no status, so a "clear not-found state"
+// (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md Phase 7) would otherwise
+// mean string-matching FastAPI's own detail text (e.g. "Run or sample
+// not found"). Every existing apiFetch caller is unaffected --
+// ApiError extends Error, and String(error) still renders the same
+// message it always has.
+export class ApiError extends Error {
+  status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, init)
   if (!response.ok) {
     const body: unknown = await response.json().catch(() => null)
-    throw new Error(
+    throw new ApiError(
       extractErrorDetail(body) ?? `${init?.method ?? 'GET'} ${path} failed with ${response.status}`,
+      response.status,
     )
   }
   // DELETE /endpoints/:id returns 204 with no body -- .json() would

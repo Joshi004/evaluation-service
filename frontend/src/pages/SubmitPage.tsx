@@ -22,13 +22,8 @@ import {
   type SubmitOverrideDrafts,
 } from '../components/SubmitOverrides/SubmitOverrides.helper'
 import { SubmitOverrides } from '../components/SubmitOverrides/SubmitOverrides'
-import {
-  checkpointsById,
-  samplingProfilesById,
-  servingProfilesById,
-  standardsById,
-  useDebouncedValue,
-} from './SubmitPage.helper'
+import { useDebouncedValue } from '../utils/useDebouncedValue'
+import { checkpointsById, samplingProfilesById, servingProfilesById, standardsById } from './SubmitPage.helper'
 
 export function SubmitPage() {
   const queryClient = useQueryClient()

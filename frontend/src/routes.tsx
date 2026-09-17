@@ -9,6 +9,9 @@ import { ServingProfilesPage } from './pages/ServingProfilesPage'
 import { SubmitPage } from './pages/SubmitPage'
 import { RunsPage } from './pages/RunsPage'
 import { RunDetailPage } from './pages/RunDetailPage'
+import { RunDiagnosticsPage } from './pages/RunDiagnosticsPage'
+import { RunSamplePage } from './pages/RunSamplePage'
+import { ComparePage } from './pages/ComparePage'
 import { EndpointsPage } from './pages/EndpointsPage'
 import { PrototypeApp } from './prototype/PrototypeApp'
 import { prototypeRouteElements } from './prototype/prototypeRoutes'
@@ -39,6 +42,20 @@ export function AppRoutes() {
         <Route path="submit" element={<SubmitPage />} />
         <Route path="runs" element={<RunsPage />} />
         <Route path="runs/:runId" element={<RunDetailPage />} />
+        {/*
+         * Layer 4 (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md Phase 4):
+         * the sample list. Layer 5's sample detail page (Phase 7)
+         * lives at the nested route below.
+         */}
+        <Route path="runs/:runId/diagnostics" element={<RunDiagnosticsPage />} />
+        <Route path="runs/:runId/samples/:sampleKey" element={<RunSamplePage />} />
+        {/*
+         * Phase 9 (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md): compare
+         * mode, sideways across Layers 2-5. A sibling of the /runs
+         * tree rather than nested under it -- it takes two run ids,
+         * not one, and is reachable from the leaderboard directly.
+         */}
+        <Route path="compare" element={<ComparePage />} />
         <Route path="endpoints" element={<EndpointsPage />} />
       </Route>
 

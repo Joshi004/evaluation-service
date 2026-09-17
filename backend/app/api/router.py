@@ -17,6 +17,7 @@ from fastapi import APIRouter
 
 from app.api.v1 import (
     checkpoints,
+    diagnostics,
     endpoints,
     health,
     leaderboard,
@@ -33,6 +34,14 @@ api_router.include_router(health.router, tags=["health"])
 api_router.include_router(checkpoints.router, prefix="/checkpoints", tags=["checkpoints"])
 api_router.include_router(standards.router, prefix="/standards", tags=["standards"])
 api_router.include_router(runs.router, prefix="/runs", tags=["runs"])
+# Mounted after runs.router, on the same "/runs" prefix (Phase 3 of
+# docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md): these are sub-resources of
+# a run (/{run_id}/diagnostics, /{run_id}/samples, ...), not a resource
+# of their own, and every one of their paths has more segments than
+# runs.router's own "/{run_id}", so there is no route-shadowing risk
+# either way -- this order just keeps "runs" listed before its own
+# sub-resources in /docs.
+api_router.include_router(diagnostics.router, prefix="/runs", tags=["diagnostics"])
 api_router.include_router(run_groups.router, prefix="/run-groups", tags=["run-groups"])
 api_router.include_router(leaderboard.router, prefix="/leaderboard", tags=["leaderboard"])
 api_router.include_router(endpoints.router, prefix="/endpoints", tags=["endpoints"])

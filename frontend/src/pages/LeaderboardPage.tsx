@@ -1,8 +1,15 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router'
 import { apiFetch, type CheckpointListItem, type HealthResponse, type LeaderboardRow } from '../api/client'
 import { EmptyState } from '../components/EmptyState/EmptyState'
 import { MetricCell } from '../components/MetricCell/MetricCell'
-import { buildLeaderboardGrid } from './LeaderboardPage.helper'
+import {
+  buildComparePath,
+  buildLeaderboardGrid,
+  MAX_COMPARE_SELECTION,
+  toggleRunSelection,
+} from './LeaderboardPage.helper'
 
 function statusColor(value: string) {
   return value === 'ok' ? 'text-emerald-400' : 'text-amber-400'
@@ -30,6 +37,16 @@ export function LeaderboardPage() {
 
   const grid =
     leaderboard.data && checkpoints.data ? buildLeaderboardGrid(leaderboard.data, checkpoints.data) : null
+
+  // Phase 9 (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md): which two run
+  // ids are picked for compare mode. Transient, not URL state -- the
+  // comparison itself is what gets a shareable URL, once "Compare
+  // these runs" below is clicked.
+  const [selectedRunIds, setSelectedRunIds] = useState<number[]>([])
+
+  function handleToggleRunSelection(evalRunId: number) {
+    setSelectedRunIds((current) => toggleRunSelection(current, evalRunId))
+  }
 
   return (
     <div>
@@ -77,6 +94,31 @@ export function LeaderboardPage() {
 
         {grid && grid.rows.length === 0 && <EmptyState message="No results yet" />}
 
+        {grid && grid.rows.length > 0 && selectedRunIds.length > 0 && (
+          <div className="mb-3 flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-900 p-3 text-sm">
+            <span className="text-slate-300">
+              Selected {selectedRunIds.length} of {MAX_COMPARE_SELECTION} runs to compare
+            </span>
+            {selectedRunIds.length === MAX_COMPARE_SELECTION ? (
+              <Link
+                to={buildComparePath(selectedRunIds)}
+                className="rounded border border-blue-500/30 px-2 py-1 text-xs font-medium text-blue-300 hover:bg-blue-500/10"
+              >
+                Compare these two runs
+              </Link>
+            ) : (
+              <span className="text-xs text-slate-500">Pick one more cell to compare.</span>
+            )}
+            <button
+              type="button"
+              onClick={() => setSelectedRunIds([])}
+              className="ml-auto text-xs font-medium text-slate-400 hover:text-slate-200"
+            >
+              Clear
+            </button>
+          </div>
+        )}
+
         {grid && grid.rows.length > 0 && (
           <table className="w-full border-collapse text-sm">
             <thead>
@@ -104,8 +146,8 @@ export function LeaderboardPage() {
                 <tr key={row.checkpointId}>
                   <td className="border-b border-slate-800/50 p-2 text-slate-200">{row.checkpointName}</td>
                   {grid.columns.map((column) => {
-                    const value = row.cellsByComparisonHash[column.comparisonHash]
-                    return value === undefined ? (
+                    const cell = row.cellsByComparisonHash[column.comparisonHash]
+                    return cell === undefined ? (
                       <td
                         key={column.comparisonHash}
                         className="border-b border-slate-800/50 p-2 text-right text-slate-600"
@@ -113,7 +155,15 @@ export function LeaderboardPage() {
                         —
                       </td>
                     ) : (
-                      <MetricCell key={column.comparisonHash} value={value} comparisonHash={column.comparisonHash} />
+                      <MetricCell
+                        key={column.comparisonHash}
+                        value={cell.value}
+                        comparisonHash={column.comparisonHash}
+                        evalRunId={cell.evalRunId}
+                        selected={selectedRunIds.includes(cell.evalRunId)}
+                        selectionFull={selectedRunIds.length >= MAX_COMPARE_SELECTION}
+                        onToggleSelected={() => handleToggleRunSelection(cell.evalRunId)}
+                      />
                     )
                   })}
                 </tr>

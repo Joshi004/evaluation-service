@@ -23,10 +23,18 @@ export interface LeaderboardColumn {
   samplingProfileLabel: string
 }
 
+// One leaderboard cell's value plus which run produced it -- the run id
+// is what MetricCell links to (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md
+// Phase 1).
+export interface LeaderboardCell {
+  value: number
+  evalRunId: number
+}
+
 export interface LeaderboardGridRow {
   checkpointId: number
   checkpointName: string
-  cellsByComparisonHash: Record<string, number>
+  cellsByComparisonHash: Record<string, LeaderboardCell>
 }
 
 export interface LeaderboardGrid {
@@ -88,11 +96,41 @@ export function buildLeaderboardGrid(
     // already guarantees at most one row per (checkpoint, comparison
     // hash) pair, so unlike the old benchmark-keyed pivot, there is no
     // same-cell collision left to resolve here.
-    gridRow.cellsByComparisonHash[row.comparison_hash] = row.metric_value
+    gridRow.cellsByComparisonHash[row.comparison_hash] = {
+      value: row.metric_value,
+      evalRunId: row.eval_run_id,
+    }
   }
 
   return {
     columns,
     rows: [...rowsByCheckpoint.values()].sort((a, b) => a.checkpointName.localeCompare(b.checkpointName)),
   }
+}
+
+// Phase 9 (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md): picking exactly
+// two leaderboard cells to send to the compare page.
+export const MAX_COMPARE_SELECTION = 2
+
+// Adds or removes a run id from the current selection. A third pick is
+// a no-op, never an eviction of an existing one -- "a third checkbox
+// is disabled rather than silently evicting a selection, so the
+// 'exactly two' rule is visible" (Phase 9's own wording) means this
+// function is only ever asked to add when there's room, or remove.
+export function toggleRunSelection(current: number[], evalRunId: number): number[] {
+  if (current.includes(evalRunId)) {
+    return current.filter((id) => id !== evalRunId)
+  }
+  if (current.length >= MAX_COMPARE_SELECTION) {
+    return current
+  }
+  return [...current, evalRunId]
+}
+
+// "/compare?left=13&right=12" -- left is whichever run was selected
+// first, so the resulting comparison's side ordering matches click
+// order rather than being arbitrary.
+export function buildComparePath(selectedRunIds: number[]): string {
+  const [left, right] = selectedRunIds
+  return `/compare?left=${left}&right=${right}`
 }

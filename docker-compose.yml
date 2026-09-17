@@ -82,6 +82,19 @@ services:
       # -tier1: Phase 5's dataset set (S-D31) -- see harness.image below.
       HARNESS_IMAGE: ${HARNESS_IMAGE:-registry.local/evalscope:2ce95c3-tier1}
       HARNESS_DOCKER_NETWORK: ${HARNESS_DOCKER_NETWORK:-evaluation-service_default}
+      # The per-rule recheck (Phase 5 of
+      # docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md) -- same host-path
+      # reasoning as OUTPUT_ROOT_HOST_PATH above: this is what
+      # app/services/diagnostics/recheck.py hands the host Docker
+      # daemon as a bind-mount source, not a path this container's own
+      # filesystem needs to resolve.
+      HARNESS_SCRIPTS_HOST_PATH: ${HARNESS_SCRIPTS_HOST_PATH:-${PWD}/harness/evalscope}
+      # Published host ports -- uvicorn still binds 8000 inside this
+      # container; these are only for the startup log, so a remapped
+      # .env (this machine uses 8010/5190) prints a URL that actually
+      # opens in the host browser instead of Vite/uvicorn's internal one.
+      BACKEND_PORT: ${BACKEND_PORT:-8000}
+      FRONTEND_PORT: ${FRONTEND_PORT:-5173}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     volumes:
@@ -125,6 +138,11 @@ services:
     restart: unless-stopped
     environment:
       VITE_BACKEND_URL: http://backend:8000
+      # Same published-port pair as backend -- Vite listens on 5173
+      # inside the container and logs that; vite.config.ts reprints
+      # these so `docker compose up` shows the host URL.
+      FRONTEND_PORT: ${FRONTEND_PORT:-5173}
+      BACKEND_PORT: ${BACKEND_PORT:-8000}
     ports:
       - "${FRONTEND_PORT:-5173}:5173"
     volumes:

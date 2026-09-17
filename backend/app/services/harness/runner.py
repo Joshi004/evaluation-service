@@ -25,7 +25,11 @@ settings = get_settings()
 # root the container's own output tree (configs/logs/predictions/
 # reports/reviews) is written under -- fixed, because it's a path
 # inside a container we define, not something any caller chooses.
-_CONTAINER_WORK_DIR = "/work"
+# Public (no leading underscore): recheck.py mounts the same run
+# directory at this same path for its own short-lived container, and
+# a second, silently-drifting "/work" constant is worse than importing
+# this one.
+CONTAINER_WORK_DIR = "/work"
 
 # "Tail" per the doc's own exit-test use of `tail -60`: enough lines to
 # show the actual error (a Python traceback, an EvalScope assertion)
@@ -55,11 +59,17 @@ def run_directory(eval_run_id: int) -> Path:
     return Path(settings.output_root) / f"run-{eval_run_id}"
 
 
-def _host_run_directory(eval_run_id: int) -> str:
+def host_run_directory(eval_run_id: int) -> str:
     """The same directory, as a path on the *host* -- what a bind mount
     source given to `docker run -v` must be, because the harness
     container is created by the host daemon and never sees this
     process's own mount namespace (see app/config.py).
+
+    Public: recheck.py's own container needs the identical host path
+    for the same reason, and re-deriving it there would risk the two
+    copies drifting apart -- the one thing Phase 5's own instructions
+    say to avoid ("follow the output_root_host_path precedent
+    exactly").
     """
     return f"{settings.output_root_host_path.rstrip('/')}/run-{eval_run_id}"
 
@@ -90,9 +100,7 @@ async def run_harness(
     run_dir = run_directory(eval_run_id)
     run_dir.mkdir(parents=True, exist_ok=True)
 
-    config = build_task_config(
-        standard, sampling_profile, checkpoint, endpoint, _CONTAINER_WORK_DIR
-    )
+    config = build_task_config(standard, sampling_profile, checkpoint, endpoint, CONTAINER_WORK_DIR)
     config_path = run_dir / "harness_task_config.json"
     config_path.write_text(json.dumps(config, indent=2))
 
@@ -105,9 +113,9 @@ async def run_harness(
         "--network",
         settings.harness_docker_network,
         "-v",
-        f"{_host_run_directory(eval_run_id)}:{_CONTAINER_WORK_DIR}",
+        f"{host_run_directory(eval_run_id)}:{CONTAINER_WORK_DIR}",
         settings.harness_image,
-        f"{_CONTAINER_WORK_DIR}/harness_task_config.json",
+        f"{CONTAINER_WORK_DIR}/harness_task_config.json",
     ]
     # A single copy-pasteable line -- when a run fails the first
     # question is always "what did we actually invoke".

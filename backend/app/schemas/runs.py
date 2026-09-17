@@ -12,6 +12,7 @@ from typing import Annotated, Any
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.schemas.compatibility import CompatibilityFinding
+from app.schemas.diagnostics import RunPerformanceSummary
 from app.schemas.serving_profiles import ServingProfileSummary
 from app.schemas.standards import SamplingFieldWarning
 
@@ -554,3 +555,10 @@ class RunDetail(RunListItem):
     serving: ServingProfileSummary
     endpoint: RunEndpointSummary | None
     metrics: list[RunMetric]
+    # Phase 1 of docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md: derived from
+    # results_json plus the metrics above, not stored anywhere of its
+    # own. Defaulted to None so get_run_detail's existing RunDetail(...)
+    # construction below doesn't need to change -- controllers/runs.py's
+    # get_run fills it in afterward. Stays None for a run with no
+    # results_json yet (queued, running, failed, cancelled).
+    performance: RunPerformanceSummary | None = None

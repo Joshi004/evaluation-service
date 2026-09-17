@@ -6,6 +6,7 @@ containerized dev environment.
 
 from functools import lru_cache
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,6 +19,13 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://eval_service:eval_service@postgres:5432/eval_service"
 
     cors_origins: list[str] = ["http://localhost:5173"]
+
+    # Host-published ports from docker-compose, not the ports this
+    # process binds -- uvicorn still listens on 8000 inside the
+    # container. Used only to print a reachable URL on startup when
+    # .env remaps them (BACKEND_PORT/FRONTEND_PORT).
+    host_backend_port: int = Field(default=8000, validation_alias="BACKEND_PORT")
+    host_frontend_port: int = Field(default=5173, validation_alias="FRONTEND_PORT")
 
     # The cluster, which used to be a table (Appendix C). With one cluster,
     # every cluster_id would be a constant on five tables, so these are
@@ -38,7 +46,7 @@ class Settings(BaseSettings):
     cluster_ssh_known_hosts_path: str = "/root/.ssh/known_hosts"
     cluster_ssh_port: int = 22
     cluster_proxy_jump: str = "login-6"
-    slurm_partition: str = "background"
+    slurm_partition: str = "--build"
     slurm_walltime_seconds: int = 7200
     cluster_log_root: str = "/home/shared/eval-service/logs"
     # The configured models area (Phase 2). The seeded checkpoint lives
@@ -83,6 +91,15 @@ class Settings(BaseSettings):
     # a harness container joins it and can reach the Phase 3 tunnel at
     # http://backend:PORT/v1 (see services/cluster/tunnel.py).
     harness_docker_network: str = "evaluation-service_default"
+    # Phase 5 (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md): the *host*
+    # path to harness/evalscope, bind-mounted read-only into the
+    # short-lived recheck container so the per-rule checkers stay
+    # mounted rather than baked into the image -- same
+    # output_root/output_root_host_path split above, for the same
+    # reason: the recheck container is created by the host Docker
+    # daemon via app/services/diagnostics/recheck.py, which never sees
+    # this process's own mount namespace.
+    harness_scripts_host_path: str = "./harness/evalscope"
     catalog_dir: str = "/catalog"
 
 

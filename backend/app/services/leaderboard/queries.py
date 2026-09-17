@@ -20,6 +20,7 @@ from app.schemas.leaderboard import LeaderboardRow
 
 LEADERBOARD_QUERY = text("""
     SELECT DISTINCT ON (r.checkpoint_id, r.comparison_hash)
+           r.id AS eval_run_id,
            r.checkpoint_id, r.standard_id, s.benchmark, s.hash AS standard_hash, s.label,
            r.comparison_hash, sp.label AS sampling_profile_label, sp.hash AS sampling_profile_hash,
            m.name, m.value, m.n_samples, r.truncation_rate, r.finished_at
@@ -43,6 +44,7 @@ async def get_leaderboard_rows(db: AsyncSession) -> list[LeaderboardRow]:
     return [
         LeaderboardRow(
             checkpoint_id=row.checkpoint_id,
+            eval_run_id=row.eval_run_id,
             standard_id=row.standard_id,
             benchmark=row.benchmark,
             standard_hash=row.standard_hash,

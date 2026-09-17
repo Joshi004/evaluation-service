@@ -17,6 +17,7 @@ from app.db import AsyncSessionLocal
 from app.models import EvalRun
 from app.schemas.runs import RunGroupCancellation
 from app.services.checkpoints import availability as availability_service
+from app.services.diagnostics import store as diagnostics_store
 from app.services.endpoints import lifecycle
 from app.services.harness import queries as harness_queries
 from app.services.harness import runner as harness_runner
@@ -133,6 +134,33 @@ async def _run_one(eval_run_id: int) -> None:
                 db, eval_run_id, str(run_dir), report.results_json, truncation_rate
             )
             await harness_queries.insert_metrics(db, eval_run_id, report.metrics)
+
+            # Non-fatal, deliberately: a run that produced a real score
+            # must still reach 'done' even if its diagnostics file can't
+            # be built (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md Phase
+            # 2). Placed after insert_metrics and before mark_done,
+            # which stays the last write -- see the comment below.
+            #
+            # On a thread, not a direct call: Phase 5 adds a
+            # synchronous `docker run` (the per-rule recheck) on top of
+            # the ~20MB JSONL parse this already did, and neither
+            # belongs on the event loop that every other run's worker
+            # task shares.
+            try:
+                await asyncio.to_thread(
+                    diagnostics_store.build_and_write,
+                    diagnostics_store.DiagnosticsBuildSpec(
+                        eval_run_id=eval_run_id,
+                        benchmark=context.standard.benchmark,
+                        task_name=context.standard.task_name,
+                        served_model_name=served_model_name,
+                        metric_specs=context.standard.metrics,
+                        harness_image=context.standard.framework_image,
+                        max_tokens=context.sampling_profile.max_tokens,
+                    ),
+                )
+            except Exception:
+                logger.exception("run %d: diagnostics build failed", eval_run_id)
 
             # The last write, deliberately (queries.mark_done's own
             # docstring): the leaderboard's status='done' filter must

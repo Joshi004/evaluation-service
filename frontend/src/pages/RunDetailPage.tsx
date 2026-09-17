@@ -5,6 +5,7 @@ import { apiFetch, type RunDetail } from '../api/client'
 import { LogStream } from '../components/LogStream/LogStream'
 import type { LogSource } from '../components/LogStream/LogStream.helper'
 import { PhaseProgress } from '../components/PhaseProgress/PhaseProgress'
+import { RunHealthBand } from '../components/RunHealthBand/RunHealthBand'
 import { StatusBadge } from '../components/StatusBadge/StatusBadge'
 import { formatElapsedTime } from '../utils/formatElapsedTime'
 import { formatFractionAsPercent } from '../utils/formatFractionAsPercent'
@@ -90,6 +91,24 @@ export function RunDetailPage() {
           {run.data.error && (
             <p className="mt-4 rounded border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
               {run.data.error}
+            </p>
+          )}
+
+          {run.data.performance && (
+            <RunHealthBand
+              performance={run.data.performance}
+              truncationRate={run.data.truncation_rate}
+            />
+          )}
+
+          {/* Only for a finished run -- anything else 409s at
+              GET /diagnostics (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md
+              Phase 3): a queued or running run has no samples yet. */}
+          {run.data.status === 'done' && (
+            <p className="mt-4">
+              <Link to={`/runs/${run.data.id}/diagnostics`} className="text-sm text-blue-400 hover:underline">
+                View sample-level diagnostics →
+              </Link>
             </p>
           )}
 

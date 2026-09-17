@@ -172,7 +172,7 @@ def compute_truncation_rate(
     # what the phase doc guessed. Kept as a fallback rather than the
     # only path, so a future EvalScope schema change degrades to a
     # documented approximation instead of a silent, wrong 0.0.
-    use_token_count_fallback = not any(_stop_reason(record) is not None for record in records)
+    use_token_count_fallback = not uses_stop_reason(records)
     if use_token_count_fallback:
         logger.warning(
             "no prediction record had model_output.choices[0].stop_reason; "
@@ -181,16 +181,37 @@ def compute_truncation_rate(
             sorted(records[0].get("model_output", {}).keys()),
         )
 
-    truncated_count = 0
-    for record in records:
-        if use_token_count_fallback:
-            hit_max_tokens = _output_tokens(record) == sampling_profile.max_tokens
-        else:
-            hit_max_tokens = _stop_reason(record) == "max_tokens"
-        if hit_max_tokens:
-            truncated_count += 1
-
+    truncated_count = sum(
+        is_truncated_record(record, sampling_profile.max_tokens, use_token_count_fallback)
+        for record in records
+    )
     return truncated_count / len(records)
+
+
+def uses_stop_reason(records: list[dict[str, Any]]) -> bool:
+    """True when at least one record carries
+    `model_output.choices[0].stop_reason` -- false is exactly the
+    condition `compute_truncation_rate`'s output-token fallback exists
+    for. Exported (not `_`-prefixed) so the diagnostics builder
+    (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md Phase 2) can compute its
+    own per-sample `health.truncated` count the same way, rather than
+    re-deriving the fallback condition a second time.
+    """
+    return any(_stop_reason(record) is not None for record in records)
+
+
+def is_truncated_record(
+    record: dict[str, Any], max_tokens: int | None, use_token_count_fallback: bool
+) -> bool:
+    """One record's own truncation test -- `stop_reason == "max_tokens"`
+    normally, or `output_tokens == max_tokens` when
+    `use_token_count_fallback` is set (see `uses_stop_reason`).
+    `max_tokens` is only read on the fallback path, so it may be `None`
+    otherwise.
+    """
+    if use_token_count_fallback:
+        return _output_tokens(record) == max_tokens
+    return _stop_reason(record) == "max_tokens"
 
 
 def _stop_reason(record: dict[str, Any]) -> str | None:

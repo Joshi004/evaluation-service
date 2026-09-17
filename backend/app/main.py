@@ -45,6 +45,17 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
+    # Vite and uvicorn log the container-internal bind (5173 / 8000).
+    # Compose may publish different host ports -- print those first so
+    # `docker compose up` shows a URL that actually opens in a browser.
+    logger.info(
+        "host UI  http://localhost:%s  (container 5173)",
+        settings.host_frontend_port,
+    )
+    logger.info(
+        "host API http://localhost:%s/api/v1  (container 8000)",
+        settings.host_backend_port,
+    )
     async with AsyncSessionLocal() as db:
         # Before anything else: a run left queued/running by an unclean
         # stop has no worker left to finish it (Phase 5, item 3 -- v1 has

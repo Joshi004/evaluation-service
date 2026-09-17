@@ -13,6 +13,10 @@ from pydantic import BaseModel
 
 class LeaderboardRow(BaseModel):
     checkpoint_id: int
+    # The specific eval_run this row's metric came from -- what lets a
+    # leaderboard cell link straight to its run page
+    # (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md Phase 1).
+    eval_run_id: int
     standard_id: int
     benchmark: str
     standard_hash: str

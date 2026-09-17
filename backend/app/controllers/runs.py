@@ -12,10 +12,12 @@ from app.schemas.runs import (
     RunPreviewRequest,
     RunSubmission,
 )
+from app.services.diagnostics import report_summary
 from app.services.runs import preview as preview_service
 from app.services.runs import queries as runs_service
 from app.services.runs import submit as submit_service
 from app.services.runs import worker
+from app.services.standards import queries as standards_service
 
 
 async def list_runs(
@@ -98,7 +100,26 @@ async def preview_runs(db: AsyncSession, request: RunPreviewRequest) -> RunPrevi
 
 
 async def get_run(db: AsyncSession, eval_run_id: int) -> RunDetail | None:
-    return await runs_service.get_run_detail(db, eval_run_id)
+    """Enriches RunDetail with a `performance` block computed from
+    results_json -- kept here rather than inside runs_service's own
+    get_run_detail, since summarize_run_performance is diagnostics-
+    package logic (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md Phase 1),
+    not a runs query.
+    """
+    run_detail = await runs_service.get_run_detail(db, eval_run_id)
+    if run_detail is None:
+        return None
+
+    eval_run = await runs_service.get_run(db, eval_run_id)
+    assert eval_run is not None  # get_run_detail above just found this row
+
+    standard = await standards_service.get_standard(db, run_detail.standard_id)
+    assert standard is not None  # eval_run.standard_id is a NOT NULL foreign key
+
+    run_detail.performance = report_summary.summarize_run_performance(
+        eval_run.results_json, standard.metrics, run_detail.metrics
+    )
+    return run_detail
 
 
 async def run_exists(db: AsyncSession, eval_run_id: int) -> bool:

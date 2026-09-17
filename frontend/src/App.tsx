@@ -16,6 +16,9 @@ const navItems = [
   { to: '/serving-profiles', label: 'Serving Profiles' },
   { to: '/submit', label: 'Submit' },
   { to: '/runs', label: 'Runs' },
+  // Phase 9 (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md): sideways across
+  // Layers 2-5, not a child of any one run's own detail page.
+  { to: '/compare', label: 'Compare' },
   { to: '/endpoints', label: 'Endpoints' },
 ]
 
