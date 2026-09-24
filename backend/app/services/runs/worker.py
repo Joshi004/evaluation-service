@@ -104,10 +104,20 @@ async def _run_one(eval_run_id: int) -> None:
                 await runs_queries.mark_failed(db, eval_run_id, message)
                 return
 
+            # Only a run_group from before per-run SLURM partition
+            # selection has no partition -- and startup recovery
+            # (services/runs/recovery.py) already failed every run left
+            # queued/running by the restart that shipped that column,
+            # so a live run reaching this point always has one. Inside
+            # the try, like the availability check above: a violation
+            # here fails this run with a real reason instead of an
+            # uncaught exception.
+            assert context.partition is not None, "run_group.partition is unset for a live run"
+
             lock = _get_endpoint_lock(context.checkpoint.id, context.serving_profile.id)
             async with lock:
                 endpoint = await lifecycle.start_or_reuse_endpoint(
-                    db, context.checkpoint, context.serving_profile
+                    db, context.checkpoint, context.serving_profile, context.partition
                 )
             await runs_queries.attach_endpoint(db, eval_run_id, endpoint.id)
 

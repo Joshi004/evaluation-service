@@ -16,6 +16,9 @@ class EndpointListItem(BaseModel):
     # not the number of eval_runs sharing it).
     gpus: int
     slurm_job_id: int | None
+    # NULL only for an endpoint row that predates per-run SLURM
+    # partition selection -- see endpoint.py's own column comment.
+    partition: str | None
     url: str | None
     expires_at: datetime
     created_at: datetime

@@ -189,7 +189,7 @@ async def get_run_detail(db: AsyncSession, eval_run_id: int) -> RunDetail | None
     (None if it never got one -- Phase 5's known cancel-before-endpoint
     gap), and its metric rows.
 
-    Six small queries rather than one giant join: Standard,
+    Seven small queries rather than one giant join: RunGroup, Standard,
     SamplingProfile, ServingProfile, and Metric each have their own
     multi-column shape a single flat SELECT would otherwise have to
     repeat once per metric row.
@@ -200,6 +200,12 @@ async def get_run_detail(db: AsyncSession, eval_run_id: int) -> RunDetail | None
 
     eval_run = await db.get(EvalRun, eval_run_id)
     assert eval_run is not None  # get_run_list_item above just found this row
+
+    # This run's own requested partition (per-run SLURM partition
+    # selection) -- the run_group's column, not the endpoint's; see
+    # RunDetail.partition's own docstring for how the two can differ.
+    run_group = await db.get(RunGroup, eval_run.run_group_id)
+    assert run_group is not None  # eval_run.run_group_id is a NOT NULL foreign key
 
     standard = await db.get(Standard, eval_run.standard_id)
     assert standard is not None  # eval_run.standard_id is a NOT NULL foreign key
@@ -222,6 +228,7 @@ async def get_run_detail(db: AsyncSession, eval_run_id: int) -> RunDetail | None
                 id=endpoint.id,
                 url=endpoint.url,
                 slurm_job_id=endpoint.slurm_job_id,
+                partition=endpoint.partition,
                 expires_at=endpoint.expires_at,
             )
 
@@ -232,6 +239,7 @@ async def get_run_detail(db: AsyncSession, eval_run_id: int) -> RunDetail | None
         **run_list_item.model_dump(),
         output_dir=eval_run.output_dir,
         comparison_hash=eval_run.comparison_hash,
+        partition=run_group.partition,
         standard=_to_run_standard_detail(standard),
         sampling=_to_run_sampling_detail(sampling_profile, standard.framework),
         serving=to_serving_profile_summary(serving_profile),
@@ -243,12 +251,20 @@ async def get_run_detail(db: AsyncSession, eval_run_id: int) -> RunDetail | None
     )
 
 
-async def create_run_group(db: AsyncSession, name: str, submitted_by: str | None) -> RunGroup:
+async def create_run_group(
+    db: AsyncSession, name: str, submitted_by: str | None, partition: str
+) -> RunGroup:
     """One run_group per submit, always -- even a single run gets one
     (docs/IMPLEMENTATION_PHASES.md Phase 5, item 1): branching on whether
     there is one is more code than always creating one.
+
+    `partition` is always a real value by the time it reaches here --
+    the controller has already resolved a `None` request field to
+    `Settings.slurm_partition` -- so every new row records an explicit
+    choice, never NULL (per-run SLURM partition selection; NULL is
+    reserved for rows that predate the column).
     """
-    run_group = RunGroup(name=name, submitted_by=submitted_by)
+    run_group = RunGroup(name=name, submitted_by=submitted_by, partition=partition)
     db.add(run_group)
     await db.flush()  # populates run_group.id via Postgres RETURNING
     await db.commit()
@@ -305,6 +321,12 @@ async def insert_eval_runs(
 class RunContext:
     """The ORM rows worker._run_one needs before it does anything slow,
     fetched once in one query.
+
+    `partition` is `str | None` only because the column it comes from
+    (`run_group.partition`) is nullable for a row that predates per-run
+    SLURM partition selection -- every run_group created from this
+    point on always has one (`create_run_group`'s own docstring). The
+    worker asserts it's set before using it.
     """
 
     eval_run: EvalRun
@@ -312,6 +334,7 @@ class RunContext:
     standard: Standard
     sampling_profile: SamplingProfile
     serving_profile: ServingProfile
+    partition: str | None
 
 
 async def load_run_context(db: AsyncSession, eval_run_id: int) -> RunContext | None:
@@ -328,24 +351,26 @@ async def load_run_context(db: AsyncSession, eval_run_id: int) -> RunContext | N
     explicitly.
     """
     stmt = (
-        select(EvalRun, Checkpoint, Standard, SamplingProfile, ServingProfile)
+        select(EvalRun, Checkpoint, Standard, SamplingProfile, ServingProfile, RunGroup.partition)
         .join(Checkpoint, EvalRun.checkpoint_id == Checkpoint.id)
         .join(Standard, EvalRun.standard_id == Standard.id)
         .join(SamplingProfile, EvalRun.sampling_profile_id == SamplingProfile.id)
         .join(ServingProfile, EvalRun.serving_profile_id == ServingProfile.id)
+        .join(RunGroup, EvalRun.run_group_id == RunGroup.id)
         .where(EvalRun.id == eval_run_id)
     )
     row = (await db.execute(stmt)).first()
     await db.commit()
     if row is None:
         return None
-    eval_run, checkpoint, standard, sampling_profile, serving_profile = row
+    eval_run, checkpoint, standard, sampling_profile, serving_profile, partition = row
     return RunContext(
         eval_run=eval_run,
         checkpoint=checkpoint,
         standard=standard,
         sampling_profile=sampling_profile,
         serving_profile=serving_profile,
+        partition=partition,
     )
 
 

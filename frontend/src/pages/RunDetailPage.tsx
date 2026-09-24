@@ -118,6 +118,11 @@ export function RunDetailPage() {
               <FieldGrid
                 rows={[
                   { label: 'Submitted by', value: run.data.submitted_by ?? '—' },
+                  // The partition this run's own submit requested (per-run
+                  // SLURM partition selection) -- can differ from the
+                  // Endpoint section's own partition below, if this run
+                  // reused an endpoint already running elsewhere.
+                  { label: 'Partition', value: run.data.partition ?? '—' },
                   { label: 'Created', value: formatTimestamp(run.data.created_at) },
                   { label: 'Started', value: formatTimestamp(run.data.started_at) },
                   { label: 'Finished', value: formatTimestamp(run.data.finished_at) },
@@ -143,6 +148,11 @@ export function RunDetailPage() {
                   rows={[
                     { label: 'URL', value: run.data.endpoint.url ?? '—' },
                     { label: 'SLURM job', value: displayOrDash(run.data.endpoint.slurm_job_id) },
+                    // Where this endpoint actually landed -- can differ
+                    // from the Summary section's own 'Partition' row
+                    // above if this run reused a live endpoint rather
+                    // than starting a new serve job.
+                    { label: 'Partition', value: displayOrDash(run.data.endpoint.partition) },
                     { label: 'Expires', value: formatTimestamp(run.data.endpoint.expires_at) },
                   ]}
                 />

@@ -225,6 +225,7 @@ async def submit_runs(
     standard_label_by_standard_id: dict[int, str],
     sampling_label_by_checkpoint_id: dict[int, str],
     serving_label_by_checkpoint_id: dict[int, str],
+    partition: str,
     submitted_by: str | None,
 ) -> RunSubmission | None:
     """Returns None if a checkpoint_id, standard_id, or an explicitly
@@ -361,7 +362,7 @@ async def submit_runs(
             label=serving_label_by_checkpoint_id.get(checkpoint.id),
         )
 
-    run_group = await runs_queries.create_run_group(db, name, submitted_by)
+    run_group = await runs_queries.create_run_group(db, name, submitted_by, partition)
 
     queued_runs: list[QueuedEvalRun] = []
     for checkpoint, _base_serving_profile in checkpoints_and_profiles:

@@ -256,6 +256,22 @@ class CreateRunsRequest(BaseModel):
     standard_label_by_standard_id: dict[int, Annotated[str, Field(min_length=1)]] = {}
     sampling_label_by_checkpoint_id: dict[int, Annotated[str, Field(min_length=1)]] = {}
     serving_label_by_checkpoint_id: dict[int, Annotated[str, Field(min_length=1)]] = {}
+    # The SLURM partition this whole grid's serve jobs land on -- one
+    # choice per submit (per-run SLURM partition selection), not
+    # per-axis like the overrides above: which partition a job runs on
+    # doesn't change what gets measured, so there's no case for varying
+    # it within one grid. `None` (the field's absence) means "use this
+    # deployment's own default", resolved by the controller from
+    # Settings.slurm_partition, not hardcoded here.
+    #
+    # The pattern is a security requirement, not a UX one: this string
+    # is interpolated directly into an sbatch script's
+    # `#SBATCH --partition=` line (app/services/cluster/serve_job.py),
+    # so an unconstrained value -- a newline, in particular -- could
+    # inject arbitrary extra `#SBATCH` directives or shell into that
+    # script. A real SLURM partition name is alphanumeric plus
+    # `_.-`, so the pattern costs nothing legitimate.
+    partition: Annotated[str, Field(pattern=r"^[A-Za-z0-9_.-]+$", max_length=64)] | None = None
     submitted_by: str | None = None
 
     @model_validator(mode="after")
@@ -462,11 +478,18 @@ class RunEndpointSummary(BaseModel):
     reading the run detail page to see whether it's still live, not the
     full EndpointListItem shape (which also carries checkpoint_name and
     gpus, already known from the run itself).
+
+    `partition` is where this endpoint actually landed, which can
+    differ from `RunDetail.partition` (the run's own requested
+    partition) the moment a run is handed a reused endpoint that's
+    running somewhere else (per-run SLURM partition selection: reuse
+    stays keyed on checkpoint + serving profile alone).
     """
 
     id: int
     url: str | None
     slurm_job_id: int | None
+    partition: str | None
     expires_at: datetime
 
 
@@ -550,6 +573,12 @@ class RunDetail(RunListItem):
 
     output_dir: str | None
     comparison_hash: str
+    # This run's own requested partition -- its run_group's column, not
+    # the endpoint's (per-run SLURM partition selection). Can differ
+    # from `endpoint.partition` the moment this run reused an endpoint
+    # already running elsewhere; `None` only for a run_group that
+    # predates the column.
+    partition: str | None
     standard: RunStandardDetail
     sampling: RunSamplingDetail
     serving: ServingProfileSummary

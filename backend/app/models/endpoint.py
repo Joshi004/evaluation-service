@@ -21,6 +21,13 @@ class Endpoint(Base):
     checkpoint_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("checkpoint.id"))
     serving_profile_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("serving_profile.id"))
     slurm_job_id: Mapped[int | None] = mapped_column(Integer, default=None)
+    # The partition this endpoint's serve job actually landed on --
+    # recorded, not assumed, because reuse (below) can hand a run an
+    # endpoint on a different partition than the one it asked for. NULL
+    # for an endpoint whose serve job predates this column, or one
+    # created directly via POST /endpoints (Settings.slurm_partition,
+    # not requested explicitly).
+    partition: Mapped[str | None] = mapped_column(Text, default=None)
     # The harness-facing address -- the local end of the SSH tunnel.
     # Never trust a stored node name: if a tunnel or HTTP call fails,
     # re-read the node from squeue and rebuild the forward before
@@ -31,10 +38,13 @@ class Endpoint(Base):
 
 
 # The reuse key is (checkpoint_id, serving_profile_id), deliberately not
-# sampling or max tokens -- those ride in the HTTP request body. Defined
-# as a standalone statement (not in __table_args__) so `.desc()` can
-# reference the real mapped column rather than a not-yet-instrumented
-# class-body name.
+# sampling or max tokens -- those ride in the HTTP request body -- and
+# deliberately not partition either: a submit's chosen partition only
+# governs where a *new* serve job lands, so a run happily reuses a live
+# endpoint already running on some other partition rather than paying
+# for a duplicate cold start. Defined as a standalone statement (not in
+# __table_args__) so `.desc()` can reference the real mapped column
+# rather than a not-yet-instrumented class-body name.
 Index(
     "endpoint_reuse",
     Endpoint.checkpoint_id,

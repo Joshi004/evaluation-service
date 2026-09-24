@@ -34,12 +34,27 @@ settings = get_settings()
 
 
 async def start_or_reuse_endpoint(
-    db: AsyncSession, checkpoint: Checkpoint, serving_profile: ServingProfile
+    db: AsyncSession, checkpoint: Checkpoint, serving_profile: ServingProfile, partition: str
 ) -> Endpoint:
-    """The reuse-or-start sequence (Phase 3, item 5)."""
+    """The reuse-or-start sequence (Phase 3, item 5).
+
+    `partition` only ever governs a *new* serve job: reuse stays keyed
+    on `(checkpoint_id, serving_profile_id)` alone (per-run SLURM
+    partition selection -- see `endpoint.py`'s own reuse-key comment),
+    so a run can be handed back a live endpoint that's actually running
+    on a different partition than the one it asked for. That's
+    deliberate -- paying for a second cold start just to match a
+    partition would cost real GPU-minutes for no measurement benefit.
+    """
     reusable = await queries.find_reusable_endpoint(db, checkpoint.id, serving_profile.id)
     if reusable is not None:
-        logger.info("reusing endpoint %d for checkpoint %d", reusable.id, checkpoint.id)
+        logger.info(
+            "reusing endpoint %d for checkpoint %d (requested partition %r, endpoint is on %r)",
+            reusable.id,
+            checkpoint.id,
+            partition,
+            reusable.partition,
+        )
         return reusable
 
     runtime = get_cluster_runtime()
@@ -49,7 +64,9 @@ async def start_or_reuse_endpoint(
     # finishes loading, so expires_at has to be set from here, not from
     # whenever readiness happens to complete.
     expires_at = datetime.now(UTC) + timedelta(seconds=settings.slurm_walltime_seconds)
-    endpoint = await queries.create_endpoint_row(db, checkpoint.id, serving_profile.id, expires_at)
+    endpoint = await queries.create_endpoint_row(
+        db, checkpoint.id, serving_profile.id, expires_at, partition
+    )
 
     spec = ServeJobSpec(
         model_reference=checkpoint.path,
@@ -57,8 +74,19 @@ async def start_or_reuse_endpoint(
         gpus=serving_profile.gpus,
         walltime_seconds=settings.slurm_walltime_seconds,
         engine_args=render_engine_args(serving_profile),
+        partition=partition,
     )
-    handle = await runtime.submit_job(spec)
+    try:
+        handle = await runtime.submit_job(spec)
+    except Exception:
+        # The row above has no slurm_job_id and no url yet -- without
+        # this, a rejected submission (most commonly now: a partition
+        # this account can't use, per-run SLURM partition selection)
+        # would leave it sitting on the Endpoints page, counting its
+        # GPUs (Trap T1), for the rest of --time even though nothing is
+        # actually running.
+        await queries.expire_endpoint(db, endpoint.id)
+        raise
     logger.info("submitted serve job %d for endpoint %d", handle.job_id, endpoint.id)
     updated = await queries.set_slurm_job_id(db, endpoint.id, handle.job_id)
     assert updated is not None  # the row above was just created in this same call

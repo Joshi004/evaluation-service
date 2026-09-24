@@ -4,11 +4,12 @@ See docs/IMPLEMENTATION_PHASES.md Phase 3, Appendix A. Appendix A's
 script is what was validated on the cluster (job 285727, READY after
 350s) -- this parameterises it, it does not rewrite it. The fields on
 `ServeJobSpec` (docs/CHECKPOINT_REGISTRATION_PHASES.md Phase 1) vary per
-call; `vllm_venv_path`, `cuda_home`, and `partition` vary per deployment
-(Settings, not the spec) -- either way the readiness poll, the liveness
-check, and the port formula are unchanged. This module knows no ORM
-model -- the adapter builds a spec from `Checkpoint` / `ServingProfile`
-rows before calling here.
+call, `partition` among them as of per-run SLURM partition selection;
+`vllm_venv_path` and `cuda_home` vary per deployment (Settings, not the
+spec) -- either way the readiness poll, the liveness check, and the
+port formula are unchanged. This module knows no ORM model -- the
+adapter builds a spec from `Checkpoint` / `ServingProfile` rows before
+calling here.
 """
 
 import re
@@ -20,6 +21,12 @@ from app.services.cluster.ports import ServeJobSpec
 # Feeds SLURM's %x-%j.out/.err filenames -- one constant so the template
 # and services/endpoints/lifecycle.py's log path can't drift apart.
 JOB_NAME = "evalsvc-vllm"
+
+# Mirrors app/schemas/runs.py's CreateRunsRequest.partition pattern --
+# re-checked here (render_serve_script below) rather than trusted from
+# that API-boundary validation, because this is the one place a
+# partition name is actually interpolated into an `#SBATCH` line.
+_PARTITION_NAME_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 
 _READINESS_LOOP = """
 VLLM_PID=$!
@@ -79,21 +86,30 @@ def _format_walltime(seconds: int) -> str:
     return f"{hours:02d}:{minutes:02d}:{secs:02d}"
 
 
-def render_serve_script(
-    spec: ServeJobSpec, vllm_venv_path: str, cuda_home: str, partition: str
-) -> str:
+def render_serve_script(spec: ServeJobSpec, vllm_venv_path: str, cuda_home: str) -> str:
     """Renders a submittable sbatch script for this spec. Passed to
     connector.submit() over stdin -- nothing is staged on the cluster.
 
-    `vllm_venv_path`, `cuda_home`, and `partition` come from Settings
-    rather than being hardcoded here, so a different cluster -- a
-    different vLLM install, a different CUDA location, a different
-    partition -- is a config change, not a code change.
+    `vllm_venv_path` and `cuda_home` come from Settings rather than
+    being hardcoded here, so a different cluster -- a different vLLM
+    install, a different CUDA location -- is a config change, not a
+    code change. `spec.partition` travels on the spec itself instead
+    (per-run SLURM partition selection: it varies per call, not per
+    deployment, as of this change).
+
+    Raises `ValueError` if `spec.partition` doesn't look like a real
+    partition name. `CreateRunsRequest.partition` (app/schemas/runs.py)
+    already validates the same pattern at the API boundary -- this is a
+    second, independent check at the one place the value is actually
+    interpolated into an `#SBATCH` line, not a substitute for that one.
     """
+    if not _PARTITION_NAME_RE.fullmatch(spec.partition):
+        raise ValueError(f"invalid partition name: {spec.partition!r}")
+
     header = (
         "#!/bin/bash\n"
         f"#SBATCH --job-name={JOB_NAME}\n"
-        f"#SBATCH --partition={partition}\n"
+        f"#SBATCH --partition={spec.partition}\n"
         "#SBATCH --nodes=1\n"
         "#SBATCH --ntasks=1\n"
         "#SBATCH --cpus-per-task=8\n"

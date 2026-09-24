@@ -4,9 +4,12 @@ See .cursor/rules/backend-layering.mdc.
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.schemas.endpoints import EndpointListItem
 from app.services.endpoints import lifecycle
 from app.services.endpoints import queries as endpoints_service
+
+settings = get_settings()
 
 
 async def list_endpoints(db: AsyncSession) -> list[EndpointListItem]:
@@ -25,7 +28,14 @@ async def start_endpoint(db: AsyncSession, checkpoint_id: int) -> EndpointListIt
         return None
     checkpoint, serving_profile = checkpoint_and_profile
 
-    endpoint = await lifecycle.start_or_reuse_endpoint(db, checkpoint, serving_profile)
+    # POST /endpoints has no partition field of its own (CreateEndpointRequest's
+    # own docstring: nothing for a caller to choose between beyond the
+    # checkpoint) -- this deployment's own default is what a manual
+    # start has always meant, unaffected by per-run SLURM partition
+    # selection on the Submit page.
+    endpoint = await lifecycle.start_or_reuse_endpoint(
+        db, checkpoint, serving_profile, settings.slurm_partition
+    )
     # checkpoint.name / serving_profile.gpus are already in hand from the
     # fetch above, so shaping the response here costs no extra query.
     return EndpointListItem(
@@ -35,6 +45,7 @@ async def start_endpoint(db: AsyncSession, checkpoint_id: int) -> EndpointListIt
         serving_profile_id=endpoint.serving_profile_id,
         gpus=serving_profile.gpus,
         slurm_job_id=endpoint.slurm_job_id,
+        partition=endpoint.partition,
         url=endpoint.url,
         expires_at=endpoint.expires_at,
         created_at=endpoint.created_at,

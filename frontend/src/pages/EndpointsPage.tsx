@@ -135,6 +135,9 @@ export function EndpointsPage() {
                     SLURM job
                   </th>
                   <th className="border-b border-slate-800 p-2 text-left font-medium text-slate-400">
+                    Partition
+                  </th>
+                  <th className="border-b border-slate-800 p-2 text-left font-medium text-slate-400">
                     URL
                   </th>
                   <th className="border-b border-slate-800 p-2 text-right font-medium text-slate-400">
@@ -154,6 +157,9 @@ export function EndpointsPage() {
                     </td>
                     <td className="border-b border-slate-800/50 p-2 text-right text-slate-200">
                       {endpoint.slurm_job_id ?? '—'}
+                    </td>
+                    <td className="border-b border-slate-800/50 p-2 text-slate-200">
+                      {endpoint.partition ?? '—'}
                     </td>
                     <td className="border-b border-slate-800/50 p-2 text-slate-200">{endpoint.url ?? '—'}</td>
                     <td className="border-b border-slate-800/50 p-2 text-right text-slate-200">

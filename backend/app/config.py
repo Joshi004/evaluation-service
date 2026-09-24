@@ -46,7 +46,12 @@ class Settings(BaseSettings):
     cluster_ssh_known_hosts_path: str = "/root/.ssh/known_hosts"
     cluster_ssh_port: int = 22
     cluster_proxy_jump: str = "login-6"
-    slurm_partition: str = "--build"
+    # The partition a serve job lands on when a submit doesn't name one
+    # explicitly (docs/EVAL_SERVICE_PLAN.md Section 3: `background` is a
+    # real, hidden, low-priority partition on this cluster, not a
+    # placeholder). A submit's own `partition` field
+    # (app/schemas/runs.py) overrides this per run_group.
+    slurm_partition: str = "background"
     slurm_walltime_seconds: int = 7200
     cluster_log_root: str = "/home/shared/eval-service/logs"
     # The configured models area (Phase 2). The seeded checkpoint lives

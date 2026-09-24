@@ -19,6 +19,7 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
+from app.schemas.cluster import SlurmPartition
 from app.schemas.discovery import CheckpointAvailability, CheckpointCandidate, CheckpointInspection
 
 
@@ -33,6 +34,13 @@ class ServeJobSpec:
     `app.services.serving_profiles.render.render_engine_args` -- so
     there is no separate `max_model_len` field here to duplicate it
     (docs/CHECKPOINT_REGISTRATION_PHASES.md Phase 3, item 5).
+
+    `partition` travels per call, not as deployment config (per-run
+    SLURM partition selection) -- the caller (`start_or_reuse_endpoint`)
+    resolves it from the submitting run_group before building this
+    spec; already validated to match `^[A-Za-z0-9_.-]+$` at the API
+    boundary (app/schemas/runs.py's `CreateRunsRequest.partition`)
+    before it ever gets this far.
     """
 
     model_reference: str
@@ -40,6 +48,7 @@ class ServeJobSpec:
     gpus: int
     walltime_seconds: int
     engine_args: list[str]
+    partition: str
 
 
 @dataclass(frozen=True)
@@ -87,6 +96,20 @@ class ReadinessTimeoutError(Exception):
         super().__init__(f"vLLM server did not become ready within {elapsed_seconds}s")
 
 
+class JobSubmissionError(Exception):
+    """sbatch itself rejected the job -- e.g. a partition this account
+    isn't allowed to submit to, newly reachable now that a submit can
+    name any partition (per-run SLURM partition selection). Carries
+    sbatch's own stderr, a substantive reason (Trap T5: `error` should
+    say why, not just that something failed) that the generic
+    `asyncssh.ProcessError` this wraps does not surface on its own.
+    """
+
+    def __init__(self, stderr: str) -> None:
+        self.stderr = stderr
+        super().__init__(f"sbatch rejected the job: {stderr.strip()}")
+
+
 @runtime_checkable
 class ClusterRuntime(Protocol):
     """Submit, status, and cancel are the core contract. Readiness,
@@ -94,9 +117,15 @@ class ClusterRuntime(Protocol):
     because they are all "operate a running job" -- the alternative is
     worse: some other layer would have to learn about log markers,
     compute node names, and port formulas, which is exactly the leak
-    this port exists to prevent (R-D2). A future cluster-management
-    service implements all seven.
+    this port exists to prevent (R-D2). `list_partitions` joins them for
+    a related reason, not a discovery one: which partitions exist is a
+    SLURM/job-scheduling fact needed before `submit_job` is ever called,
+    not a "browse checkpoint candidates" concern -- `ModelDiscovery`
+    below stays about candidate directories only. A future
+    cluster-management service implements all eight.
     """
+
+    async def list_partitions(self) -> list[SlurmPartition]: ...
 
     async def submit_job(self, spec: ServeJobSpec) -> JobHandle: ...
 

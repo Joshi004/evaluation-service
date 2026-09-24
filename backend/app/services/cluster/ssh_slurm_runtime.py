@@ -14,6 +14,7 @@ import asyncio
 from collections.abc import AsyncIterator
 
 from app.config import get_settings
+from app.schemas.cluster import SlurmPartition
 from app.services.cluster import connector, serve_job, tunnel
 from app.services.cluster.ports import (
     JobHandle,
@@ -40,12 +41,14 @@ class SshSlurmClusterRuntime:
     a one-line change there, not here.
     """
 
+    async def list_partitions(self) -> list[SlurmPartition]:
+        return await connector.partitions()
+
     async def submit_job(self, spec: ServeJobSpec) -> JobHandle:
         script = serve_job.render_serve_script(
             spec,
             vllm_venv_path=settings.cluster_vllm_venv_path,
             cuda_home=settings.cluster_cuda_home,
-            partition=settings.slurm_partition,
         )
         job_id = await connector.submit(script)
         return JobHandle(job_id=job_id)

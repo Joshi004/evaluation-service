@@ -12,6 +12,26 @@ export interface HealthResponse {
   dependencies: Record<string, string>
 }
 
+// One SLURM partition as `scontrol show partition` reports it -- see
+// app/schemas/cluster.py. `hidden` is why this has to come from the
+// cluster rather than being hardcoded: `background` (this deployment's
+// own default) has `Hidden=YES`, so it never shows up in SLURM's own
+// unqualified listing commands.
+export interface SlurmPartition {
+  name: string
+  state: string
+  hidden: boolean
+  priority_tier: number
+}
+
+// GET /api/v1/cluster/partitions' whole response -- every partition the
+// cluster reports, plus which one this deployment falls back to when a
+// submit doesn't name one explicitly.
+export interface ClusterPartitions {
+  default_partition: string
+  partitions: SlurmPartition[]
+}
+
 // Independent of registration (R-D1): a checkpoint stays listed even if
 // the weights behind it later vanish -- 'unknown' is the honest state
 // for a row nobody has checked yet.
@@ -248,6 +268,9 @@ export interface EndpointListItem {
   serving_profile_id: number
   gpus: number
   slurm_job_id: number | null
+  // null only for an endpoint row that predates per-run SLURM
+  // partition selection.
+  partition: string | null
   url: string | null
   expires_at: string
   created_at: string
@@ -508,6 +531,14 @@ export interface CreateRunsRequest {
   standard_label_by_standard_id: Record<number, string>
   sampling_label_by_checkpoint_id: Record<number, string>
   serving_label_by_checkpoint_id: Record<number, string>
+  // The SLURM partition this whole grid's serve jobs land on -- one
+  // choice per submit, not per axis (per-run SLURM partition
+  // selection): which partition a job runs on can't change what gets
+  // measured, so there's no case for varying it within one grid.
+  // Omitted (or undefined) means "use this deployment's own default",
+  // resolved server-side from GET /cluster/partitions'
+  // default_partition -- never hardcoded in the frontend.
+  partition?: string
   submitted_by?: string | null
 }
 
@@ -717,10 +748,17 @@ export interface RunPerformanceSummary {
 // The vLLM server a run ran against -- just enough to show whether it's
 // still live, not the full EndpointListItem shape (checkpoint_name and
 // gpus are already known from the run itself).
+//
+// `partition` is where this endpoint actually landed, which can differ
+// from RunDetail's own `partition` (the run's requested partition) the
+// moment a run is handed a reused endpoint that's running elsewhere
+// (per-run SLURM partition selection: reuse stays keyed on checkpoint +
+// serving profile alone).
 export interface RunEndpointSummary {
   id: number
   url: string | null
   slurm_job_id: number | null
+  partition: string | null
   expires_at: string
 }
 
@@ -793,6 +831,11 @@ export interface RunSamplingDetail {
 export interface RunDetail extends RunListItem {
   output_dir: string | null
   comparison_hash: string
+  // This run's own requested partition -- its run_group's column, not
+  // the endpoint's. Can differ from `endpoint.partition` the moment
+  // this run reused an endpoint already running elsewhere; null only
+  // for a run_group that predates per-run SLURM partition selection.
+  partition: string | null
   standard: RunStandardDetail
   sampling: RunSamplingDetail
   serving: ServingProfileSummary

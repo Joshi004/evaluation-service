@@ -27,7 +27,8 @@ from datetime import UTC, datetime
 import asyncssh
 
 from app.config import get_settings
-from app.services.cluster.ports import ClusterUnreachableError, JobState
+from app.schemas.cluster import SlurmPartition
+from app.services.cluster.ports import ClusterUnreachableError, JobState, JobSubmissionError
 
 logger = logging.getLogger(__name__)
 
@@ -118,14 +119,25 @@ async def submit(script: str) -> int:
     cluster (0.7: "sbatch reads the script from stdin"). Returns the
     SLURM job id. `--chdir` is baked in here rather than a parameter, so
     this stays the exact signature the doc specifies.
+
+    Raises `ports.JobSubmissionError`, carrying sbatch's own stderr, if
+    sbatch rejects the job outright -- most commonly now a partition
+    this account isn't allowed to submit to (per-run SLURM partition
+    selection lets a caller name any partition the cluster reports).
+    Without this, the caller would only ever see asyncssh's generic
+    "Process exited with non-zero exit status 1", which says nothing
+    about why.
     """
     conn = await _get_login_connection()
-    result = await conn.run(
-        f"sbatch --chdir={settings.cluster_log_root} --parsable",
-        input=script,
-        check=True,
-        timeout=_COMMAND_TIMEOUT_SECONDS,
-    )
+    try:
+        result = await conn.run(
+            f"sbatch --chdir={settings.cluster_log_root} --parsable",
+            input=script,
+            check=True,
+            timeout=_COMMAND_TIMEOUT_SECONDS,
+        )
+    except asyncssh.ProcessError as exc:
+        raise JobSubmissionError(exc.stderr or str(exc)) from exc
     return int(result.stdout.strip())
 
 
@@ -161,6 +173,47 @@ async def cancel(job_id: int) -> None:
     """scancel. Synchronous -- there is no second writer to race with."""
     conn = await _get_login_connection()
     await conn.run(f"scancel {job_id}", check=True, timeout=_COMMAND_TIMEOUT_SECONDS)
+
+
+async def partitions() -> list[SlurmPartition]:
+    """`scontrol --all --oneliner show partition`, one partition per
+    line as space-separated `Key=Value` tokens. `--all` is the flag
+    that matters: SLURM's own unqualified listing commands omit a
+    hidden partition entirely, and `background` (this deployment's own
+    default, Settings.slurm_partition) is one -- confirmed on login-6
+    (`Hidden=YES`, `PriorityTier=1`, i.e. lower priority than the three
+    team partitions' `10`).
+
+    Parses only the four fields `SlurmPartition` needs -- every other
+    token (`AllowGroups`, `Nodes`, `TRES`, ...) is read and discarded. A
+    line with no `PartitionName` token is skipped rather than raising,
+    the same defensiveness `status()` above applies to a malformed
+    `squeue` line.
+    """
+    conn = await _get_login_connection()
+    result = await conn.run(
+        "scontrol --all --oneliner show partition",
+        check=True,
+        timeout=_COMMAND_TIMEOUT_SECONDS,
+    )
+    found: list[SlurmPartition] = []
+    for line in result.stdout.splitlines():
+        fields: dict[str, str] = {}
+        for token in line.split():
+            key, _, value = token.partition("=")
+            fields[key] = value
+        name = fields.get("PartitionName")
+        if name is None:
+            continue
+        found.append(
+            SlurmPartition(
+                name=name,
+                state=fields.get("State", "UNKNOWN"),
+                hidden=fields.get("Hidden") == "YES",
+                priority_tier=int(fields.get("PriorityTier", "0")),
+            )
+        )
+    return found
 
 
 async def logs(path: str, follow: bool = False) -> str | AsyncIterator[str]:

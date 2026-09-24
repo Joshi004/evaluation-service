@@ -2,9 +2,11 @@
 
 Mounted in app.main with the api_v1_prefix from Settings.
 
-`cluster` has no router in v1 at all -- there is no Cluster page
-(decision D5) and no cluster access until Phase 3. `standards` was
-deleted in Phase 1 pending a real handler and is re-added here in
+`cluster` is a narrow router (docs/EVAL_SERVICE_PLAN.md's per-run
+partition selection): decision D5 (no general Cluster page) still
+holds, so it carries exactly one route, GET /cluster/partitions, not a
+browsable cluster resource. `standards` was deleted in Phase 1 pending
+a real handler and is re-added here in
 Phase 2; Phase 3 (docs/STANDARDS_AND_PROFILES_PHASES.md) folded its
 previously separate list-every-hashed-row endpoint into it as
 `?include_ad_hoc=true`, so there is no standalone router for that
@@ -17,6 +19,7 @@ from fastapi import APIRouter
 
 from app.api.v1 import (
     checkpoints,
+    cluster,
     diagnostics,
     endpoints,
     health,
@@ -32,6 +35,7 @@ api_router = APIRouter()
 
 api_router.include_router(health.router, tags=["health"])
 api_router.include_router(checkpoints.router, prefix="/checkpoints", tags=["checkpoints"])
+api_router.include_router(cluster.router, prefix="/cluster", tags=["cluster"])
 api_router.include_router(standards.router, prefix="/standards", tags=["standards"])
 api_router.include_router(runs.router, prefix="/runs", tags=["runs"])
 # Mounted after runs.router, on the same "/runs" prefix (Phase 3 of

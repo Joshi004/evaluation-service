@@ -35,6 +35,7 @@ async def list_live_endpoints(db: AsyncSession) -> list[EndpointListItem]:
             serving_profile_id=endpoint.serving_profile_id,
             gpus=gpus,
             slurm_job_id=endpoint.slurm_job_id,
+            partition=endpoint.partition,
             url=endpoint.url,
             expires_at=endpoint.expires_at,
             created_at=endpoint.created_at,
@@ -91,7 +92,11 @@ async def find_reusable_endpoint(
 
 
 async def create_endpoint_row(
-    db: AsyncSession, checkpoint_id: int, serving_profile_id: int, expires_at: datetime
+    db: AsyncSession,
+    checkpoint_id: int,
+    serving_profile_id: int,
+    expires_at: datetime,
+    partition: str,
 ) -> Endpoint:
     """Written before the serve job is even submitted (Trap T3):
     expires_at is submitted_at + walltime, because the walltime clock
@@ -101,7 +106,10 @@ async def create_endpoint_row(
     column exists to prevent.
     """
     endpoint = Endpoint(
-        checkpoint_id=checkpoint_id, serving_profile_id=serving_profile_id, expires_at=expires_at
+        checkpoint_id=checkpoint_id,
+        serving_profile_id=serving_profile_id,
+        expires_at=expires_at,
+        partition=partition,
     )
     db.add(endpoint)
     await db.flush()  # populates endpoint.id via Postgres RETURNING

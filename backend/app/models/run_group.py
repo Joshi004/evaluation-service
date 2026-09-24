@@ -22,5 +22,10 @@ class RunGroup(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
     name: Mapped[str] = mapped_column(Text)
+    # The SLURM partition every eval_run in this group's serve jobs
+    # lands on -- one choice per submit, not per run (per-run SLURM
+    # partition selection). NULL means this row predates the column: it
+    # ran against whatever Settings.slurm_partition was at the time.
+    partition: Mapped[str | None] = mapped_column(Text, default=None)
     submitted_by: Mapped[str | None] = mapped_column(Text, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

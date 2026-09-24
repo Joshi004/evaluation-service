@@ -12,6 +12,7 @@ import {
   type StandardSummary,
 } from '../api/client'
 import { DryRunPreview } from '../components/DryRunPreview/DryRunPreview'
+import { PartitionPicker } from '../components/PartitionPicker/PartitionPicker'
 import { SubmitGrid } from '../components/SubmitGrid/SubmitGrid'
 import {
   buildRequestOverrides,
@@ -34,6 +35,11 @@ export function SubmitPage() {
   const [overrideDrafts, setOverrideDrafts] = useState<SubmitOverrideDrafts>(EMPTY_SUBMIT_OVERRIDE_DRAFTS)
   const [runName, setRunName] = useState('')
   const [submittedBy, setSubmittedBy] = useState('')
+  // null means "use this deployment's own default" -- the same meaning
+  // as CreateRunsRequest.partition's own absence (per-run SLURM
+  // partition selection). One choice for the whole grid, not per axis:
+  // which partition a job runs on can't change what gets measured.
+  const [partition, setPartition] = useState<string | null>(null)
 
   // Debounced on the raw drafts, not the derived overrides --
   // buildRequestOverrides returns a new object every call, and
@@ -182,6 +188,11 @@ export function SubmitPage() {
       standard_label_by_standard_id: requestOverrides.standardLabelByStandardId,
       sampling_label_by_checkpoint_id: requestOverrides.samplingLabelByCheckpointId,
       serving_label_by_checkpoint_id: requestOverrides.servingLabelByCheckpointId,
+      // undefined (the key genuinely absent), not null -- an untouched
+      // picker must resolve to the backend's own current default
+      // rather than the frontend sending some particular partition
+      // name of its own.
+      partition: partition ?? undefined,
       submitted_by: trimmedSubmittedBy === '' ? null : trimmedSubmittedBy,
     })
   }
@@ -289,6 +300,11 @@ export function SubmitPage() {
               className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-200"
             />
           </label>
+          {/* Every run in this submit shares one partition (per-run
+              SLURM partition selection) -- there's no case for varying
+              it per checkpoint or standard, unlike the axis-scoped
+              overrides above. */}
+          <PartitionPicker value={partition} onValueChange={setPartition} />
         </div>
       </section>
 

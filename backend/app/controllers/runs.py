@@ -4,6 +4,7 @@
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.schemas.runs import (
     CreateRunsRequest,
     RunDetail,
@@ -18,6 +19,8 @@ from app.services.runs import queries as runs_service
 from app.services.runs import submit as submit_service
 from app.services.runs import worker
 from app.services.standards import queries as standards_service
+
+settings = get_settings()
 
 
 async def list_runs(
@@ -61,6 +64,12 @@ async def submit_runs(db: AsyncSession, request: CreateRunsRequest) -> RunSubmis
         standard_label_by_standard_id=request.standard_label_by_standard_id,
         sampling_label_by_checkpoint_id=request.sampling_label_by_checkpoint_id,
         serving_label_by_checkpoint_id=request.serving_label_by_checkpoint_id,
+        # `request.partition` is None whenever the caller didn't pick
+        # one (per-run SLURM partition selection) -- resolved to this
+        # deployment's own default here, at the API boundary, so every
+        # run_group row records an explicit choice rather than a NULL
+        # that would be ambiguous with a row that predates the column.
+        partition=request.partition if request.partition is not None else settings.slurm_partition,
         submitted_by=request.submitted_by,
     )
     if submission is None:
