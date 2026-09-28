@@ -49,6 +49,7 @@ def validate_compatibility(
             rules.checkpoint_availability_stale(checkpoint),
             rules.standard_max_tokens_below_checkpoint_default(checkpoint, sampling_config),
             rules.quantization_mismatch(checkpoint, serving_profile),
+            rules.seed_not_applied_with_repeats(standard_config),
         )
         if finding is not None
     ]

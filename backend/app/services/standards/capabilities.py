@@ -1,6 +1,9 @@
 """Per-framework sampling fields a sampling profile may set but that
 framework will silently drop -- decision D4
-(docs/IMPLEMENTATION_PHASES.md Section 0.8).
+(docs/IMPLEMENTATION_PHASES.md Section 0.8) -- plus one sampling field
+whose delivery depends on a *standard* setting rather than the
+framework: `seed` under `repeats > 1` (`per_request_seed_applies`
+below).
 
 `min_p` is the only v1 entry: EvalScope's `GenerateConfig` has no `min_p`
 field, and its `openai_api` request builder never reads `model_extra`, so
@@ -18,6 +21,40 @@ from app.schemas.standards import SamplingFieldWarning
 FRAMEWORK_UNSUPPORTED_SAMPLING_FIELDS: dict[str, set[str]] = {
     "evalscope": {"min_p"},
 }
+
+# Shared verbatim by compatibility.rules.seed_not_applied_with_repeats
+# (the submit-time warning) and runs.queries._to_run_sampling_detail
+# (the same warning on a finished run's own page) -- one wording, so a
+# preview and the run it produced can never describe this differently.
+SEED_NOT_APPLIED_WITH_REPEATS_MESSAGE = (
+    "seed is not sent to the model when repeats > 1 -- EvalScope sends every "
+    "repeat of a sample as an identical request, so a fixed seed would turn "
+    "them into repeats copies of one answer instead of independent draws. "
+    "This run is not reproducible."
+)
+
+
+def per_request_seed_applies(repeats: int) -> bool:
+    """Whether `task_config.py` may send `sampling_profile.seed` on the
+    request itself (`generation_config.seed`, which EvalScope forwards
+    into each request's OpenAI-compatible body verbatim -- confirmed
+    against the pinned commit's `models/utils/openai.py` -- and vLLM
+    then seeds that one request's own generator from, independent of
+    whatever else the server is doing). Without this, `seed` only ever
+    reaches EvalScope's own `seed_everything()` call, which affects the
+    harness process's dataset ordering and never reaches the model at
+    all -- confirmed against the pinned commit's `run.py`.
+
+    `repeats == 1` is the only safe case: EvalScope sends every repeat
+    of one sample as an identical request (`api/dataset/builder.py`'s
+    own repeat duplication happens before generation, not after), so a
+    fixed seed under `repeats > 1` would make every one of those
+    repeats draw the exact same answer -- exactly the "independent
+    draws" a repeat exists to give GPQA-Diamond's pooled mean.
+    `rules.seed_not_applied_with_repeats` is the compatibility warning
+    that fires whenever this is `False`.
+    """
+    return repeats == 1
 
 
 def sampling_field_warnings(

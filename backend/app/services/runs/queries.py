@@ -31,8 +31,13 @@ from app.schemas.runs import (
     RunSamplingDetail,
     RunStandardDetail,
 )
+from app.schemas.standards import SamplingFieldWarning
 from app.services.serving_profiles.queries import to_serving_profile_summary
-from app.services.standards.capabilities import sampling_field_warnings
+from app.services.standards.capabilities import (
+    SEED_NOT_APPLIED_WITH_REPEATS_MESSAGE,
+    per_request_seed_applies,
+    sampling_field_warnings,
+)
 
 _ACTIVE_STATUSES = ("queued", "running")
 
@@ -157,14 +162,24 @@ def _to_run_standard_detail(standard: Standard) -> RunStandardDetail:
     )
 
 
-def _to_run_sampling_detail(sampling_profile: SamplingProfile, framework: str) -> RunSamplingDetail:
+def _to_run_sampling_detail(
+    sampling_profile: SamplingProfile, framework: str, repeats: int
+) -> RunSamplingDetail:
     """The resolved-sampling half of a run's detail -- every field that
     can affect how the model was asked to speak, plus decision D4's
     per-field warnings (the same sampling_field_warnings the Standards
     page and the Submit preview also use, so a run's own page never
-    disagrees with either).
+    disagrees with either) and the seed/repeats warning
+    (compatibility.rules.seed_not_applied_with_repeats' own run-page
+    counterpart -- same message, same condition, so a finished run
+    says exactly what its own submit-time preview already warned).
     """
     config = sampling_profile.as_hashable_dict()
+    warnings = sampling_field_warnings(framework, config)
+    if not per_request_seed_applies(repeats):
+        warnings.append(
+            SamplingFieldWarning(field="seed", message=SEED_NOT_APPLIED_WITH_REPEATS_MESSAGE)
+        )
     return RunSamplingDetail(
         id=sampling_profile.id,
         hash=sampling_profile.hash,
@@ -178,7 +193,7 @@ def _to_run_sampling_detail(sampling_profile: SamplingProfile, framework: str) -
         max_tokens=sampling_profile.max_tokens,
         enable_thinking=sampling_profile.enable_thinking,
         seed=sampling_profile.seed,
-        warnings=sampling_field_warnings(framework, config),
+        warnings=warnings,
     )
 
 
@@ -241,7 +256,7 @@ async def get_run_detail(db: AsyncSession, eval_run_id: int) -> RunDetail | None
         comparison_hash=eval_run.comparison_hash,
         partition=run_group.partition,
         standard=_to_run_standard_detail(standard),
-        sampling=_to_run_sampling_detail(sampling_profile, standard.framework),
+        sampling=_to_run_sampling_detail(sampling_profile, standard.framework, standard.repeats),
         serving=to_serving_profile_summary(serving_profile),
         endpoint=endpoint_summary,
         metrics=[

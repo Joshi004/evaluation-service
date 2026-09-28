@@ -15,6 +15,7 @@ object is just constructed in a different process.
 from typing import Any
 
 from app.models import Checkpoint, Endpoint, SamplingProfile, Standard
+from app.services.standards.capabilities import per_request_seed_applies
 
 
 def build_task_config(
@@ -118,8 +119,65 @@ def build_task_config(
       `generation_config`.
     - `enable_thinking`:
       `generation_config.extra_body.chat_template_kwargs.enable_thinking`.
-    - `seed`: `seed`, replacing what used to be a hardcoded `42`.
+    - `seed`: two places, not one. Always the top-level `seed` --
+      EvalScope's own `seed_everything()` call, which affects only the
+      harness process's own randomness (dataset ordering) and never
+      reaches the model. Also `generation_config.seed`, but only when
+      `capabilities.per_request_seed_applies(standard.repeats)` --
+      EvalScope forwards that one into each request's OpenAI-compatible
+      body, and vLLM seeds that request's own generator from it. Omitted
+      above `repeats == 1` (see that function's own docstring): EvalScope
+      sends every repeat of a sample as an identical request, so a fixed
+      seed there would collapse `repeats` into copies of one draw
+      instead of `repeats` independent ones.
     """
+    generation_config: dict[str, Any] = {
+        "temperature": sampling_profile.temperature,
+        "top_p": sampling_profile.top_p,
+        "top_k": sampling_profile.top_k,
+        "presence_penalty": sampling_profile.presence_penalty,
+        "repetition_penalty": sampling_profile.repetition_penalty,
+        "max_tokens": sampling_profile.max_tokens,
+        # min_p deliberately NOT passed -- decision D4. A sampling
+        # profile may record a non-zero min_p (nothing rejects that
+        # at load time), but EvalScope's openai_api path drops it
+        # silently, so passing it here would claim a control that
+        # doesn't exist. The human-visible warning lives on the
+        # Standards/Submit pages, driven by
+        # FRAMEWORK_UNSUPPORTED_SAMPLING_FIELDS
+        # (services/standards/capabilities.py) -- not in this builder.
+        #
+        # extra_body is EvalScope's escape hatch straight into the
+        # OpenAI-compatible request body -- openai_completion_params
+        # forwards it verbatim, and chat_template_kwargs.enable_thinking
+        # is vLLM's own per-request switch for Qwen3-style thinking.
+        # It has to be per-request, not a serve-time flag: one endpoint
+        # is shared by every run against the same
+        # (checkpoint, serving_profile), so a think and a no-think
+        # sampling profile can be in flight against the same server at
+        # once. Passed explicitly in both directions, per this
+        # function's own rule -- Qwen3's own default is
+        # enable_thinking=True, and leaving this out for a sampling
+        # profile with enable_thinking=False silently ran that run in
+        # thinking mode anyway (confirmed against a real run: 100% of
+        # predictions carried a <think> block under a stored
+        # enable_thinking: false sampling profile).
+        "extra_body": {
+            "chat_template_kwargs": {"enable_thinking": sampling_profile.enable_thinking}
+        },
+        "timeout": standard.request_timeout_seconds,
+    }
+    if per_request_seed_applies(standard.repeats):
+        # Confirmed against the pinned commit: EvalScope's OpenAI
+        # request builder (models/utils/openai.py) reads
+        # `GenerateConfig.seed` and puts it straight into the request's
+        # own `seed` field, and vLLM's OpenAI-compatible server gives a
+        # request carrying its own seed an isolated generator -- fixing
+        # the actual bug this was written for (seed never reached the
+        # model at all; see docs/IFEVAL_PARITY_CHECK.md, since deleted
+        # but recovered from git history when this was fixed).
+        generation_config["seed"] = sampling_profile.seed
+
     return {
         "model": checkpoint.name,
         "api_url": endpoint.url,
@@ -127,42 +185,7 @@ def build_task_config(
         "eval_type": "openai_api",  # HTTP only -- never loads the model itself
         "datasets": [standard.task_name],
         "dataset_args": {standard.task_name: _dataset_args(standard)},
-        "generation_config": {
-            "temperature": sampling_profile.temperature,
-            "top_p": sampling_profile.top_p,
-            "top_k": sampling_profile.top_k,
-            "presence_penalty": sampling_profile.presence_penalty,
-            "repetition_penalty": sampling_profile.repetition_penalty,
-            "max_tokens": sampling_profile.max_tokens,
-            # min_p deliberately NOT passed -- decision D4. A sampling
-            # profile may record a non-zero min_p (nothing rejects that
-            # at load time), but EvalScope's openai_api path drops it
-            # silently, so passing it here would claim a control that
-            # doesn't exist. The human-visible warning lives on the
-            # Standards/Submit pages, driven by
-            # FRAMEWORK_UNSUPPORTED_SAMPLING_FIELDS
-            # (services/standards/capabilities.py) -- not in this builder.
-            #
-            # extra_body is EvalScope's escape hatch straight into the
-            # OpenAI-compatible request body -- openai_completion_params
-            # forwards it verbatim, and chat_template_kwargs.enable_thinking
-            # is vLLM's own per-request switch for Qwen3-style thinking.
-            # It has to be per-request, not a serve-time flag: one endpoint
-            # is shared by every run against the same
-            # (checkpoint, serving_profile), so a think and a no-think
-            # sampling profile can be in flight against the same server at
-            # once. Passed explicitly in both directions, per this
-            # function's own rule -- Qwen3's own default is
-            # enable_thinking=True, and leaving this out for a sampling
-            # profile with enable_thinking=False silently ran that run in
-            # thinking mode anyway (confirmed against a real run: 100% of
-            # predictions carried a <think> block under a stored
-            # enable_thinking: false sampling profile).
-            "extra_body": {
-                "chat_template_kwargs": {"enable_thinking": sampling_profile.enable_thinking}
-            },
-            "timeout": standard.request_timeout_seconds,
-        },
+        "generation_config": generation_config,
         "repeats": standard.repeats,
         "seed": sampling_profile.seed,
         "limit": standard.sample_limit,

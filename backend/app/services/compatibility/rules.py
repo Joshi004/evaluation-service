@@ -19,7 +19,11 @@ from typing import Any
 from app.models import Checkpoint, ServingProfile
 from app.schemas.compatibility import CompatibilityFinding
 from app.services.serving_profiles.render import serving_profile_display_name
-from app.services.standards.capabilities import sampling_field_warnings
+from app.services.standards.capabilities import (
+    SEED_NOT_APPLIED_WITH_REPEATS_MESSAGE,
+    per_request_seed_applies,
+    sampling_field_warnings,
+)
 
 # The endpoint's max_model_len is the model's whole context window --
 # prompt plus completion together -- while sampling.max_tokens bounds
@@ -294,3 +298,22 @@ def framework_drops_sampling_field(
         )
         for warning in sampling_field_warnings(standard_config["framework"], sampling_config)
     ]
+
+
+def seed_not_applied_with_repeats(standard_config: dict[str, Any]) -> CompatibilityFinding | None:
+    """None when this pair's resolved `repeats` lets the sampling
+    profile's `seed` actually reach the model
+    (`capabilities.per_request_seed_applies`); otherwise the warning
+    that this run's answers won't be reproducible.
+    `standard_config["repeats"]` always exists -- it's a required field
+    of `Standard.as_hashable_dict()`, never an override that might be
+    missing, so this needs no `.get()` fallback the way the D4 fields
+    above do.
+    """
+    if per_request_seed_applies(standard_config["repeats"]):
+        return None
+    return CompatibilityFinding(
+        code="seed_not_applied_with_repeats",
+        field="sampling.seed",
+        message=SEED_NOT_APPLIED_WITH_REPEATS_MESSAGE,
+    )
