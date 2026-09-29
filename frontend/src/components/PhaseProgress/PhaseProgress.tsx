@@ -1,4 +1,4 @@
-import { derivePhase, PHASE_STEPS, phaseDotClassName, stepIndex } from './PhaseProgress.helper'
+import { derivePhase, PHASE_STEPS, phaseDotClassName, stepIndex } from '../../utils/runPhase'
 
 interface PhaseProgressProps {
   status: string
@@ -6,7 +6,7 @@ interface PhaseProgressProps {
 }
 
 // A three-step stepper derived from status + endpoint_id
-// (PhaseProgress.helper.ts's derivePhase), since eval_run has no phase
+// (utils/runPhase.ts's derivePhase), since eval_run has no phase
 // column of its own. A terminal run renders every step complete --
 // RunStatusChip is what distinguishes done from failed from cancelled,
 // this only shows how far a run got before that.

@@ -36,8 +36,7 @@ export const paths = {
   // `filters` narrows Phase 9's own `?model=&benchmark=&batch=` contract
   // (Appendix A) -- the Leaderboard's "N other setup" and "view this
   // model's run history" links pass `model`/`benchmark`; the run
-  // report's batch link (Phase 7) passes `batch` alone. RunsPage itself
-  // doesn't read `batch` yet -- Phase 9 rewrites it to.
+  // report's batch link (Phase 7) passes `batch` alone.
   runs: (filters?: { model?: number; benchmark?: string; batch?: number }) => {
     const model = filters?.model
     const benchmark = filters?.benchmark

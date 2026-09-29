@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { Outlet, useLocation } from 'react-router'
+import { useRuns } from '../../api/queries/runs'
 import { CompareTray } from '../CompareTray/CompareTray'
 import { Sidebar } from '../Sidebar/Sidebar'
 import { TopBar } from '../TopBar/TopBar'
 import { paths } from '../../utils/paths'
+import { countActiveRuns } from '../../utils/runStatus'
 import { useCompareTray } from '../../utils/useCompareTray'
 import { resolvePageTitle } from './AppShell.helper'
 import { useDocumentTitle } from '../../utils/useDocumentTitle'
@@ -18,6 +20,11 @@ export function AppShell() {
   useDocumentTitle(pageTitle)
 
   const { pinnedRuns } = useCompareTray()
+  // The same unfiltered `runs` cache entry the Runs page and the
+  // Leaderboard's own activity strip read (queryKeys.runs({})) -- every
+  // observer of one query key shares one poll, so this adds no second
+  // request, just a second reader of data already being fetched.
+  const runs = useRuns()
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
 
   // Closing the drawer when the route changes -- so a link clicked
@@ -36,7 +43,10 @@ export function AppShell() {
       <Sidebar
         isDrawerOpen={isDrawerOpen}
         onCloseDrawer={() => setIsDrawerOpen(false)}
-        badgeCountsByPath={{ [paths.compare()]: pinnedRuns.length }}
+        badgeCountsByPath={{
+          [paths.compare()]: pinnedRuns.length,
+          [paths.runs()]: countActiveRuns(runs.data ?? []),
+        }}
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar breadcrumb={pageTitle} onOpenDrawer={() => setIsDrawerOpen(true)} />

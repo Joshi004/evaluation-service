@@ -9,3 +9,11 @@ const ACTIVE_STATUSES: ReadonlySet<string> = new Set(['queued', 'running'])
 export function isActiveRunStatus(status: string): boolean {
   return ACTIVE_STATUSES.has(status)
 }
+
+// The sidebar's own Runs badge (docs/UI_REDESIGN_PLAN.md §8.9, Appendix
+// A: "sidebar Runs badge shows the active count") and the Runs page's
+// own Active status chip both need "how many of these runs are still
+// going" -- one count, so the two can never disagree.
+export function countActiveRuns(runs: { status: string }[]): number {
+  return runs.filter((run) => isActiveRunStatus(run.status)).length
+}

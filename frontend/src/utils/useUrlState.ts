@@ -44,6 +44,18 @@ export function readNumberListParam(params: URLSearchParams, key: string): numbe
     .filter((item) => Number.isFinite(item))
 }
 
+// A single numeric id param (e.g. Runs' own `?model=3`, `?batch=6` --
+// docs/UI_REDESIGN_PLAN.md §8.9) -- `null` for absent or malformed
+// rather than `NaN`, so a caller can `??` straight into "no filter".
+export function readNumberParam(params: URLSearchParams, key: string): number | null {
+  const value = params.get(key)
+  if (value === null) {
+    return null
+  }
+  const parsed = Number.parseInt(value, 10)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
 export type UrlParamValue = string | number | boolean | string[] | number[] | null
 
 export interface SetUrlParamsOptions {

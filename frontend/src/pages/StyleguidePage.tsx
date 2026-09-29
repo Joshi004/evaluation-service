@@ -38,12 +38,15 @@ import { ScoreValue } from '../components/ScoreValue/ScoreValue'
 import { FingerprintChip } from '../components/FingerprintChip/FingerprintChip'
 import { RelativeTime } from '../components/RelativeTime/RelativeTime'
 import { RunStatusChip } from '../components/RunStatusChip/RunStatusChip'
+import { BatchProgressBar } from '../components/BatchProgressBar/BatchProgressBar'
+import { RunFailureReason } from '../components/RunFailureReason/RunFailureReason'
+import { RunsLiveIndicator } from '../components/RunsLiveIndicator/RunsLiveIndicator'
 import { classifyRunError } from '../utils/classifyRunError'
 import { shortenModelName } from '../utils/shortenModelName'
 import { familyKey } from '../utils/familyKey'
 import { formatScore, formatMargin } from '../utils/formatScore'
 import { intervalsOverlap } from '../utils/intervalsOverlap'
-import type { ConfidenceInterval } from '../api/client'
+import type { ConfidenceInterval, RunListItem } from '../api/client'
 
 // Written out literally (not built from a template string) so
 // Tailwind's build-time scanner, which only recognises complete class
@@ -75,8 +78,46 @@ const MODEL_NAME_EXAMPLE = 'Qwen3.5-0.8B-Think-MOPD-mixv2-RL-v11c-s810'
 // during render is flagged as an impure call (its result would drift
 // on every re-render for no reason this static example needs).
 const RECENT_TIMESTAMP_EXAMPLE = new Date(Date.now() - 21 * 60 * 60 * 1000).toISOString()
+const NOW_EXAMPLE_MS = Date.now()
 const RUN_8_ERROR =
   "FileNotFoundError: [Errno 2] No such file or directory: '/data/evalsvc/runs/run-8/reports/Qwen3.5-0.8B-Think-MOPD-mixv2-RL-v11c-s810/ifeval.json'"
+
+// Run 8's own real shape (docs/UI_REDESIGN_PLAN.md §2.4) -- RunFailureReason
+// only reads `id` and `error`, but its prop is the full RunListItem, so
+// this fills the rest in with that run's other real values.
+const RUN_8_EXAMPLE: RunListItem = {
+  id: 8,
+  run_group_id: 3,
+  run_group_name: 'if-eval-01',
+  checkpoint_id: 2,
+  checkpoint_name: MODEL_NAME_EXAMPLE,
+  standard_id: 1,
+  standard_label: 'ifeval/v1',
+  standard_hash: 'ifeval-v1-hash',
+  benchmark: 'ifeval',
+  endpoint_id: 4,
+  status: 'failed',
+  truncation_rate: null,
+  error: RUN_8_ERROR,
+  submitted_by: 'Naresh Joshi',
+  created_at: '2026-09-15T06:02:15.648911Z',
+  started_at: '2026-09-15T06:02:15.648911Z',
+  finished_at: '2026-09-15T06:26:05.261506Z',
+  comparison_hash: 'ifeval-qwen3-5-think-hash',
+  sampling_profile_label: 'qwen3_5_think',
+  sampling_profile_hash: '5aed9f401a82b31a',
+  primary_metric_name: null,
+  primary_metric_value: null,
+  primary_metric_n_samples: null,
+  primary_metric_confidence_interval: null,
+}
+// classifyRunError falls back to a generic title for a message it
+// doesn't recognise -- this run otherwise mirrors RUN_8_EXAMPLE.
+const UNRECOGNISED_ERROR_RUN_EXAMPLE: RunListItem = {
+  ...RUN_8_EXAMPLE,
+  id: 99,
+  error: 'OutOfMemoryError: CUDA out of memory',
+}
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -409,6 +450,32 @@ export function StyleguidePage() {
               <RunStatusChip status="failed" />
               <RunStatusChip status="cancelled" />
             </div>
+          </div>
+        </Section>
+
+        {/* Phase 9 (docs/UI_REDESIGN_PLAN.md §8.9): today's data has no
+            active run and no batch with a mixed-status spread, so these
+            three states can only be seen here, not on the real page. */}
+        <Section title="Runs activity">
+          <div className="flex w-full flex-col gap-4">
+            <div className="flex flex-wrap items-center gap-6">
+              <RunsLiveIndicator pollIntervalMs={5_000} isRefetchError={false} lastCheckedAt={NOW_EXAMPLE_MS} />
+              <RunsLiveIndicator pollIntervalMs={30_000} isRefetchError={false} lastCheckedAt={NOW_EXAMPLE_MS} />
+              <RunsLiveIndicator pollIntervalMs={30_000} isRefetchError lastCheckedAt={NOW_EXAMPLE_MS - 45_000} />
+            </div>
+            <BatchProgressBar
+              runs={[{ status: 'done' }, { status: 'done' }, { status: 'failed' }, { status: 'running' }]}
+              className="max-w-xs"
+            />
+            {/* RunFailureReason's own "Open logs" link would otherwise
+                navigate the real page away from /styleguide -- the same
+                reason TabNav above gets its own MemoryRouter. */}
+            <MemoryRouter initialEntries={['/runs/8']}>
+              <div className="flex flex-wrap items-start gap-6">
+                <RunFailureReason run={RUN_8_EXAMPLE} />
+                <RunFailureReason run={UNRECOGNISED_ERROR_RUN_EXAMPLE} />
+              </div>
+            </MemoryRouter>
           </div>
         </Section>
 

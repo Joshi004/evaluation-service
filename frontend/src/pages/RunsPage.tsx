@@ -1,178 +1,170 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router'
-import { apiFetch, type RunGroupCancellation, type RunListItem } from '../api/client'
-import { queryKeys } from '../api/queries/queryKeys'
 import { useRuns } from '../api/queries/runs'
-import { AddToCompareButton } from '../components/AddToCompareButton/AddToCompareButton'
+import { useStandards } from '../api/queries/standards'
+import { Button } from '../components/Button/Button'
+import { BUTTON_LABEL_SIZE, buttonClassName } from '../components/Button/Button.helper'
+import { CopyLinkButton } from '../components/CopyLinkButton/CopyLinkButton'
 import { EmptyState } from '../components/EmptyState/EmptyState'
-import { RunStatusChip } from '../components/RunStatusChip/RunStatusChip'
-import { compareCandidateFromRun } from '../utils/compareTray'
-import { formatDuration } from '../utils/formatDuration'
-import { formatFractionAsPercent } from '../utils/formatFractionAsPercent'
-import { standardDisplayName } from '../utils/standardDisplayName'
-import { groupRunsByGroup, isCancellable } from './RunsPage.helper'
+import { ErrorState } from '../components/ErrorState/ErrorState'
+import { PageHeader } from '../components/PageHeader/PageHeader'
+import { RunsSkeleton } from '../components/RunsSkeleton/RunsSkeleton'
+import { RunsTable } from '../components/RunsTable/RunsTable'
+import { RunsToolbar } from '../components/RunsToolbar/RunsToolbar'
+import { paths } from '../utils/paths'
+import { countActiveRuns } from '../utils/runStatus'
+import { useNow } from '../utils/useNow'
+import { useUrlState } from '../utils/useUrlState'
+import {
+  buildBenchmarkFilterOptions,
+  buildModelFilterOptions,
+  buildSubmittedByFilterOptions,
+  countRunsByStatusFilter,
+  filterRuns,
+  isOnlyActiveStatusFilter,
+  resolveRunsView,
+  RUNS_URL_DEFAULTS,
+  type RunsSincePreset,
+  type RunsStatusFilter,
+  type RunsUrlParams,
+  type RunsViewMode,
+} from './RunsPage.helper'
 
+// The page people leave open (docs/UI_REDESIGN_PLAN.md §8.9): what is
+// running, what finished with what score, and why a failure failed --
+// grouped by batch by default, with status chips, filters and a live
+// indicator, all round-tripping through the URL. useRuns itself backs
+// off to a 30s poll once nothing in the whole service is active, rather
+// than a flat 5s.
 export function RunsPage() {
-  const queryClient = useQueryClient()
-
-  // The page people leave open (module docstring) -- useRuns backs off
-  // to a 30s poll once nothing in the list is active, rather than the
-  // flat 5s this page used before Phase 4.
   const runs = useRuns()
+  const standards = useStandards()
+  const [searchParams, setUrlParams] = useUrlState<RunsUrlParams>(RUNS_URL_DEFAULTS)
+  const { filters, viewMode } = resolveRunsView(searchParams)
 
-  const cancelRunMutation = useMutation({
-    mutationFn: (runId: number) => apiFetch<RunListItem>(`/runs/${runId}/cancel`, { method: 'POST' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.allRuns() }),
-  })
+  const allRuns = runs.data ?? []
+  // Ticks every second while anything in the *whole service* is active,
+  // not just what the current filters happen to show -- switching a
+  // filter shouldn't change whether an already-open page keeps its
+  // duration text moving. Otherwise once a minute: a finished run's own
+  // duration is fixed by its own finished_at regardless of `now` (see
+  // formatDuration), so there is nothing for a faster tick to catch.
+  const now = useNow(countActiveRuns(allRuns) > 0 ? 1000 : 60_000)
 
-  const cancelGroupMutation = useMutation({
-    mutationFn: (runGroupId: number) =>
-      apiFetch<RunGroupCancellation>(`/run-groups/${runGroupId}/cancel`, { method: 'POST' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.allRuns() }),
-  })
+  const visibleRuns = filterRuns(allRuns, filters, now)
+  const statusCounts = countRunsByStatusFilter(allRuns, filters, now)
+  const modelOptions = buildModelFilterOptions(allRuns, filters.modelId)
+  const benchmarkOptions = buildBenchmarkFilterOptions(allRuns, standards.data ?? [], filters.benchmark)
+  const submittedByOptions = buildSubmittedByFilterOptions(allRuns, filters.submittedBy)
+  const batchChipLabel =
+    filters.batchId === null
+      ? null
+      : (allRuns.find((run) => run.run_group_id === filters.batchId)?.run_group_name ?? `Batch ${filters.batchId}`)
 
-  function handleCancelRun(runId: number) {
-    if (window.confirm(`Cancel run #${runId}?`)) {
-      cancelRunMutation.mutate(runId)
-    }
+  function handleStatusChange(status: RunsStatusFilter): void {
+    setUrlParams({ status })
+  }
+  function handleQueryChange(q: string): void {
+    setUrlParams({ q })
+  }
+  function handleModelChange(model: number | null): void {
+    setUrlParams({ model })
+  }
+  function handleBenchmarkChange(benchmark: string | null): void {
+    setUrlParams({ benchmark })
+  }
+  function handleSubmittedByChange(by: string | null): void {
+    setUrlParams({ by })
+  }
+  function handleSinceChange(since: RunsSincePreset): void {
+    setUrlParams({ since })
+  }
+  function handleClearBatch(): void {
+    setUrlParams({ batch: null })
+  }
+  // Resets every filter at once via a single setUrlParams call (not one
+  // call per field) -- React Router does not queue multiple
+  // setSearchParams calls made within the same tick (useUrlState.ts's
+  // own module comment). `view` is deliberately left out: the By
+  // batch / Flat list toggle is a lens, not a filter (the same
+  // treatment the Leaderboard's own Clear filters gives its lens/mode).
+  function handleClearFilters(): void {
+    setUrlParams({ status: 'all', model: null, benchmark: null, by: null, since: 'all', q: '', batch: null })
+  }
+  function handleViewModeChange(view: RunsViewMode): void {
+    setUrlParams({ view })
   }
 
-  function handleCancelGroup(runGroupId: number, runGroupName: string) {
-    if (window.confirm(`Cancel every non-finished run in "${runGroupName}"?`)) {
-      cancelGroupMutation.mutate(runGroupId)
-    }
-  }
-
-  const sections = runs.data ? groupRunsByGroup(runs.data) : null
-  const now = new Date()
+  // A background refetch failing (isRefetchError) keeps the last-good
+  // `data` on screen and is RunsLiveIndicator's own job to surface, not
+  // this page's -- only a failure with nothing loaded yet blocks the
+  // whole view.
+  const hasBlockingError = runs.isError && runs.data === undefined
 
   return (
-    <div>
-      <h1 className="text-2xl font-semibold">Runs</h1>
-      <p className="mt-2 max-w-2xl text-slate-400">
-        Everything in flight and recent. States, elapsed time, progress, live logs, truncation and
-        error rates — the page people leave open. See EVAL_SERVICE_PLAN.md, Section 13.
-      </p>
+    <div className="space-y-4">
+      <PageHeader title="Runs" description="Everything in flight and recent, grouped by batch." actions={<CopyLinkButton />} />
 
-      <div className="mt-8">
-        {runs.isLoading && <p className="text-sm text-slate-500">Loading runs…</p>}
+      {runs.isLoading && <RunsSkeleton />}
 
-        {runs.isError && (
-          <p className="text-sm text-red-400">Could not load runs: {String(runs.error)}</p>
-        )}
+      {hasBlockingError && (
+        <ErrorState message="Could not load runs" details={String(runs.error)} onRetry={() => runs.refetch()} />
+      )}
 
-        {sections && sections.length === 0 && <EmptyState message="No runs yet" />}
+      {!runs.isLoading && !hasBlockingError && allRuns.length === 0 && (
+        <EmptyState
+          title="Nothing has run yet"
+          description="Submit an evaluation to see its progress and results here."
+          actions={
+            <Link to={paths.newEvaluation()} className={buttonClassName('primary', BUTTON_LABEL_SIZE.md)}>
+              New evaluation
+            </Link>
+          }
+        />
+      )}
 
-        {sections && sections.length > 0 && (
-          <div className="space-y-8">
-            {sections.map((section) => {
-              const anyCancellable = section.runs.some((run) => isCancellable(run.status))
-              return (
-                <section key={section.runGroupId}>
-                  <header className="flex flex-wrap items-center gap-3">
-                    <h2 className="text-sm font-medium text-slate-300">{section.runGroupName}</h2>
-                    <span className="text-xs text-slate-500">
-                      {section.runs.length} run{section.runs.length === 1 ? '' : 's'}
-                    </span>
-                    <button
-                      type="button"
-                      disabled={!anyCancellable || cancelGroupMutation.isPending}
-                      onClick={() => handleCancelGroup(section.runGroupId, section.runGroupName)}
-                      className="ml-auto rounded border border-red-500/30 px-2 py-1 text-xs font-medium text-red-300 hover:bg-red-500/10 disabled:opacity-50"
-                    >
-                      Cancel group
-                    </button>
-                  </header>
+      {!runs.isLoading && !hasBlockingError && allRuns.length > 0 && (
+        <>
+          <RunsToolbar
+            filters={filters}
+            viewMode={viewMode}
+            statusCounts={statusCounts}
+            modelOptions={modelOptions}
+            benchmarkOptions={benchmarkOptions}
+            submittedByOptions={submittedByOptions}
+            runsQuery={runs}
+            batchChipLabel={batchChipLabel}
+            onStatusChange={handleStatusChange}
+            onQueryChange={handleQueryChange}
+            onModelChange={handleModelChange}
+            onBenchmarkChange={handleBenchmarkChange}
+            onSubmittedByChange={handleSubmittedByChange}
+            onSinceChange={handleSinceChange}
+            onClearBatch={handleClearBatch}
+            onClearFilters={handleClearFilters}
+            onViewModeChange={handleViewModeChange}
+          />
 
-                  {cancelGroupMutation.isError && cancelGroupMutation.variables === section.runGroupId && (
-                    <p className="mt-1 text-xs text-red-400">{String(cancelGroupMutation.error)}</p>
-                  )}
-
-                  <table className="mt-2 w-full border-collapse text-sm">
-                    <thead>
-                      <tr>
-                        <th className="border-b border-slate-800 p-2 text-left font-medium text-slate-400">
-                          Run
-                        </th>
-                        <th className="border-b border-slate-800 p-2 text-left font-medium text-slate-400">
-                          Status
-                        </th>
-                        <th className="border-b border-slate-800 p-2 text-right font-medium text-slate-400">
-                          Elapsed
-                        </th>
-                        <th className="border-b border-slate-800 p-2 text-left font-medium text-slate-400">
-                          Checkpoint
-                        </th>
-                        <th className="border-b border-slate-800 p-2 text-left font-medium text-slate-400">
-                          Standard
-                        </th>
-                        <th className="border-b border-slate-800 p-2 text-right font-medium text-slate-400">
-                          Truncation
-                        </th>
-                        <th className="border-b border-slate-800 p-2 text-left font-medium text-slate-400">
-                          Error
-                        </th>
-                        <th className="border-b border-slate-800 p-2" />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {section.runs.map((run) => (
-                        <tr key={run.id}>
-                          <td className="border-b border-slate-800/50 p-2">
-                            <Link to={`/runs/${run.id}`} className="text-blue-400 hover:underline">
-                              #{run.id}
-                            </Link>
-                          </td>
-                          <td className="border-b border-slate-800/50 p-2">
-                            <RunStatusChip status={run.status} />
-                          </td>
-                          <td className="border-b border-slate-800/50 p-2 text-right text-slate-200">
-                            {formatDuration(run.created_at, run.finished_at, now)}
-                          </td>
-                          <td className="border-b border-slate-800/50 p-2 text-slate-200">
-                            {run.checkpoint_name}
-                          </td>
-                          <td className="border-b border-slate-800/50 p-2 font-mono text-xs text-slate-300">
-                            {standardDisplayName(run.standard_label, run.standard_hash)}
-                          </td>
-                          <td className="border-b border-slate-800/50 p-2 text-right text-slate-200">
-                            {formatFractionAsPercent(run.truncation_rate)}
-                          </td>
-                          <td className="border-b border-slate-800/50 p-2 text-red-400">
-                            {run.error ?? ''}
-                          </td>
-                          <td className="border-b border-slate-800/50 p-2 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              {/* Temporary (Phase 5): the compare tray's
-                                  only pin control until Phase 9 rewrites
-                                  this whole page. */}
-                              <AddToCompareButton candidate={compareCandidateFromRun(run)} />
-                              <button
-                                type="button"
-                                disabled={
-                                  !isCancellable(run.status) ||
-                                  (cancelRunMutation.isPending && cancelRunMutation.variables === run.id)
-                                }
-                                onClick={() => handleCancelRun(run.id)}
-                                className="rounded border border-red-500/30 px-2 py-1 text-xs font-medium text-red-300 hover:bg-red-500/10 disabled:opacity-50"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                            {cancelRunMutation.isError && cancelRunMutation.variables === run.id && (
-                              <p className="mt-1 text-red-400">{String(cancelRunMutation.error)}</p>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </section>
-              )
-            })}
-          </div>
-        )}
-      </div>
+          {visibleRuns.length === 0 ? (
+            <EmptyState
+              title={isOnlyActiveStatusFilter(filters) ? 'Nothing is running right now' : 'No runs match these filters'}
+              description={
+                isOnlyActiveStatusFilter(filters)
+                  ? 'Every run has finished, failed or been cancelled.'
+                  : 'Try a different search, or clear your filters.'
+              }
+              actions={
+                isOnlyActiveStatusFilter(filters) ? undefined : (
+                  <Button variant="secondary" onClick={handleClearFilters}>
+                    Clear filters
+                  </Button>
+                )
+              }
+            />
+          ) : (
+            <RunsTable visibleRuns={visibleRuns} allRuns={allRuns} viewMode={viewMode} now={now} />
+          )}
+        </>
+      )}
     </div>
   )
 }

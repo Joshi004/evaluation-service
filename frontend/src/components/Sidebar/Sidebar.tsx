@@ -10,8 +10,8 @@ interface SidebarProps {
   isDrawerOpen: boolean
   onCloseDrawer: () => void
   // Keyed by a nav item's own `to` path. AppShell fills in Compare's
-  // count from useCompareTray() as of Phase 5; Phase 9 wires in Runs'
-  // active count the same way -- this is the slot Phase 2 reserved for
+  // count from useCompareTray() (Phase 5) and Runs' active count from
+  // countActiveRuns (Phase 9) -- this is the slot Phase 2 reserved for
   // both.
   badgeCountsByPath?: Record<string, number>
 }

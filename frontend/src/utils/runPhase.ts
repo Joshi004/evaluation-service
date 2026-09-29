@@ -4,6 +4,12 @@
 // evaluating -- before landing on one of three terminal statuses, which
 // this treats as "the spine is complete", not a fourth step: which
 // terminal outcome it was is RunStatusChip's job, not this stepper's.
+//
+// Promoted from components/PhaseProgress/PhaseProgress.helper.ts in
+// Phase 9 (docs/UI_REDESIGN_PLAN.md §8.9) once the Runs table's own
+// live-phase text became a second caller -- the run report's stepper
+// and a Runs row must never derive "Starting model server" two
+// different ways.
 
 export type Phase = 'queued' | 'waiting_for_endpoint' | 'evaluating' | 'done' | 'failed' | 'cancelled'
 
@@ -55,4 +61,16 @@ const DOT_TONE_CLASSES: Record<PhaseDotTone, string> = {
 export function phaseDotClassName(index: number, currentIndex: number): string {
   const tone: PhaseDotTone = index === currentIndex ? 'current' : index < currentIndex ? 'complete' : 'upcoming'
   return `h-2 w-2 rounded-full ${DOT_TONE_CLASSES[tone]}`
+}
+
+// The Runs table's own one-line phase text for a queued/running row
+// (docs/UI_REDESIGN_PLAN.md §8.9's sketch: "running rows show the live
+// phase") -- reuses derivePhase's status+endpoint_id logic rather than
+// a second guess at the same three steps, then reads that step's own
+// label. `null` for a terminal run: RunStatusChip's status text is
+// already the whole story once a run is done, failed or cancelled.
+export function runningPhaseLabel(status: string, endpointId: number | null): string | null {
+  const phase = derivePhase(status, endpointId)
+  const step = PHASE_STEPS.find((candidate) => candidate.key === phase)
+  return step?.label ?? null
 }

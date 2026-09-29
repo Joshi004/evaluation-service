@@ -7,7 +7,13 @@ import {
   type UseMutationResult,
   type UseQueryResult,
 } from '@tanstack/react-query'
-import { apiFetch, type RunDetail, type RunListFilters, type RunListItem } from '../client'
+import {
+  apiFetch,
+  type RunDetail,
+  type RunGroupCancellation,
+  type RunListFilters,
+  type RunListItem,
+} from '../client'
 import { isActiveRunStatus } from '../../utils/runStatus'
 import { queryKeys } from './queryKeys'
 
@@ -27,6 +33,14 @@ function buildRunsPath(filters: RunListFilters): string {
 
 function hasActiveRun(runs: RunListItem[] | undefined): boolean {
   return (runs ?? []).some((run) => isActiveRunStatus(run.status))
+}
+
+// Shared by useRuns' own refetchInterval below and the Runs page's own
+// live indicator (docs/UI_REDESIGN_PLAN.md §8.9, RunsLiveIndicator) --
+// "5s while something in view is active, else 30s" is one computation
+// both read, not two literals that could drift apart.
+export function runsPollIntervalMs(runs: RunListItem[] | undefined): number {
+  return hasActiveRun(runs) ? 5_000 : 30_000
 }
 
 export interface UseRunsOptions {
@@ -49,7 +63,7 @@ export function useRuns(
   return useQuery({
     queryKey: queryKeys.runs(filters),
     queryFn: () => apiFetch<RunListItem[]>(buildRunsPath(filters)),
-    refetchInterval: (query) => (hasActiveRun(query.state.data) ? 5_000 : 30_000),
+    refetchInterval: (query) => runsPollIntervalMs(query.state.data),
     enabled: options.enabled ?? true,
   })
 }
@@ -84,10 +98,10 @@ export function useRunsById(runIds: number[]): UseQueryResult<RunDetail>[] {
 }
 
 // The one cancel-run mutation, shared by the run report's own
-// RunCancelButton (Phase 7) and RunsPage's row action (inlined there
-// today, moved onto this hook once Phase 9 rewrites that page) -- one
-// implementation of "what happens after a cancel succeeds" instead of
-// two invalidation lists that can drift apart.
+// RunCancelButton (Phase 7) and the Runs table's own row action
+// (Phase 9's RunCancelButton reuse) -- one implementation of "what
+// happens after a cancel succeeds" instead of two invalidation lists
+// that can drift apart.
 export function useCancelRun(): UseMutationResult<RunListItem, Error, number> {
   const queryClient = useQueryClient()
   return useMutation({
@@ -95,6 +109,26 @@ export function useCancelRun(): UseMutationResult<RunListItem, Error, number> {
     onSuccess: (_data, runId) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.run(runId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.allRuns() })
+    },
+  })
+}
+
+// The batch cancel mutation (docs/UI_REDESIGN_PLAN.md §8.9's "Cancel
+// batch"), moved out of RunsPage's own inlined mutation so
+// RunGroupCancelButton owns no fetch logic of its own -- the same
+// "one hook, one invalidation list" reasoning as useCancelRun above.
+// Also invalidates each cancelled run's own detail cache, in case its
+// report page happens to be open in another tab.
+export function useCancelRunGroup(): UseMutationResult<RunGroupCancellation, Error, number> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (runGroupId: number) =>
+      apiFetch<RunGroupCancellation>(`/run-groups/${runGroupId}/cancel`, { method: 'POST' }),
+    onSuccess: (cancellation) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.allRuns() })
+      for (const runId of cancellation.cancelled_run_ids) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.run(runId) })
+      }
     },
   })
 }

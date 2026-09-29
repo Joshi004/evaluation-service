@@ -113,12 +113,17 @@ export function AppRoutes() {
           }
         />
 
+        {/*
+         * PageWide, not Page (Phase 9, docs/UI_REDESIGN_PLAN.md §8.9):
+         * the batch-grouped table needs the full width the same way the
+         * Leaderboard's own matrix and the run report's Samples tab do.
+         */}
         <Route
           path="runs"
           element={
-            <Page>
+            <PageWide>
               <RunsPage />
-            </Page>
+            </PageWide>
           }
         />
         {/*
