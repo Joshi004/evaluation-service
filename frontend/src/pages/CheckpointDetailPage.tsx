@@ -6,6 +6,7 @@ import { AvailabilityBadge } from '../components/AvailabilityBadge/AvailabilityB
 import { CheckpointInferredPanel } from '../components/CheckpointInferredPanel/CheckpointInferredPanel'
 import { EmptyState } from '../components/EmptyState/EmptyState'
 import { servingProfileDisplayName } from '../utils/servingProfileDisplayName'
+import { paths } from '../utils/paths'
 import {
   formatRelativeTime,
   groupByFamily,
@@ -51,7 +52,7 @@ export function CheckpointDetailPage() {
           <p className="mt-2 max-w-2xl text-slate-400">Every registered checkpoint, grouped by family.</p>
         </div>
         <Link
-          to="/checkpoints/register"
+          to={paths.modelRegister()}
           className="shrink-0 rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
         >
           Register checkpoint

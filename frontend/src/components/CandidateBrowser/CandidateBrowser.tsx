@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import type { CheckpointCandidate } from '../../api/client'
 import { EmptyState } from '../EmptyState/EmptyState'
+import { paths } from '../../utils/paths'
 import { filterCandidates } from './CandidateBrowser.helper'
 
 interface CandidateBrowserProps {
@@ -71,7 +72,7 @@ export function CandidateBrowser({
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
                     <span className="rounded bg-slate-800 px-2 py-0.5 text-xs">Already registered</span>
-                    <Link to="/checkpoints" className="text-xs text-slate-400 hover:text-slate-200">
+                    <Link to={paths.models()} className="text-xs text-slate-400 hover:text-slate-200">
                       View checkpoints
                     </Link>
                   </div>

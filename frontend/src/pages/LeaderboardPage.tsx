@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router'
-import { apiFetch, type CheckpointListItem, type HealthResponse, type LeaderboardRow } from '../api/client'
+import { apiFetch, type CheckpointListItem, type LeaderboardRow } from '../api/client'
 import { EmptyState } from '../components/EmptyState/EmptyState'
 import { MetricCell } from '../components/MetricCell/MetricCell'
 import {
@@ -11,17 +11,7 @@ import {
   toggleRunSelection,
 } from './LeaderboardPage.helper'
 
-function statusColor(value: string) {
-  return value === 'ok' ? 'text-emerald-400' : 'text-amber-400'
-}
-
 export function LeaderboardPage() {
-  const health = useQuery({
-    queryKey: ['health'],
-    queryFn: () => apiFetch<HealthResponse>('/health'),
-    refetchInterval: 10_000,
-  })
-
   const leaderboard = useQuery({
     queryKey: ['leaderboard'],
     queryFn: () => apiFetch<LeaderboardRow[]>('/leaderboard'),
@@ -57,29 +47,6 @@ export function LeaderboardPage() {
         if they measured the same thing; the sampling profile beneath each standard's name is what tells
         two columns for the same benchmark apart.
       </p>
-
-      <div className="mt-6 max-w-md rounded-lg border border-slate-800 bg-slate-900 p-4">
-        <h2 className="text-sm font-medium text-slate-300">Backend connectivity</h2>
-
-        {health.isLoading && <p className="mt-2 text-sm text-slate-500">Checking…</p>}
-
-        {health.isError && (
-          <p className="mt-2 text-sm text-red-400">Could not reach the backend: {String(health.error)}</p>
-        )}
-
-        {health.data && (
-          <ul className="mt-2 space-y-1 text-sm">
-            <li>
-              Overall: <span className={statusColor(health.data.status)}>{health.data.status}</span>
-            </li>
-            {Object.entries(health.data.dependencies).map(([name, value]) => (
-              <li key={name}>
-                {name}: <span className={statusColor(value)}>{value}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
 
       <div className="mt-8">
         {(leaderboard.isLoading || checkpoints.isLoading) && (

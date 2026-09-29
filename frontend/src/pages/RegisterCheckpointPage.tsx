@@ -10,6 +10,7 @@ import {
   type RegisterCheckpointRequest,
   type ServingProfileSummary,
 } from '../api/client'
+import { paths } from '../utils/paths'
 import { CandidateBrowser } from '../components/CandidateBrowser/CandidateBrowser'
 import { InspectionSummary } from '../components/InspectionSummary/InspectionSummary'
 import { inferredFieldsFromInspection } from '../components/InspectionSummary/InspectionSummary.helper'
@@ -96,7 +97,7 @@ export function RegisterCheckpointPage() {
       // customisation may have minted a profile -- both lists are stale.
       queryClient.invalidateQueries({ queryKey: ['checkpoint-candidates'] })
       queryClient.invalidateQueries({ queryKey: ['serving-profiles'] })
-      navigate('/checkpoints')
+      navigate(paths.models())
     },
   })
 
