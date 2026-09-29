@@ -1,27 +1,22 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Fragment, useState } from 'react'
 import { Link } from 'react-router'
-import { apiFetch, type CheckpointDetail, type CheckpointListItem } from '../api/client'
+import { apiFetch, type CheckpointDetail } from '../api/client'
+import { useCheckpoints } from '../api/queries/checkpoints'
+import { queryKeys } from '../api/queries/queryKeys'
 import { AvailabilityBadge } from '../components/AvailabilityBadge/AvailabilityBadge'
 import { CheckpointInferredPanel } from '../components/CheckpointInferredPanel/CheckpointInferredPanel'
 import { EmptyState } from '../components/EmptyState/EmptyState'
 import { servingProfileDisplayName } from '../utils/servingProfileDisplayName'
+import { formatRelativeTime } from '../utils/formatRelativeTime'
 import { paths } from '../utils/paths'
-import {
-  formatRelativeTime,
-  groupByFamily,
-  parentName,
-  toggleExpandedId,
-} from './CheckpointDetailPage.helper'
+import { groupByFamily, parentName, toggleExpandedId } from './CheckpointDetailPage.helper'
 
 export function CheckpointDetailPage() {
   const queryClient = useQueryClient()
   const [expandedIds, setExpandedIds] = useState<number[]>([])
 
-  const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['checkpoints'],
-    queryFn: () => apiFetch<CheckpointListItem[]>('/checkpoints'),
-  })
+  const { data, isLoading, isError, error } = useCheckpoints()
 
   // One mutation instance shared by every row's "Check availability"
   // button (R-D34 -- this is the only thing that ever triggers a
@@ -32,10 +27,10 @@ export function CheckpointDetailPage() {
     mutationFn: (checkpointId: number) =>
       apiFetch<CheckpointDetail>(`/checkpoints/${checkpointId}/validate`, { method: 'POST' }),
     onSuccess: (updatedCheckpoint) => {
-      queryClient.invalidateQueries({ queryKey: ['checkpoints'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.checkpoints() })
       // Keeps an already-expanded panel showing the re-check's result
       // instead of the stale detail it fetched on expand.
-      queryClient.setQueryData(['checkpoint', updatedCheckpoint.id], updatedCheckpoint)
+      queryClient.setQueryData(queryKeys.checkpoint(updatedCheckpoint.id), updatedCheckpoint)
     },
   })
   const validatingCheckpointId = validateMutation.isPending ? validateMutation.variables : null

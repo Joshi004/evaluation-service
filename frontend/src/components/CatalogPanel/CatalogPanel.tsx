@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Fragment, useState, type ReactNode } from 'react'
 import { apiFetch, type CatalogEntryStatus, type CatalogPruneResult, type CatalogStatus } from '../../api/client'
+import { queryKeys } from '../../api/queries/queryKeys'
 import {
   catalogEntryBadge,
   catalogEntryDisplayName,
@@ -27,7 +28,7 @@ interface CatalogPanelProps {
 export function CatalogPanel({ resourcePath, listQueryKey, entryNoun, renderRowValues }: CatalogPanelProps) {
   const queryClient = useQueryClient()
   const [expandedRowIds, setExpandedRowIds] = useState<number[]>([])
-  const statusQueryKey = ['catalog-status', resourcePath]
+  const statusQueryKey = queryKeys.catalogStatus(resourcePath)
 
   const status = useQuery({
     queryKey: statusQueryKey,

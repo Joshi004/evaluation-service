@@ -1,19 +1,16 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Link, useParams, useSearchParams } from 'react-router'
-import { apiFetch, type RunDiagnostics, type SamplePage } from '../api/client'
+import {
+  SAMPLE_PAGE_SIZE,
+  useRunDiagnostics,
+  useRunSamples,
+  type SampleListFilters,
+} from '../api/queries/runDiagnostics'
 import { DiagnosticsSummary } from '../components/DiagnosticsSummary/DiagnosticsSummary'
 import { EmptyState } from '../components/EmptyState/EmptyState'
 import { FailureBreakdown } from '../components/FailureBreakdown/FailureBreakdown'
 import { SampleFilters } from '../components/SampleFilters/SampleFilters'
 import { SampleList } from '../components/SampleList/SampleList'
-import {
-  buildRangeText,
-  buildSamplesPath,
-  parseSampleFilters,
-  SAMPLE_PAGE_SIZE,
-  toSearchParams,
-  type SampleListFilters,
-} from './RunDiagnosticsPage.helper'
+import { buildRangeText, parseSampleFilters, toSearchParams } from './RunDiagnosticsPage.helper'
 
 // Layer 4 (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md Phase 4): every
 // sample in a run, filtered and paged server-side, defaulting to
@@ -28,20 +25,8 @@ export function RunDiagnosticsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const filters = parseSampleFilters(searchParams)
 
-  const diagnostics = useQuery({
-    queryKey: ['run-diagnostics', id],
-    queryFn: () => apiFetch<RunDiagnostics>(`/runs/${id}/diagnostics`),
-    enabled: Number.isFinite(id),
-  })
-
-  const samples = useQuery({
-    queryKey: ['run-samples', id, filters],
-    queryFn: () => apiFetch<SamplePage>(buildSamplesPath(id, filters)),
-    enabled: Number.isFinite(id),
-    // Keeps the previous page's rows on screen while a filter change or
-    // a page turn is in flight, instead of flashing an empty table.
-    placeholderData: keepPreviousData,
-  })
+  const diagnostics = useRunDiagnostics(id)
+  const samples = useRunSamples(id, filters)
 
   if (!Number.isFinite(id)) {
     return <p className="text-sm text-red-400">Invalid run id.</p>

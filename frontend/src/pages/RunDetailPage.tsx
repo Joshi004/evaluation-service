@@ -1,19 +1,18 @@
-import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router'
-import { apiFetch, type RunDetail } from '../api/client'
+import { useRun } from '../api/queries/runs'
 import { LogStream } from '../components/LogStream/LogStream'
 import type { LogSource } from '../components/LogStream/LogStream.helper'
 import { PhaseProgress } from '../components/PhaseProgress/PhaseProgress'
 import { RunHealthBand } from '../components/RunHealthBand/RunHealthBand'
-import { StatusBadge } from '../components/StatusBadge/StatusBadge'
-import { formatElapsedTime } from '../utils/formatElapsedTime'
+import { RunStatusChip } from '../components/RunStatusChip/RunStatusChip'
+import { formatDuration } from '../utils/formatDuration'
 import { formatFractionAsPercent } from '../utils/formatFractionAsPercent'
+import { formatTimestamp } from '../utils/formatTimestamp'
 import { servingProfileDisplayName } from '../utils/servingProfileDisplayName'
 import { standardDisplayName } from '../utils/standardDisplayName'
 import {
   displayOrDash,
-  formatTimestamp,
   samplingFieldRows,
   servingFieldRows,
   standardFieldRows,
@@ -48,14 +47,7 @@ export function RunDetailPage() {
   const id = Number(runId)
   const [logSource, setLogSource] = useState<LogSource>('harness')
 
-  const run = useQuery({
-    queryKey: ['run', id],
-    queryFn: () => apiFetch<RunDetail>(`/runs/${id}`),
-    enabled: Number.isFinite(id),
-    // Keeps status, phase and metrics live while watching a run
-    // finish, the same choice RunsPage's list query makes.
-    refetchInterval: 5000,
-  })
+  const run = useRun(id)
 
   if (!Number.isFinite(id)) {
     return <p className="text-sm text-red-400">Invalid run id.</p>
@@ -77,7 +69,7 @@ export function RunDetailPage() {
         <>
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-semibold">Run #{run.data.id}</h1>
-            <StatusBadge status={run.data.status} />
+            <RunStatusChip status={run.data.status} />
           </div>
           <p className="mt-1 text-sm text-slate-400">
             {run.data.run_group_name} · {run.data.checkpoint_name} ·{' '}
@@ -126,7 +118,7 @@ export function RunDetailPage() {
                   { label: 'Created', value: formatTimestamp(run.data.created_at) },
                   { label: 'Started', value: formatTimestamp(run.data.started_at) },
                   { label: 'Finished', value: formatTimestamp(run.data.finished_at) },
-                  { label: 'Elapsed', value: formatElapsedTime(run.data.created_at, run.data.finished_at, now) },
+                  { label: 'Elapsed', value: formatDuration(run.data.created_at, run.data.finished_at, now) },
                   { label: 'Truncation rate', value: formatFractionAsPercent(run.data.truncation_rate) },
                   { label: 'Output directory', value: run.data.output_dir ?? '—' },
                   // What the leaderboard groups by (S-D5): two runs

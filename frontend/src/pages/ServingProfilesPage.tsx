@@ -1,14 +1,12 @@
-import { useQuery } from '@tanstack/react-query'
-import { apiFetch, type ServingProfileSummary } from '../api/client'
+import { queryKeys } from '../api/queries/queryKeys'
+import { useServingProfiles } from '../api/queries/servingProfiles'
+import type { ServingProfileSummary } from '../api/client'
 import { CatalogPanel } from '../components/CatalogPanel/CatalogPanel'
 import { servingProfileDisplayName } from '../utils/servingProfileDisplayName'
 import { buildServingValueRows, engineOptionEntries } from './ServingProfilesPage.helper'
 
 export function ServingProfilesPage() {
-  const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['serving-profiles'],
-    queryFn: () => apiFetch<ServingProfileSummary[]>('/serving-profiles'),
-  })
+  const { data, isLoading, isError, error } = useServingProfiles()
 
   // Looked up by id rather than passed down directly -- CatalogPanel
   // only knows a row's id (from catalog-status), not its full config,
@@ -39,7 +37,7 @@ export function ServingProfilesPage() {
       <div className="mt-6">
         <CatalogPanel
           resourcePath="/serving-profiles"
-          listQueryKey={['serving-profiles']}
+          listQueryKey={queryKeys.servingProfiles()}
           entryNoun="serving profile"
           renderRowValues={renderRowValues}
         />

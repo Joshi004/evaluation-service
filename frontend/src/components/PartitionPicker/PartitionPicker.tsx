@@ -1,6 +1,5 @@
-import { useQuery } from '@tanstack/react-query'
-import { apiFetch, type ClusterPartitions } from '../../api/client'
-import { buildPartitionOptions, PARTITIONS_CACHE_TTL_MS, readCachedPartitions, writeCachedPartitions } from './PartitionPicker.helper'
+import { useClusterPartitions } from '../../api/queries/cluster'
+import { buildPartitionOptions } from './PartitionPicker.helper'
 
 interface PartitionPickerProps {
   // Controlled, mirroring ServingProfilePicker's own idiom: `null`
@@ -13,31 +12,15 @@ interface PartitionPickerProps {
 }
 
 // The Submit page's partition picker (per-run SLURM partition
-// selection): fetches the cluster's real partition list -- including a
+// selection): shows the cluster's real partition list -- including a
 // hidden, lower-priority one like `background` that never appears in
-// SLURM's own unqualified listing commands -- and caches it in
-// localStorage so a normal session never re-fetches it. The default
-// option stays selectable and un-disabled no matter what this query is
-// doing, so a slow or failed cluster call never blocks a submit.
+// SLURM's own unqualified listing commands. useClusterPartitions never
+// fetches on its own (ground rule 15); Refresh below is what calls the
+// cluster. The default option stays selectable and un-disabled no
+// matter what this query is doing, so a slow or failed cluster call
+// never blocks a submit.
 export function PartitionPicker({ value, onValueChange }: PartitionPickerProps) {
-  const cached = readCachedPartitions()
-
-  const partitionsQuery = useQuery({
-    queryKey: ['cluster-partitions'],
-    queryFn: async () => {
-      const partitions = await apiFetch<ClusterPartitions>('/cluster/partitions')
-      writeCachedPartitions(partitions)
-      return partitions
-    },
-    // Seeds this query from localStorage instead of a blank loading
-    // state on every page load -- initialDataUpdatedAt is what tells
-    // TanStack Query how old that seed is, so staleTime (the cache's
-    // own TTL) decides whether it's still good enough or a background
-    // refetch should fire right away.
-    initialData: cached?.data,
-    initialDataUpdatedAt: cached?.cachedAtMs,
-    staleTime: PARTITIONS_CACHE_TTL_MS,
-  })
+  const partitionsQuery = useClusterPartitions()
 
   const defaultPartitionName = partitionsQuery.data?.default_partition
   const options = partitionsQuery.data ? buildPartitionOptions(partitionsQuery.data) : []

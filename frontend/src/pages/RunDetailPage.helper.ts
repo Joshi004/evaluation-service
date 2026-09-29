@@ -1,14 +1,12 @@
-// Non-DOM logic for RunDetailPage.tsx: formatting timestamps and
-// reshaping a run's resolved standard and resolved sampling profile
-// into the label/value rows the page renders. Kept out of the
-// component body per .cursor/rules/frontend-components.mdc -- "data
-// should already be in the shape it needs by the time it reaches JSX."
+// Non-DOM logic for RunDetailPage.tsx: reshaping a run's resolved
+// standard and resolved sampling profile into the label/value rows the
+// page renders. Kept out of the component body per
+// .cursor/rules/frontend-components.mdc -- "data should already be in
+// the shape it needs by the time it reaches JSX." Timestamp formatting
+// moved to utils/formatTimestamp.ts once RelativeTime (Phase 4) became
+// a second user.
 
 import type { RunSamplingDetail, RunStandardDetail, ServingProfileSummary } from '../api/client'
-
-export function formatTimestamp(value: string | null): string {
-  return value === null ? '—' : new Date(value).toLocaleString()
-}
 
 export interface FieldRow {
   label: string

@@ -6,10 +6,11 @@ import {
   type CheckpointCandidate,
   type CheckpointDetail,
   type CheckpointInspection,
-  type CheckpointListItem,
   type RegisterCheckpointRequest,
-  type ServingProfileSummary,
 } from '../api/client'
+import { useCheckpoints } from '../api/queries/checkpoints'
+import { queryKeys } from '../api/queries/queryKeys'
+import { useServingProfiles } from '../api/queries/servingProfiles'
 import { paths } from '../utils/paths'
 import { CandidateBrowser } from '../components/CandidateBrowser/CandidateBrowser'
 import { InspectionSummary } from '../components/InspectionSummary/InspectionSummary'
@@ -54,7 +55,7 @@ export function RegisterCheckpointPage() {
   const [parentCheckpointId, setParentCheckpointId] = useState<number | null>(null)
 
   const candidates = useQuery({
-    queryKey: ['checkpoint-candidates'],
+    queryKey: queryKeys.checkpointCandidates(),
     queryFn: () => apiFetch<CheckpointCandidate[]>('/checkpoints/candidates'),
   })
 
@@ -62,7 +63,7 @@ export function RegisterCheckpointPage() {
   // and reselecting the same candidate reuses the cached inspection
   // instead of re-running several SSH round trips (R-T25).
   const inspection = useQuery({
-    queryKey: ['checkpoint-inspection', selectedCandidate?.reference ?? null],
+    queryKey: queryKeys.checkpointInspection(selectedCandidate?.reference ?? null),
     queryFn: () =>
       apiFetch<CheckpointInspection>('/checkpoints/candidates/inspect', {
         method: 'POST',
@@ -72,17 +73,11 @@ export function RegisterCheckpointPage() {
     enabled: selectedCandidate !== null,
   })
 
-  const servingProfiles = useQuery({
-    queryKey: ['serving-profiles'],
-    queryFn: () => apiFetch<ServingProfileSummary[]>('/serving-profiles'),
-  })
+  const servingProfiles = useServingProfiles()
 
-  // Shares the ['checkpoints'] cache with the checkpoints page -- used
-  // here for the optional parent-checkpoint select.
-  const checkpoints = useQuery({
-    queryKey: ['checkpoints'],
-    queryFn: () => apiFetch<CheckpointListItem[]>('/checkpoints'),
-  })
+  // Shares the checkpoints cache with the checkpoints page -- used here
+  // for the optional parent-checkpoint select.
+  const checkpoints = useCheckpoints()
 
   const registerMutation = useMutation({
     mutationFn: (request: RegisterCheckpointRequest) =>
@@ -92,11 +87,11 @@ export function RegisterCheckpointPage() {
         body: JSON.stringify(request),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['checkpoints'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.checkpoints() })
       // The just-registered candidate is now already_registered, and a
       // customisation may have minted a profile -- both lists are stale.
-      queryClient.invalidateQueries({ queryKey: ['checkpoint-candidates'] })
-      queryClient.invalidateQueries({ queryKey: ['serving-profiles'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.checkpointCandidates() })
+      queryClient.invalidateQueries({ queryKey: queryKeys.servingProfiles() })
       navigate(paths.models())
     },
   })

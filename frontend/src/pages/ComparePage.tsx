@@ -1,6 +1,7 @@
-import { useQuery } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router'
-import { apiFetch, type ComparisonSide, type RunComparison, type RunListItem } from '../api/client'
+import type { ComparisonSide, RunComparison, RunListItem } from '../api/client'
+import { useRunComparison } from '../api/queries/runDiagnostics'
+import { useRuns } from '../api/queries/runs'
 import { ComparisonBucketTable } from '../components/ComparisonBucketTable/ComparisonBucketTable'
 import { EmptyState } from '../components/EmptyState/EmptyState'
 import { FlipList } from '../components/FlipList/FlipList'
@@ -28,20 +29,11 @@ export function ComparePage() {
 
   // Only finished runs have a diagnostics file to join -- offering
   // anything else in the picker would just trade one obvious 409 for
-  // another.
-  const runs = useQuery({
-    queryKey: ['runs', 'done'],
-    queryFn: () => apiFetch<RunListItem[]>('/runs?status=done'),
-  })
+  // another. A filtered list like this can never contain an active
+  // run, so useRuns' polling settles at 30s immediately.
+  const runs = useRuns({ status: 'done' })
 
-  const comparison = useQuery({
-    queryKey: ['run-comparison', left, right],
-    queryFn: () => apiFetch<RunComparison>(`/runs/${left}/compare/${right}`),
-    enabled: left !== null && right !== null,
-    // A 404 (unknown run) or 409 (not finished) won't succeed on a
-    // third attempt -- retrying would only delay the error state.
-    retry: false,
-  })
+  const comparison = useRunComparison(left, right)
 
   function handleLeftChange(value: string) {
     setSearchParams(toCompareParams({ left: value === '' ? null : Number(value), right }))

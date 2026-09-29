@@ -1,6 +1,5 @@
-import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router'
-import { apiFetch, type DiagnosticsSampleDetail, type RunDiagnostics } from '../api/client'
+import { useRunDiagnostics, useRunSample } from '../api/queries/runDiagnostics'
 import { IfevalRuleChecklist } from '../components/IfevalRuleChecklist/IfevalRuleChecklist'
 import { SampleDetail } from '../components/SampleDetail/SampleDetail'
 import { isNotFoundError } from './RunSamplePage.helper'
@@ -14,25 +13,11 @@ export function RunSamplePage() {
   const { runId, sampleKey } = useParams<{ runId: string; sampleKey: string }>()
   const id = Number(runId)
 
-  const diagnostics = useQuery({
-    queryKey: ['run-diagnostics', id],
-    queryFn: () => apiFetch<RunDiagnostics>(`/runs/${id}/diagnostics`),
-    enabled: Number.isFinite(id),
-  })
-
-  const sample = useQuery({
-    queryKey: ['run-sample', id, sampleKey],
-    queryFn: () =>
-      apiFetch<DiagnosticsSampleDetail>(
-        `/runs/${id}/samples/${encodeURIComponent(sampleKey ?? '')}`,
-      ),
-    enabled: Number.isFinite(id) && sampleKey !== undefined,
-    // A 404 here means this sample_key doesn't exist on this run --
-    // retrying it three times with backoff (the QueryClient default)
-    // would only delay the clear not-found state Phase 7 asks for,
-    // with no chance the third attempt succeeds where the first didn't.
-    retry: false,
-  })
+  const diagnostics = useRunDiagnostics(id)
+  // A 404 here means this sample_key doesn't exist on this run -- the
+  // hook already sets `retry: false`, so a genuine not-found state
+  // shows immediately instead of after three delayed attempts.
+  const sample = useRunSample(id, sampleKey)
 
   if (!Number.isFinite(id) || sampleKey === undefined) {
     return <p className="text-sm text-red-400">Invalid run or sample.</p>

@@ -42,3 +42,10 @@ UI copy is plain language -- no doc filenames, decision ids, or internal API pat
 - `standard` -> **Benchmark**.
 - `comparison_hash` -> **Setup** (never show the raw hash as the primary label).
 - `eval_run` -> **Run**; `run_group` -> **Batch**.
+
+## Data and domain display (Phase 4)
+
+- Fetch through a hook in `src/api/queries/` (`useLeaderboard`, `useRuns`, `useCheckpoint`, ...) -- never write an inline `queryKey: [...]` array at a call site. Every key lives in `src/api/queries/queryKeys.ts`; a mutation invalidates by importing the same `queryKeys.*()` call it wants to invalidate, not by retyping the key.
+- Show a model, benchmark, setup, score, fingerprint, timestamp or run status through its domain component (`ModelName`, `BenchmarkName`, `SetupChip`, `ScoreValue`, `FingerprintChip`, `RelativeTime`, `RunStatusChip` -- `src/components/`), not a raw string or a hand-rolled equivalent. Add a domain component for a new concept rather than formatting it inline at each call site.
+- Score and margin-of-error formatting goes through `src/utils/formatScore.ts` (`formatScore`, `formatScoreWithUnit`, `formatMargin`); duration and relative time through `formatDuration.ts` and `formatRelativeTime.ts`. A metric's own `display` hint (`display_kind`, `display_multiplier`, `display_unit`, `display_precision`) always takes priority over the percent-with-one-decimal default.
+- UI wording for a run's status, a checkpoint's weights, or a catalog entry's sync state comes from `src/utils/labels.ts`, not a string re-typed at the call site.

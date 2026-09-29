@@ -1,14 +1,12 @@
-import { useQuery } from '@tanstack/react-query'
-import { apiFetch, type SamplingProfileSummary } from '../api/client'
+import { queryKeys } from '../api/queries/queryKeys'
+import { useSamplingProfiles } from '../api/queries/samplingProfiles'
+import type { SamplingProfileSummary } from '../api/client'
 import { CatalogPanel } from '../components/CatalogPanel/CatalogPanel'
 import { samplingProfileDisplayName } from '../utils/samplingProfileDisplayName'
 import { buildSamplingValueRows } from '../utils/samplingProfileValueRows'
 
 export function SamplingProfilesPage() {
-  const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['sampling-profiles'],
-    queryFn: () => apiFetch<SamplingProfileSummary[]>('/sampling-profiles'),
-  })
+  const { data, isLoading, isError, error } = useSamplingProfiles()
 
   // Looked up by id rather than passed down directly -- CatalogPanel
   // only knows a row's id (from catalog-status), not its full config,
@@ -39,7 +37,7 @@ export function SamplingProfilesPage() {
       <div className="mt-6">
         <CatalogPanel
           resourcePath="/sampling-profiles"
-          listQueryKey={['sampling-profiles']}
+          listQueryKey={queryKeys.samplingProfiles()}
           entryNoun="sampling profile"
           renderRowValues={renderRowValues}
         />

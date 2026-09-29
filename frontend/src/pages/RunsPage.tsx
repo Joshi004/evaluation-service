@@ -1,9 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router'
 import { apiFetch, type RunGroupCancellation, type RunListItem } from '../api/client'
+import { queryKeys } from '../api/queries/queryKeys'
+import { useRuns } from '../api/queries/runs'
 import { EmptyState } from '../components/EmptyState/EmptyState'
-import { StatusBadge } from '../components/StatusBadge/StatusBadge'
-import { formatElapsedTime } from '../utils/formatElapsedTime'
+import { RunStatusChip } from '../components/RunStatusChip/RunStatusChip'
+import { formatDuration } from '../utils/formatDuration'
 import { formatFractionAsPercent } from '../utils/formatFractionAsPercent'
 import { standardDisplayName } from '../utils/standardDisplayName'
 import { groupRunsByGroup, isCancellable } from './RunsPage.helper'
@@ -11,24 +13,20 @@ import { groupRunsByGroup, isCancellable } from './RunsPage.helper'
 export function RunsPage() {
   const queryClient = useQueryClient()
 
-  const runs = useQuery({
-    queryKey: ['runs'],
-    queryFn: () => apiFetch<RunListItem[]>('/runs'),
-    // The page people leave open (module docstring) -- keeps status,
-    // elapsed time and truncation live without a manual refresh, the
-    // same choice EndpointsPage makes for the same reason.
-    refetchInterval: 5000,
-  })
+  // The page people leave open (module docstring) -- useRuns backs off
+  // to a 30s poll once nothing in the list is active, rather than the
+  // flat 5s this page used before Phase 4.
+  const runs = useRuns()
 
   const cancelRunMutation = useMutation({
     mutationFn: (runId: number) => apiFetch<RunListItem>(`/runs/${runId}/cancel`, { method: 'POST' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['runs'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.allRuns() }),
   })
 
   const cancelGroupMutation = useMutation({
     mutationFn: (runGroupId: number) =>
       apiFetch<RunGroupCancellation>(`/run-groups/${runGroupId}/cancel`, { method: 'POST' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['runs'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.allRuns() }),
   })
 
   function handleCancelRun(runId: number) {
@@ -124,10 +122,10 @@ export function RunsPage() {
                             </Link>
                           </td>
                           <td className="border-b border-slate-800/50 p-2">
-                            <StatusBadge status={run.status} />
+                            <RunStatusChip status={run.status} />
                           </td>
                           <td className="border-b border-slate-800/50 p-2 text-right text-slate-200">
-                            {formatElapsedTime(run.created_at, run.finished_at, now)}
+                            {formatDuration(run.created_at, run.finished_at, now)}
                           </td>
                           <td className="border-b border-slate-800/50 p-2 text-slate-200">
                             {run.checkpoint_name}

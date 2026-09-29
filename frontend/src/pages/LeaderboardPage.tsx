@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router'
-import { apiFetch, type CheckpointListItem, type LeaderboardRow } from '../api/client'
+import { useCheckpoints } from '../api/queries/checkpoints'
+import { useLeaderboard } from '../api/queries/leaderboard'
 import { EmptyState } from '../components/EmptyState/EmptyState'
 import { MetricCell } from '../components/MetricCell/MetricCell'
 import {
@@ -12,18 +12,12 @@ import {
 } from './LeaderboardPage.helper'
 
 export function LeaderboardPage() {
-  const leaderboard = useQuery({
-    queryKey: ['leaderboard'],
-    queryFn: () => apiFetch<LeaderboardRow[]>('/leaderboard'),
-  })
+  const leaderboard = useLeaderboard()
 
   // Fetched only to resolve checkpoint_id -> display name: the
   // leaderboard query is used verbatim from the spec and returns ids,
   // not names.
-  const checkpoints = useQuery({
-    queryKey: ['checkpoints'],
-    queryFn: () => apiFetch<CheckpointListItem[]>('/checkpoints'),
-  })
+  const checkpoints = useCheckpoints()
 
   const grid =
     leaderboard.data && checkpoints.data ? buildLeaderboardGrid(leaderboard.data, checkpoints.data) : null

@@ -3,14 +3,16 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import {
   apiFetch,
-  type CheckpointListItem,
   type CreateRunsRequest,
   type RunPreview,
+  type RunPreviewRequest,
   type RunSubmission,
-  type SamplingProfileSummary,
-  type ServingProfileSummary,
-  type StandardSummary,
 } from '../api/client'
+import { queryKeys } from '../api/queries/queryKeys'
+import { useCheckpoints } from '../api/queries/checkpoints'
+import { useSamplingProfiles } from '../api/queries/samplingProfiles'
+import { useServingProfiles } from '../api/queries/servingProfiles'
+import { useStandards } from '../api/queries/standards'
 import { DryRunPreview } from '../components/DryRunPreview/DryRunPreview'
 import { PartitionPicker } from '../components/PartitionPicker/PartitionPicker'
 import { SubmitGrid } from '../components/SubmitGrid/SubmitGrid'
@@ -47,32 +49,20 @@ export function SubmitPage() {
   // re-render instead of only when the user actually types.
   const debouncedOverrideDrafts = useDebouncedValue(overrideDrafts, 400)
 
-  const checkpoints = useQuery({
-    queryKey: ['checkpoints'],
-    queryFn: () => apiFetch<CheckpointListItem[]>('/checkpoints'),
-  })
+  const checkpoints = useCheckpoints()
 
   // The grid's standard axis is reviewed standards, not every ad-hoc
   // standard ever hashed -- StandardSummary also carries the full field
   // set DryRunPreview needs to label a resolved standard's base.
-  const standards = useQuery({
-    queryKey: ['standards'],
-    queryFn: () => apiFetch<StandardSummary[]>('/standards'),
-  })
+  const standards = useStandards()
 
-  // Same query key as SamplingProfilesPage's own list query, so the two
-  // pages share one cache entry instead of fetching the catalog twice.
-  const samplingProfiles = useQuery({
-    queryKey: ['sampling-profiles'],
-    queryFn: () => apiFetch<SamplingProfileSummary[]>('/sampling-profiles'),
-  })
+  // Same hook (and so the same cache entry) as SamplingProfilesPage's
+  // own list query.
+  const samplingProfiles = useSamplingProfiles()
 
-  // Same query key as ServingProfilesPage's and RegisterCheckpointPage's
-  // own list queries, so all three share one cache entry.
-  const servingProfiles = useQuery({
-    queryKey: ['serving-profiles'],
-    queryFn: () => apiFetch<ServingProfileSummary[]>('/serving-profiles'),
-  })
+  // Same hook as ServingProfilesPage's and RegisterCheckpointPage's own
+  // list queries, so all three share one cache entry.
+  const servingProfiles = useServingProfiles()
 
   const gridReady = selectedCheckpointIds.length > 0 && selectedStandardIds.length > 0
   const selectedCheckpoints = (checkpoints.data ?? []).filter((checkpoint) =>
@@ -120,35 +110,27 @@ export function SubmitPage() {
     resolveServingLabels(selectedCheckpoints, servingProfilesMap, debouncedOverrideDrafts),
   )
 
+  // Built once and reused for both the request body below and the
+  // query key (queryKeys.runPreview) -- the two can never drift apart
+  // this way, unlike keying on a hand-picked subset of fields that
+  // happens to match the body's shape.
+  const previewRequest: RunPreviewRequest = {
+    checkpoint_ids: selectedCheckpointIds,
+    standard_ids: selectedStandardIds,
+    standard_overrides_by_standard_id: debouncedRequestOverrides.standardOverridesByStandardId,
+    sampling_overrides_by_checkpoint_id: debouncedRequestOverrides.samplingOverridesByCheckpointId,
+    sampling_profile_id_by_checkpoint_id: debouncedRequestOverrides.samplingProfileIdByCheckpointId,
+    serving_overrides_by_checkpoint_id: debouncedRequestOverrides.servingOverridesByCheckpointId,
+    serving_profile_id_by_checkpoint_id: debouncedRequestOverrides.servingProfileIdByCheckpointId,
+  }
+
   const preview = useQuery({
-    // Lists the exact fields the request body below sends, not the
-    // whole debouncedRequestOverrides object -- that object also
-    // carries the three label maps (create-only, RunPreviewRequest has
-    // no such fields), and keying on it wholesale would refetch an
-    // identical preview every time a label box's contents changed.
-    queryKey: [
-      'runs-preview',
-      selectedCheckpointIds,
-      selectedStandardIds,
-      debouncedRequestOverrides.standardOverridesByStandardId,
-      debouncedRequestOverrides.samplingOverridesByCheckpointId,
-      debouncedRequestOverrides.samplingProfileIdByCheckpointId,
-      debouncedRequestOverrides.servingOverridesByCheckpointId,
-      debouncedRequestOverrides.servingProfileIdByCheckpointId,
-    ],
+    queryKey: queryKeys.runPreview(previewRequest),
     queryFn: () =>
       apiFetch<RunPreview>('/runs/preview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          checkpoint_ids: selectedCheckpointIds,
-          standard_ids: selectedStandardIds,
-          standard_overrides_by_standard_id: debouncedRequestOverrides.standardOverridesByStandardId,
-          sampling_overrides_by_checkpoint_id: debouncedRequestOverrides.samplingOverridesByCheckpointId,
-          sampling_profile_id_by_checkpoint_id: debouncedRequestOverrides.samplingProfileIdByCheckpointId,
-          serving_overrides_by_checkpoint_id: debouncedRequestOverrides.servingOverridesByCheckpointId,
-          serving_profile_id_by_checkpoint_id: debouncedRequestOverrides.servingProfileIdByCheckpointId,
-        }),
+        body: JSON.stringify(previewRequest),
       }),
     // POST /runs/preview 422s on an empty checkpoint_ids or standard_ids
     // (Field(min_length=1), app/schemas/runs.py) -- never fire it until
@@ -169,7 +151,14 @@ export function SubmitPage() {
         body: JSON.stringify(request),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['runs'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.allRuns() })
+      // A submit can mint a new named standard, sampling profile or
+      // serving profile (an override with a label) -- the 5-minute
+      // catalog staleTime would otherwise hide it until that window
+      // passes.
+      queryClient.invalidateQueries({ queryKey: queryKeys.standards() })
+      queryClient.invalidateQueries({ queryKey: queryKeys.samplingProfiles() })
+      queryClient.invalidateQueries({ queryKey: queryKeys.servingProfiles() })
       navigate('/runs')
     },
   })

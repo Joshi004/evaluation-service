@@ -1,5 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
-import { apiFetch, type CheckpointDetail } from '../../api/client'
+import { useCheckpoint } from '../../api/queries/checkpoints'
 import { InspectionSummary } from '../InspectionSummary/InspectionSummary'
 import { inferredFieldsFromCheckpoint } from '../InspectionSummary/InspectionSummary.helper'
 
@@ -11,14 +10,11 @@ interface CheckpointInferredPanelProps {
 // InspectionSummary from Phase 7 to show what the server inferred at
 // registration, but for an already-registered checkpoint rather than a
 // pending candidate. Its own component, not inline in the page's row
-// map, because it owns a useQuery -- a hook inside `.map()` would trip
-// react/rules-of-hooks (R-T26). Mounting only on expand is what makes
-// the GET /checkpoints/{id} fetch lazy.
+// map, because it owns a query hook -- a hook inside `.map()` would
+// trip react/rules-of-hooks (R-T26). Mounting only on expand is what
+// makes the GET /checkpoints/{id} fetch lazy.
 export function CheckpointInferredPanel({ checkpointId }: CheckpointInferredPanelProps) {
-  const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['checkpoint', checkpointId],
-    queryFn: () => apiFetch<CheckpointDetail>(`/checkpoints/${checkpointId}`),
-  })
+  const { data, isLoading, isError, error } = useCheckpoint(checkpointId)
 
   if (isLoading) {
     return <p className="text-sm text-slate-500">Loading inferred metadata…</p>

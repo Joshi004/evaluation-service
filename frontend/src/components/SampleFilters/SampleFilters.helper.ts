@@ -3,7 +3,7 @@
 // body per .cursor/rules/frontend-components.mdc.
 
 import type { DiagnosticsSubset } from '../../api/client'
-import type { SampleOutcome } from '../../pages/RunDiagnosticsPage.helper'
+import type { SampleOutcome } from '../../api/queries/runDiagnostics'
 
 export const OUTCOME_OPTIONS: { value: SampleOutcome; label: string }[] = [
   { value: 'failed', label: 'Failures only' },

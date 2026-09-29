@@ -7,7 +7,20 @@ import { AppRoutes } from './routes'
 import { Toaster } from './components/Toaster/Toaster'
 import './index.css'
 
-const queryClient = new QueryClient()
+// A global floor of 30s before any query is considered stale -- most
+// navigation within the app (going back to a page still showing recent
+// data) shouldn't refetch every time. Polling queries (health,
+// endpoints, runs, a running run's own detail) set their own
+// refetchInterval regardless, so this floor never slows them down;
+// catalog-like lists set a longer one of their own
+// (api/queries/catalogQueryOptions.ts).
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+    },
+  },
+})
 
 // TooltipProvider (shared open delay) and Toaster (mutation feedback)
 // are each mounted once here, per the design-system spec, rather than

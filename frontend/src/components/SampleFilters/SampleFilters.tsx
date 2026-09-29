@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { DiagnosticsSubset } from '../../api/client'
-import type { SampleListFilters, SampleOutcome } from '../../pages/RunDiagnosticsPage.helper'
+import type { SampleListFilters, SampleOutcome } from '../../api/queries/runDiagnostics'
 import { useDebouncedValue } from '../../utils/useDebouncedValue'
 import { OUTCOME_OPTIONS, subsetOptionLabel } from './SampleFilters.helper'
 

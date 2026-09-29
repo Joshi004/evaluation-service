@@ -2,7 +2,11 @@
 // into the display-ready strings the band renders. Kept out of the
 // component body per .cursor/rules/frontend-components.mdc -- "data
 // should already be in the shape it needs by the time it reaches JSX."
-
+//
+// Score formatting itself moved to utils/formatScore.ts in Phase 4,
+// once the ScoreValue domain component became a second caller -- this
+// file now composes that shared formatter instead of keeping its own
+// copy.
 import type {
   ConfidenceInterval,
   LatencySeconds,
@@ -11,19 +15,7 @@ import type {
   RunPerformanceSummary,
   Throughput,
 } from '../../api/client'
-
-// Applies the harness's own display hint (display_multiplier,
-// display_precision, display_unit) so a benchmark that reports seconds
-// or tokens-per-second renders correctly with no change here -- falling
-// back to the plain-percent formatting every score used before this
-// hint existed when a metric carries no display hint at all.
-export function formatMetricValue(value: number, display: MetricDisplay | null): string {
-  if (display === null) {
-    return `${(value * 100).toFixed(1)}%`
-  }
-  const scaled = value * (display.display_multiplier ?? 1)
-  return `${scaled.toFixed(display.display_precision)}${display.display_unit ?? ''}`
-}
+import { formatScoreWithUnit } from '../../utils/formatScore'
 
 export function formatConfidenceInterval(
   confidenceInterval: ConfidenceInterval | null,
@@ -32,8 +24,8 @@ export function formatConfidenceInterval(
   if (confidenceInterval === null) {
     return null
   }
-  const lower = formatMetricValue(confidenceInterval.lower, display)
-  const upper = formatMetricValue(confidenceInterval.upper, display)
+  const lower = formatScoreWithUnit(confidenceInterval.lower, display)
+  const upper = formatScoreWithUnit(confidenceInterval.upper, display)
   return `95% CI ${lower}\u2013${upper}`
 }
 
@@ -73,7 +65,7 @@ export function buildHeadline(performance: RunPerformanceSummary): HealthBandHea
       : null,
     failedText: hasCounts ? `${primaryMetric.failed} failed` : null,
     metricLabel: primaryMetric.display_name,
-    metricValueText: formatMetricValue(primaryMetric.value, primaryMetric.display),
+    metricValueText: formatScoreWithUnit(primaryMetric.value, primaryMetric.display),
     confidenceIntervalText: formatConfidenceInterval(
       primaryMetric.confidence_interval,
       primaryMetric.display,

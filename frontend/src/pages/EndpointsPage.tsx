@@ -1,6 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { apiFetch, type CheckpointListItem, type EndpointListItem } from '../api/client'
+import { apiFetch, type EndpointListItem } from '../api/client'
+import { useCheckpoints } from '../api/queries/checkpoints'
+import { useEndpoints } from '../api/queries/endpoints'
+import { queryKeys } from '../api/queries/queryKeys'
 import { EmptyState } from '../components/EmptyState/EmptyState'
 import { formatTimeRemaining, sumGpus } from './EndpointsPage.helper'
 
@@ -8,20 +11,11 @@ export function EndpointsPage() {
   const queryClient = useQueryClient()
   const [selectedCheckpointId, setSelectedCheckpointId] = useState<number | null>(null)
 
-  const endpoints = useQuery({
-    queryKey: ['endpoints'],
-    queryFn: () => apiFetch<EndpointListItem[]>('/endpoints'),
-    // Keeps time-remaining and kills-by-someone-else live without a
-    // manual refresh (Phase 3 plan).
-    refetchInterval: 5000,
-  })
+  const endpoints = useEndpoints()
 
   // Existing endpoint, no backend change needed -- just populates the
   // "start an endpoint for..." select below.
-  const checkpoints = useQuery({
-    queryKey: ['checkpoints'],
-    queryFn: () => apiFetch<CheckpointListItem[]>('/checkpoints'),
-  })
+  const checkpoints = useCheckpoints()
 
   const startMutation = useMutation({
     mutationFn: (checkpointId: number) =>
@@ -31,14 +25,14 @@ export function EndpointsPage() {
         body: JSON.stringify({ checkpoint_id: checkpointId }),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['endpoints'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.endpoints() })
     },
   })
 
   const killMutation = useMutation({
     mutationFn: (endpointId: number) => apiFetch<void>(`/endpoints/${endpointId}`, { method: 'DELETE' }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['endpoints'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.endpoints() })
     },
   })
 

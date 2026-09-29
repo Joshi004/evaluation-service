@@ -5,6 +5,7 @@
 // fraction-as-percent, standard label-or-hash) lives in src/utils/ instead.
 
 import type { RunListItem } from '../api/client'
+import { isActiveRunStatus } from '../utils/runStatus'
 
 export interface RunGroupSection {
   runGroupId: number
@@ -12,10 +13,11 @@ export interface RunGroupSection {
   runs: RunListItem[]
 }
 
-const TERMINAL_STATUSES = new Set(['done', 'failed', 'cancelled'])
-
+// A run can be cancelled exactly while it's still active -- delegates
+// to utils/runStatus.ts so this page and useRuns' polling-interval
+// decision (Phase 4) agree on what "still going" means.
 export function isCancellable(status: string): boolean {
-  return !TERMINAL_STATUSES.has(status)
+  return isActiveRunStatus(status)
 }
 
 // GET /runs already orders by created_at desc, and Map preserves the

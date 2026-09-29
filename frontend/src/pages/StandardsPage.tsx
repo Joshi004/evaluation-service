@@ -1,14 +1,12 @@
-import { useQuery } from '@tanstack/react-query'
-import { apiFetch, type StandardSummary } from '../api/client'
+import { queryKeys } from '../api/queries/queryKeys'
+import { useStandards } from '../api/queries/standards'
+import type { StandardSummary } from '../api/client'
 import { CatalogPanel } from '../components/CatalogPanel/CatalogPanel'
 import { EmptyState } from '../components/EmptyState/EmptyState'
 import { buildFieldRows } from './StandardsPage.helper'
 
 export function StandardsPage() {
-  const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['standards'],
-    queryFn: () => apiFetch<StandardSummary[]>('/standards'),
-  })
+  const { data, isLoading, isError, error } = useStandards()
 
   return (
     <div>
@@ -21,7 +19,7 @@ export function StandardsPage() {
       </p>
 
       <div className="mt-6">
-        <CatalogPanel resourcePath="/standards" listQueryKey={['standards']} entryNoun="standard" />
+        <CatalogPanel resourcePath="/standards" listQueryKey={queryKeys.standards()} entryNoun="standard" />
       </div>
 
       {isLoading && <p className="mt-6 text-sm text-slate-500">Loading standards…</p>}

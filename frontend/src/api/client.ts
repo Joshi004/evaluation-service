@@ -475,6 +475,19 @@ export interface RunListItem {
   primary_metric_confidence_interval: ConfidenceInterval | null
 }
 
+// Query parameters for GET /api/v1/runs -- mirrors the backend's
+// RunListFilters (app/schemas/runs.py) field for field. Every field is
+// optional: an absent field means "don't narrow by this", the same
+// convention the backend model documents.
+export interface RunListFilters {
+  status?: string
+  run_group_id?: number
+  checkpoint_id?: number
+  standard_id?: number
+  benchmark?: string
+  comparison_hash?: string
+}
+
 // A user override of a base standard's protocol fields -- see
 // app/schemas/runs.py's StandardOverrides. Every field is optional and
 // nullable: a key left out entirely means "don't touch this field" (the

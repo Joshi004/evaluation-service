@@ -1,7 +1,8 @@
 // Non-DOM logic for CheckpointDetailPage.tsx: grouping checkpoints by
-// family, resolving a parent's display name, flipping one row's
-// expanded state, and formatting a stale availability check as
-// relative time.
+// family, resolving a parent's display name, and flipping one row's
+// expanded state. Relative-time formatting moved to
+// utils/formatRelativeTime.ts once RelativeTime (Phase 4) became a
+// second user.
 import type { CheckpointListItem } from '../api/client'
 
 // `family` is nullish for a checkpoint nobody's grouped yet -- bucket it
@@ -35,34 +36,4 @@ export function toggleExpandedId(expandedIds: number[], checkpointId: number): n
   return expandedIds.includes(checkpointId)
     ? expandedIds.filter((id) => id !== checkpointId)
     : [...expandedIds, checkpointId]
-}
-
-// Locale left undefined (browser default) rather than hardcoded, same
-// choice RunDetailPage.helper.ts's formatTimestamp makes for
-// toLocaleString().
-const RELATIVE_TIME_FORMATTER = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' })
-
-const MINUTE_MS = 60_000
-const HOUR_MS = 60 * MINUTE_MS
-const DAY_MS = 24 * HOUR_MS
-
-// `availability_checked_at` as "3 hours ago" rather than a raw
-// timestamp -- how stale a check is matters more than its exact
-// wall-clock time. Callers only reach for this once
-// availability_checked_at is known non-null: a never-checked row is
-// its own state (R-T28), rendered from availability_status alone, not
-// from this function.
-export function formatRelativeTime(timestamp: string): string {
-  const elapsedMs = Date.now() - new Date(timestamp).getTime()
-
-  if (elapsedMs < MINUTE_MS) {
-    return 'just now'
-  }
-  if (elapsedMs < HOUR_MS) {
-    return RELATIVE_TIME_FORMATTER.format(-Math.round(elapsedMs / MINUTE_MS), 'minute')
-  }
-  if (elapsedMs < DAY_MS) {
-    return RELATIVE_TIME_FORMATTER.format(-Math.round(elapsedMs / HOUR_MS), 'hour')
-  }
-  return RELATIVE_TIME_FORMATTER.format(-Math.round(elapsedMs / DAY_MS), 'day')
 }

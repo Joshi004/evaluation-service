@@ -24,8 +24,20 @@ import { EmptyState } from '../components/EmptyState/EmptyState'
 import { ErrorState } from '../components/ErrorState/ErrorState'
 import { KeyValueList } from '../components/KeyValueList/KeyValueList'
 import { Table, TableCell, TableHeaderCell } from '../components/Table/Table'
-import { StatusBadge } from '../components/StatusBadge/StatusBadge'
 import { AvailabilityBadge } from '../components/AvailabilityBadge/AvailabilityBadge'
+import { ModelName } from '../components/ModelName/ModelName'
+import { BenchmarkName } from '../components/BenchmarkName/BenchmarkName'
+import { SetupChip } from '../components/SetupChip/SetupChip'
+import { ScoreValue } from '../components/ScoreValue/ScoreValue'
+import { FingerprintChip } from '../components/FingerprintChip/FingerprintChip'
+import { RelativeTime } from '../components/RelativeTime/RelativeTime'
+import { RunStatusChip } from '../components/RunStatusChip/RunStatusChip'
+import { classifyRunError } from '../utils/classifyRunError'
+import { shortenModelName } from '../utils/shortenModelName'
+import { familyKey } from '../utils/familyKey'
+import { formatScore, formatMargin } from '../utils/formatScore'
+import { intervalsOverlap } from '../utils/intervalsOverlap'
+import type { ConfidenceInterval } from '../api/client'
 
 // Written out literally (not built from a template string) so
 // Tailwind's build-time scanner, which only recognises complete class
@@ -43,6 +55,22 @@ const SERIES_SWATCH_CLASSES = [
 ]
 
 const HEAT_SWATCH_CLASSES = ['bg-heat-1', 'bg-heat-2', 'bg-heat-3', 'bg-heat-4', 'bg-heat-5']
+
+// Real values from the running stack's data (docs/UI_REDESIGN_PLAN.md
+// §2.4) -- the same runs the redesign plan's own acceptance criteria
+// reference, so this page's Helpers section doubles as a live check of
+// Phase 4's formatting and classification examples.
+const RUN_13_INTERVAL: ConfidenceInterval = { lower: 0.8217496511368982, upper: 0.8812585245424298 }
+const RUN_15_INTERVAL: ConfidenceInterval = { lower: 0.8177707308088564, upper: 0.8778896193054617 }
+const RUN_9_INTERVAL: ConfidenceInterval = { lower: 0.5888376499705013, upper: 0.6699249638459293 }
+const RUN_13_SCORE = 0.854
+const MODEL_NAME_EXAMPLE = 'Qwen3.5-0.8B-Think-MOPD-mixv2-RL-v11c-s810'
+// Computed once at module load, not inline in JSX -- calling Date.now()
+// during render is flagged as an impure call (its result would drift
+// on every re-render for no reason this static example needs).
+const RECENT_TIMESTAMP_EXAMPLE = new Date(Date.now() - 21 * 60 * 60 * 1000).toISOString()
+const RUN_8_ERROR =
+  "FileNotFoundError: [Errno 2] No such file or directory: '/data/evalsvc/runs/run-8/reports/Qwen3.5-0.8B-Think-MOPD-mixv2-RL-v11c-s810/ifeval.json'"
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -107,14 +135,12 @@ export function StyleguidePage() {
           <CopyButton value="ifeval/qwen3_5_think" />
         </Section>
 
-        <Section title="Badge, StatusBadge, AvailabilityBadge">
+        <Section title="Badge & AvailabilityBadge">
           <Badge>Neutral</Badge>
           <Badge tone="info">Info</Badge>
           <Badge tone="success">Success</Badge>
           <Badge tone="warning">Warning</Badge>
           <Badge tone="danger">Danger</Badge>
-          <StatusBadge status="running" />
-          <StatusBadge status="failed" />
           <AvailabilityBadge status="incomplete" />
         </Section>
 
@@ -222,7 +248,7 @@ export function StyleguidePage() {
           <KeyValueList
             className="w-72"
             rows={[
-              { label: 'Status', value: <StatusBadge status="done" /> },
+              { label: 'Status', value: <RunStatusChip status="done" /> },
               { label: 'Submitted by', value: 'a.researcher' },
             ]}
           />
@@ -243,6 +269,82 @@ export function StyleguidePage() {
               </tr>
             </tbody>
           </Table>
+        </Section>
+
+        {/* Phase 4 (docs/UI_REDESIGN_PLAN.md §8.4, item 6/7): the seven
+            domain display components every later phase composes from,
+            each shown against real data from the running stack. */}
+        <Section title="Domain components">
+          <div className="flex w-full flex-col gap-4">
+            <div className="flex flex-wrap items-center gap-4">
+              <ModelName name={MODEL_NAME_EXAMPLE} family="Qwen3.5" copyable />
+              <ModelName name="merged_global_step_810" />
+            </div>
+            <div className="flex flex-wrap items-center gap-4">
+              <BenchmarkName benchmark="ifeval" standardLabel="ifeval/v1" />
+              <BenchmarkName benchmark="gpqa_diamond" standardLabel="gpqa_diamond/v1" />
+            </div>
+            <div className="flex flex-wrap items-center gap-4">
+              <SetupChip samplingProfileLabel="qwen3_5_think" samplingProfileHash="5aed9f401a82b31a" />
+              <SetupChip samplingProfileLabel={null} samplingProfileHash="77f35859ab387706" />
+            </div>
+            <div className="flex flex-wrap items-center gap-4">
+              <ScoreValue value={RUN_13_SCORE} interval={RUN_13_INTERVAL} samples={541} />
+              <ScoreValue value={null} />
+            </div>
+            <div className="flex flex-wrap items-center gap-4">
+              <FingerprintChip hash="5aed9f401a82b31a" label="qwen3_5_think" />
+              <FingerprintChip hash="77f35859ab387706" />
+            </div>
+            <div className="flex flex-wrap items-center gap-4">
+              <RelativeTime timestamp={RECENT_TIMESTAMP_EXAMPLE} />
+              <RelativeTime timestamp="2026-09-11T07:13:37.051248Z" />
+              <RelativeTime timestamp={null} />
+            </div>
+            <div className="flex flex-wrap items-center gap-4">
+              <RunStatusChip status="queued" />
+              <RunStatusChip status="running" />
+              <RunStatusChip status="done" />
+              <RunStatusChip status="failed" />
+              <RunStatusChip status="cancelled" />
+            </div>
+          </div>
+        </Section>
+
+        {/* Live output of the Phase 4 helper functions against the
+            plan's own acceptance examples (§8.4) -- a change to one of
+            these that breaks an example is visible here, not just in a
+            page that happens to call it. */}
+        <Section title="Helpers">
+          <KeyValueList
+            className="w-full max-w-2xl"
+            rows={[
+              { label: "classifyRunError(run 8's error)", value: classifyRunError(RUN_8_ERROR)?.title ?? '(none)' },
+              {
+                label: 'classifyRunError(unrecognised message)',
+                value: classifyRunError('OutOfMemoryError: CUDA out of memory')?.title ?? '(none)',
+              },
+              {
+                label: 'classifyRunError(null)',
+                value: classifyRunError(null) === null ? '(null -- no error object)' : 'unexpected',
+              },
+              { label: `shortenModelName("${MODEL_NAME_EXAMPLE}")`, value: shortenModelName(MODEL_NAME_EXAMPLE) },
+              {
+                label: 'familyKey("QWen3.5") === familyKey("Qwen-3.5")',
+                value: familyKey('QWen3.5') === familyKey('Qwen-3.5') ? 'true' : 'false',
+              },
+              { label: 'formatScore(run 13, 0.854)', value: formatScore(RUN_13_SCORE) },
+              { label: 'formatMargin(run 13 interval)', value: formatMargin(RUN_13_INTERVAL) ?? '(none)' },
+              {
+                label: 'intervalsOverlap(run 13, run 15)',
+                value: intervalsOverlap(RUN_13_INTERVAL, RUN_15_INTERVAL) ? 'true' : 'false',
+              },
+              {
+                label: 'intervalsOverlap(run 9, run 15)',
+                value: intervalsOverlap(RUN_9_INTERVAL, RUN_15_INTERVAL) ? 'true' : 'false',
+              },
+            ]}
+          />
         </Section>
 
         <Section title="Data-viz tokens">

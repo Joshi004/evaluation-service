@@ -1,5 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
-import { apiFetch, type HealthResponse } from '../../api/client'
+import { useHealth } from '../../api/queries/health'
 import { Popover } from '../Popover/Popover'
 import { KeyValueList } from '../KeyValueList/KeyValueList'
 import { Badge } from '../Badge/Badge'
@@ -13,11 +12,7 @@ import { classifySystemStatus, SYSTEM_STATUS_DOT_CLASSES } from './SystemStatus.
 // 30s instead of 10s now that it's on screen everywhere, not one page
 // among many.
 export function SystemStatus() {
-  const health = useQuery({
-    queryKey: ['health'],
-    queryFn: () => apiFetch<HealthResponse>('/health'),
-    refetchInterval: 30_000,
-  })
+  const health = useHealth()
 
   const { label, tone } = classifySystemStatus({
     isLoading: health.isLoading,

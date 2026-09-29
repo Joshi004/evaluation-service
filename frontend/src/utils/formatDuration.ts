@@ -6,7 +6,10 @@
 // helper). Recomputed at render time from a Date the caller passes in,
 // the same "no separate ticker, let refetchInterval drive re-renders"
 // choice EndpointsPage.helper.ts's formatTimeRemaining already makes.
-export function formatElapsedTime(start: string, end: string | null, now: Date): string {
+// Renamed from formatElapsedTime.ts in Phase 4 to match the vocabulary
+// domain components import it under (RunReportPage's own duration, in
+// a later phase).
+export function formatDuration(start: string, end: string | null, now: Date): string {
   const endTime = end ? new Date(end) : now
   const elapsedMs = Math.max(0, endTime.getTime() - new Date(start).getTime())
 
