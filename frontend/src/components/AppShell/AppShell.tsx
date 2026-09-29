@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import { Outlet, useLocation } from 'react-router'
+import { CompareTray } from '../CompareTray/CompareTray'
 import { Sidebar } from '../Sidebar/Sidebar'
 import { TopBar } from '../TopBar/TopBar'
+import { paths } from '../../utils/paths'
+import { useCompareTray } from '../../utils/useCompareTray'
 import { resolvePageTitle } from './AppShell.helper'
 import { useDocumentTitle } from '../../utils/useDocumentTitle'
 
@@ -14,6 +17,7 @@ export function AppShell() {
   const pageTitle = resolvePageTitle(location.pathname)
   useDocumentTitle(pageTitle)
 
+  const { pinnedRuns } = useCompareTray()
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
 
   // Closing the drawer when the route changes -- so a link clicked
@@ -29,12 +33,17 @@ export function AppShell() {
 
   return (
     <div className="flex h-screen bg-background text-foreground">
-      <Sidebar isDrawerOpen={isDrawerOpen} onCloseDrawer={() => setIsDrawerOpen(false)} />
+      <Sidebar
+        isDrawerOpen={isDrawerOpen}
+        onCloseDrawer={() => setIsDrawerOpen(false)}
+        badgeCountsByPath={{ [paths.compare()]: pinnedRuns.length }}
+      />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar breadcrumb={pageTitle} onOpenDrawer={() => setIsDrawerOpen(true)} />
         <main className="flex-1 overflow-y-auto">
           <Outlet />
         </main>
+        <CompareTray />
       </div>
     </div>
   )

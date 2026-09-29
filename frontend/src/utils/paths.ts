@@ -27,5 +27,10 @@ export const paths = {
   // Phase 2 caller passes runIds -- the sidebar's Compare link calls
   // this with no arguments, which is just '/compare'.
   compare: (runIds?: number[]) => (runIds && runIds.length > 0 ? `/compare?runs=${runIds.join(',')}` : '/compare'),
+  // Temporary (Phase 5): ComparePage only reads today's ?left=&right=
+  // shape until Phase 8 migrates it to ?runs= above and raises
+  // MAX_COMPARE_RUNS to 4. CompareTray's own Compare button calls this,
+  // not paths.compare(), until then.
+  compareLeftRight: (leftRunId: number, rightRunId: number) => `/compare?left=${leftRunId}&right=${rightRunId}`,
   infrastructure: () => '/infrastructure',
 }

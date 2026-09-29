@@ -3,8 +3,10 @@ import { Link } from 'react-router'
 import { apiFetch, type RunGroupCancellation, type RunListItem } from '../api/client'
 import { queryKeys } from '../api/queries/queryKeys'
 import { useRuns } from '../api/queries/runs'
+import { AddToCompareButton } from '../components/AddToCompareButton/AddToCompareButton'
 import { EmptyState } from '../components/EmptyState/EmptyState'
 import { RunStatusChip } from '../components/RunStatusChip/RunStatusChip'
+import { compareCandidateFromRun } from '../utils/compareTray'
 import { formatDuration } from '../utils/formatDuration'
 import { formatFractionAsPercent } from '../utils/formatFractionAsPercent'
 import { standardDisplayName } from '../utils/standardDisplayName'
@@ -140,17 +142,23 @@ export function RunsPage() {
                             {run.error ?? ''}
                           </td>
                           <td className="border-b border-slate-800/50 p-2 text-right">
-                            <button
-                              type="button"
-                              disabled={
-                                !isCancellable(run.status) ||
-                                (cancelRunMutation.isPending && cancelRunMutation.variables === run.id)
-                              }
-                              onClick={() => handleCancelRun(run.id)}
-                              className="rounded border border-red-500/30 px-2 py-1 text-xs font-medium text-red-300 hover:bg-red-500/10 disabled:opacity-50"
-                            >
-                              Cancel
-                            </button>
+                            <div className="flex items-center justify-end gap-2">
+                              {/* Temporary (Phase 5): the compare tray's
+                                  only pin control until Phase 9 rewrites
+                                  this whole page. */}
+                              <AddToCompareButton candidate={compareCandidateFromRun(run)} />
+                              <button
+                                type="button"
+                                disabled={
+                                  !isCancellable(run.status) ||
+                                  (cancelRunMutation.isPending && cancelRunMutation.variables === run.id)
+                                }
+                                onClick={() => handleCancelRun(run.id)}
+                                className="rounded border border-red-500/30 px-2 py-1 text-xs font-medium text-red-300 hover:bg-red-500/10 disabled:opacity-50"
+                              >
+                                Cancel
+                              </button>
+                            </div>
                             {cancelRunMutation.isError && cancelRunMutation.variables === run.id && (
                               <p className="mt-1 text-red-400">{String(cancelRunMutation.error)}</p>
                             )}

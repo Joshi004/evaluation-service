@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { TooltipProvider } from '@radix-ui/react-tooltip'
 import { AppRoutes } from './routes'
 import { Toaster } from './components/Toaster/Toaster'
+import { CompareTrayProvider } from './components/CompareTrayProvider/CompareTrayProvider'
 import './index.css'
 
 // A global floor of 30s before any query is considered stale -- most
@@ -22,16 +23,22 @@ const queryClient = new QueryClient({
   },
 })
 
-// TooltipProvider (shared open delay) and Toaster (mutation feedback)
-// are each mounted once here, per the design-system spec, rather than
-// once per page.
+// TooltipProvider (shared open delay), Toaster (mutation feedback) and
+// CompareTrayProvider (the pinned-runs basket, Phase 5) are each
+// mounted once here, per the design-system spec, rather than once per
+// page. CompareTrayProvider wraps the router (not the other way round)
+// so its one revalidation fetch (useRuns inside the provider) still has
+// a QueryClientProvider above it, and every routed page below it can
+// call useCompareTray().
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
+        <CompareTrayProvider>
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </CompareTrayProvider>
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>
