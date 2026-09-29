@@ -1,20 +1,34 @@
 // Non-DOM logic for CheckpointServingCard.tsx. Mirrors
-// CheckpointSamplingCard.helper.ts's own namedSamplingProfiles /
+// CheckpointSamplingCard.helper.ts's own samplingProfileOptions /
 // resolveBaseSamplingProfile / defaultProfileOptionLabel, one profile
 // axis over -- there is no serving analogue of that file's third export
 // (samplingMandateNotesByField): a standard's own `sampling_overrides`
 // has no serving counterpart, so no selected standard ever mandates a
 // serving field.
 import type { CheckpointListItem, ServingProfileSummary } from '../../api/client'
-import { servingProfileDisplayName } from '../../utils/servingProfileDisplayName'
+import { shortFingerprint } from '../../utils/shortFingerprint'
 
 // GET /serving-profiles returns ad-hoc rows too (label === null) --
-// this card offers a submit-time choice of one *named* profile, not a
-// customisation form, so an unlabelled row never belongs in its
-// options. Mirrors CheckpointSamplingCard.helper.ts's own
-// namedSamplingProfiles.
-export function namedServingProfiles(profiles: ServingProfileSummary[]): ServingProfileSummary[] {
-  return profiles.filter((profile) => profile.label !== null)
+// this card offers a submit-time choice of a *named* profile plus,
+// when `profileChoice` already points at an unlabelled one (Re-run
+// prefill from a run that used an ad-hoc profile), that one row too.
+// Mirrors CheckpointSamplingCard.helper.ts's own samplingProfileOptions.
+export function servingProfileOptions(
+  profileChoice: number | null,
+  servingProfiles: ServingProfileSummary[],
+  servingProfilesById: Map<number, ServingProfileSummary>,
+): ServingProfileSummary[] {
+  const named = servingProfiles.filter((profile) => profile.label !== null)
+  const chosen = profileChoice === null ? undefined : servingProfilesById.get(profileChoice)
+  if (chosen === undefined || chosen.label !== null) {
+    return named
+  }
+  return [...named, chosen]
+}
+
+// Mirrors CheckpointSamplingCard.helper.ts's own samplingProfileOptionLabel.
+export function servingProfileOptionLabel(profile: ServingProfileSummary): string {
+  return profile.label ?? `Custom (${shortFingerprint(profile.hash)})`
 }
 
 // This checkpoint's base serving profile: whichever one this card's
@@ -33,7 +47,7 @@ export function resolveBaseServingProfile(
 }
 
 export function defaultServingProfileOptionLabel(checkpoint: CheckpointListItem): string {
-  const name = servingProfileDisplayName(checkpoint.serving_profile_label, checkpoint.serving_profile_hash)
+  const name = checkpoint.serving_profile_label ?? `Custom (${shortFingerprint(checkpoint.serving_profile_hash)})`
   return `Its registered default (${name})`
 }
 

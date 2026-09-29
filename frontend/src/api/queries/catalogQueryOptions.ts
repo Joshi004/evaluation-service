@@ -5,7 +5,7 @@
 // cuts requests the frontend would otherwise repeat for the same
 // answer; every mutation that can actually change one of these lists
 // invalidates its own query explicitly (RegisterCheckpointPage,
-// SubmitPage, CatalogPanel), so a real change is never hidden behind
+// useCreateRuns, CatalogPanel), so a real change is never hidden behind
 // this staleness window.
 export const CATALOG_QUERY_OPTIONS = {
   staleTime: 5 * 60_000,

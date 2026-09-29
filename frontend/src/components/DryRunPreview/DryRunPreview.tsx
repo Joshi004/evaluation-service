@@ -1,38 +1,19 @@
-import type {
-  CheckpointListItem,
-  FieldChange,
-  ResolvedStandardPreview,
-  RunPreview,
-  SamplingOverrides,
-  SamplingProfileSummary,
-  ServingProfileSummary,
-  StandardSummary,
-} from '../../api/client'
-import {
-  comparisonHashByPair,
-  formatPreviewValue,
-  groupFindingsByCode,
-  type GroupedFinding,
-} from './DryRunPreview.helper'
-import { ResolvedSamplingCard } from './ResolvedSamplingCard'
-import { ResolvedServingCard } from './ResolvedServingCard'
+import type { RunPreview } from '../../api/client'
+import { ErrorState } from '../ErrorState/ErrorState'
+import { Skeleton } from '../Skeleton/Skeleton'
+import { groupFindingsByCode, type CreatedItem, type GroupedFinding } from './DryRunPreview.helper'
 
 interface DryRunPreviewProps {
   preview: RunPreview | undefined
   isLoading: boolean
   isError: boolean
   error: unknown
-  standardsById: Map<number, StandardSummary>
-  checkpointsById: Map<number, CheckpointListItem>
-  samplingProfilesById: Map<number, SamplingProfileSummary>
-  servingProfilesById: Map<number, ServingProfileSummary>
-  // The submit's own sampling overrides, keyed by checkpoint_id -- a
-  // checkpoint's sampling overrides belong to that checkpoint alone
-  // (Phase 8's per-axis split, app/schemas/runs.py's
-  // sampling_overrides_by_checkpoint_id), so each resolved-sampling
-  // card below looks up its own pair's checkpoint_id here rather than
-  // every card sharing one grid-wide object.
-  userSamplingOverridesByCheckpointId: Record<number, SamplingOverrides>
+  onRetry: () => void
+  // Already computed by the caller (buildCreatedItems) from this same
+  // `preview` plus the wizard's own resolved labels -- kept as a prop
+  // rather than computed in here so this component stays a pure
+  // renderer of whatever the caller already has in hand.
+  createdItems: CreatedItem[]
 }
 
 interface FindingGroupItemProps {
@@ -45,16 +26,16 @@ interface FindingGroupItemProps {
 // grid-wide finding would otherwise repeat itself for every pair it hit.
 function FindingGroupItem({ finding, textClassName }: FindingGroupItemProps) {
   return (
-    <li className={`text-xs ${textClassName}`}>
+    <li className={`text-sm ${textClassName}`}>
       {finding.message}
       {finding.pairLabels.length === 1 ? (
-        <span className="ml-1 text-slate-500">({finding.pairLabels[0]})</span>
+        <span className="ml-1 text-muted-foreground">({finding.pairLabels[0]})</span>
       ) : (
         <details className="mt-0.5">
-          <summary className="cursor-pointer text-slate-500">
+          <summary className="cursor-pointer text-xs text-muted-foreground">
             {finding.pairLabels.length} pairs affected
           </summary>
-          <ul className="mt-1 ml-4 list-disc space-y-0.5 text-slate-500">
+          <ul className="mt-1 ml-4 list-disc space-y-0.5 text-xs text-muted-foreground">
             {finding.pairLabels.map((pairLabel) => (
               <li key={pairLabel}>{pairLabel}</li>
             ))}
@@ -65,119 +46,52 @@ function FindingGroupItem({ finding, textClassName }: FindingGroupItemProps) {
   )
 }
 
-// The before/after table shared by a resolved standard's card here and
-// a resolved sampling profile's card (ResolvedSamplingCard.tsx) -- both
-// are just "a base config, merged with overrides" (FieldChange,
-// app/schemas/runs.py). Exported for that second file to reuse.
-export function ChangedFieldsTable({ changedFields }: { changedFields: FieldChange[] }) {
-  if (changedFields.length === 0) {
-    return null
-  }
-  return (
-    <table className="mt-2 w-full border-collapse text-xs">
-      <tbody>
-        {changedFields.map((change) => (
-          <tr key={change.field}>
-            <td className="py-0.5 pr-2 text-slate-500">{change.field}</td>
-            <td className="py-0.5 pr-2 font-mono text-slate-500 line-through">
-              {formatPreviewValue(change.base_value)}
-            </td>
-            <td className="py-0.5 font-mono text-slate-200">{formatPreviewValue(change.override_value)}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  )
-}
-
-interface ResolvedStandardCardProps {
-  resolved: ResolvedStandardPreview
-  standardsById: Map<number, StandardSummary>
-}
-
-// What resolve_standard would actually insert (or reuse) for one base
-// standard plus the submit's protocol overrides -- one card per
-// selected standard, independent of which checkpoints are selected.
-function ResolvedStandardCard({ resolved, standardsById }: ResolvedStandardCardProps) {
-  const baseStandard = standardsById.get(resolved.base_standard_id)
-  return (
-    <div className="rounded border border-slate-800 bg-slate-950 p-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm text-slate-200">{baseStandard?.label ?? resolved.base_standard_id}</span>
-        <span className="font-mono text-xs text-slate-500">→ {resolved.hash}</span>
-        <span
-          className={
-            resolved.is_new_standard
-              ? 'rounded bg-amber-500/10 px-1.5 py-0.5 text-xs text-amber-300'
-              : 'rounded bg-slate-800 px-1.5 py-0.5 text-xs text-slate-400'
-          }
-        >
-          {resolved.is_new_standard ? 'new standard, no label' : 'reuses existing standard'}
-        </span>
-      </div>
-      <ChangedFieldsTable changedFields={resolved.changed_fields} />
-    </div>
-  )
-}
-
-// Everything Submit needs to show before anything POSTs: how many runs
-// and GPUs (Trap T1 -- GPUs are per distinct checkpoint, not per run,
-// so this is the one number a human will actually act on), which
-// findings block or merely warn and why, and what each selected
-// standard and each resolved sampling and serving profile would
-// actually resolve to. All of it comes straight from POST /runs/preview
-// (backend/app/services/runs/preview.py) -- this component never
-// recomputes any of it, so Submit and the Standards page can never
-// disagree about what a value does.
-export function DryRunPreview({
-  preview,
-  isLoading,
-  isError,
-  error,
-  standardsById,
-  checkpointsById,
-  samplingProfilesById,
-  servingProfilesById,
-  userSamplingOverridesByCheckpointId,
-}: DryRunPreviewProps) {
+// Everything the Review step needs to show before anything POSTs: which
+// findings block or merely warn and why, and a compact list of what a
+// real submit would actually insert (a new benchmark protocol,
+// sampling profile and/or serving profile) -- all of it comes straight
+// from POST /runs/preview (backend/app/services/runs/preview.py), so
+// this page and the Benchmarks/Profiles pages can never disagree about
+// what a value does. The per-pair "resolved standard/sampling/serving"
+// cards the original Submit page showed here (every merge layer, not
+// just the answer) moved to the Settings step's own setup-alignment
+// line, which is where "will this line up with the leaderboard?" now
+// lives (docs/UI_REDESIGN_PLAN.md §8.10).
+export function DryRunPreview({ preview, isLoading, isError, error, onRetry, createdItems }: DryRunPreviewProps) {
   if (isLoading) {
-    return <p className="text-sm text-slate-500">Checking…</p>
+    return (
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-56" />
+        <Skeleton className="h-16 w-full" />
+      </div>
+    )
   }
 
   if (isError) {
-    return <p className="text-sm text-red-400">Could not load preview: {String(error)}</p>
+    return <ErrorState message="Could not check this selection." details={String(error)} onRetry={onRetry} />
   }
 
   if (!preview) {
-    return <p className="text-sm text-slate-500">Select at least one checkpoint and one standard.</p>
+    return null
   }
 
   const groupedErrors = groupFindingsByCode(preview.pairs, 'errors')
   const groupedWarnings = groupFindingsByCode(preview.pairs, 'warnings')
-  const comparisonHashes = comparisonHashByPair(preview.pairs)
+  const isAllClear = groupedErrors.length === 0 && groupedWarnings.length === 0 && createdItems.length === 0
 
   return (
-    <div>
-      <p className="text-sm text-slate-200">
-        <span className="font-medium">{preview.run_count}</span> run{preview.run_count === 1 ? '' : 's'}{' '}
-        across <span className="font-medium">{preview.gpu_count}</span> GPU
-        {preview.gpu_count === 1 ? '' : 's'}
-      </p>
-      <p className="mt-1 text-xs text-slate-500">
-        GPUs are counted per distinct checkpoint -- standards against one checkpoint share one server.
-      </p>
-
+    <div className="space-y-4">
       {groupedErrors.length > 0 && (
-        <div className="mt-4 rounded border border-red-500/30 bg-red-500/10 p-3">
-          <p className="text-sm font-medium text-red-300">
+        <div className="rounded-md border border-danger/30 bg-danger-soft p-3">
+          <p className="text-sm font-medium text-danger">
             {groupedErrors.length} problem{groupedErrors.length === 1 ? '' : 's'} block this submission
           </p>
-          <ul className="mt-2 space-y-1">
+          <ul className="mt-2 space-y-1.5">
             {groupedErrors.map((finding) => (
               <FindingGroupItem
                 key={`${finding.code}-${finding.field}-${finding.message}`}
                 finding={finding}
-                textClassName="text-red-400"
+                textClassName="text-danger"
               />
             ))}
           </ul>
@@ -185,60 +99,41 @@ export function DryRunPreview({
       )}
 
       {groupedWarnings.length > 0 && (
-        <div className="mt-4 rounded border border-amber-500/30 bg-amber-500/10 p-3">
-          <p className="text-sm font-medium text-amber-300">
-            {groupedWarnings.length} warning{groupedWarnings.length === 1 ? '' : 's'} -- recorded, does not
-            block submitting
+        <div className="rounded-md border border-warning/30 bg-warning-soft p-3">
+          <p className="text-sm font-medium text-warning">
+            {groupedWarnings.length} warning{groupedWarnings.length === 1 ? '' : 's'} -- recorded, does not block
+            submitting
           </p>
-          <ul className="mt-2 space-y-1">
+          <ul className="mt-2 space-y-1.5">
             {groupedWarnings.map((finding) => (
               <FindingGroupItem
                 key={`${finding.code}-${finding.field}-${finding.message}`}
                 finding={finding}
-                textClassName="text-amber-400"
+                textClassName="text-warning"
               />
             ))}
           </ul>
         </div>
       )}
 
-      <div className="mt-4 space-y-3">
-        <h3 className="text-xs font-medium text-slate-400">Resolved standards</h3>
-        {preview.resolved_standards.map((resolved) => (
-          <ResolvedStandardCard
-            key={resolved.base_standard_id}
-            resolved={resolved}
-            standardsById={standardsById}
-          />
-        ))}
-      </div>
+      {createdItems.length > 0 && (
+        <div>
+          <h3 className="text-xs font-medium text-muted-foreground">What will be created</h3>
+          <ul className="mt-2 space-y-1">
+            {createdItems.map((item) => (
+              <li key={item.key} className="text-sm text-foreground">
+                {item.description}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
-      <div className="mt-4 space-y-3">
-        <h3 className="text-xs font-medium text-slate-400">Resolved sampling</h3>
-        {preview.resolved_sampling.map((resolved) => (
-          <ResolvedSamplingCard
-            key={`${resolved.checkpoint_id}-${resolved.standard_id}`}
-            resolved={resolved}
-            standardsById={standardsById}
-            checkpointsById={checkpointsById}
-            samplingProfilesById={samplingProfilesById}
-            userSamplingOverrides={userSamplingOverridesByCheckpointId[resolved.checkpoint_id] ?? {}}
-            comparisonHash={comparisonHashes.get(`${resolved.checkpoint_id}-${resolved.standard_id}`)}
-          />
-        ))}
-      </div>
-
-      <div className="mt-4 space-y-3">
-        <h3 className="text-xs font-medium text-slate-400">Resolved serving</h3>
-        {preview.resolved_serving.map((resolved) => (
-          <ResolvedServingCard
-            key={resolved.checkpoint_id}
-            resolved={resolved}
-            checkpointsById={checkpointsById}
-            servingProfilesById={servingProfilesById}
-          />
-        ))}
-      </div>
+      {isAllClear && (
+        <p className="text-sm text-muted-foreground">
+          No problems found. Every model, benchmark, sampling and serving profile already exists as shown.
+        </p>
+      )}
     </div>
   )
 }

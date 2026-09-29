@@ -32,7 +32,7 @@ export const queryKeys = {
   runs: (filters: RunListFilters) => ['runs', filters] as const,
   run: (runId: number) => ['run', runId] as const,
   // Built from the same request object the preview POST sends, so the
-  // key and the body can never drift apart (SubmitPage builds this
+  // key and the body can never drift apart (useRunPreview builds this
   // request once and passes it to both).
   runPreview: (request: RunPreviewRequest) => ['runs-preview', request] as const,
 

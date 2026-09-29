@@ -492,11 +492,12 @@ function resolveLabelsForAxis(
 }
 
 // Called from both SubmitOverrides.tsx (to render each card's label
-// box) and SubmitPage.tsx (to resolve what buildRequestOverrides below
-// actually sends) -- see this file's header comment on why "untouched"
-// resolves to a suggestion here rather than in either caller directly:
-// both need the exact same computation, over drafts that differ only
-// in which SubmitOverrideDrafts snapshot (live vs. debounced) they pass.
+// box) and NewEvaluationWizard.tsx (to resolve what buildRequestOverrides
+// below actually sends) -- see this file's header comment on why
+// "untouched" resolves to a suggestion here rather than in either
+// caller directly: both need the exact same computation, over drafts
+// that differ only in which SubmitOverrideDrafts snapshot (live vs.
+// debounced) they pass.
 export function resolveStandardLabels(
   selectedStandards: StandardSummary[],
   standardsById: Map<number, StandardSummary>,

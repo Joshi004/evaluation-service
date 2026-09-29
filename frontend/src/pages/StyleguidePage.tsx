@@ -11,6 +11,8 @@ import { PageHeader } from '../components/PageHeader/PageHeader'
 import { Tabs } from '../components/Tabs/Tabs'
 import { TabNav } from '../components/TabNav/TabNav'
 import { Dialog } from '../components/Dialog/Dialog'
+import { SidePanel } from '../components/SidePanel/SidePanel'
+import { Stepper } from '../components/Stepper/Stepper'
 import { ConfirmDialog } from '../components/ConfirmDialog/ConfirmDialog'
 import { Tooltip } from '../components/Tooltip/Tooltip'
 import { Popover } from '../components/Popover/Popover'
@@ -140,6 +142,8 @@ export function StyleguidePage() {
   const [lgDialogOpen, setLgDialogOpen] = useState(false)
   const [xlDialogOpen, setXlDialogOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [sidePanelOpen, setSidePanelOpen] = useState(false)
+  const [stepperStepKey, setStepperStepKey] = useState('settings')
   const [tab, setTab] = useState('one')
   const [checked, setChecked] = useState(true)
   const [segment, setSegment] = useState('comfortable')
@@ -224,6 +228,44 @@ export function StyleguidePage() {
               ]}
             />
           </MemoryRouter>
+        </Section>
+
+        {/* Phase 10 (docs/UI_REDESIGN_PLAN.md §8.10): SidePanel is
+            Dialog's right-docked sibling for a wide form read as a
+            drawer (New evaluation's own "Customize" panels); Stepper is
+            a horizontal step indicator for a flow whose steps live in
+            page state, not routes (New evaluation's own
+            Choose/Settings/Review). */}
+        <Section title="SidePanel & Stepper">
+          <Button onClick={() => setSidePanelOpen(true)}>Open side panel</Button>
+          <SidePanel
+            open={sidePanelOpen}
+            onOpenChange={setSidePanelOpen}
+            title="Customize sampling"
+            description="Qwen3.5-0.8B-Think-MOPD-mixv2-RL-v11c-s810"
+            footer={
+              <div className="flex justify-end">
+                <Button size="sm" onClick={() => setSidePanelOpen(false)}>
+                  Done
+                </Button>
+              </div>
+            }
+          >
+            <p className="text-sm text-muted-foreground">
+              A wide form's fields go here -- the panel scrolls independently of the footer above.
+            </p>
+          </SidePanel>
+
+          <Stepper
+            steps={[
+              { key: 'choose', label: 'Choose' },
+              { key: 'settings', label: 'Settings' },
+              { key: 'review', label: 'Review' },
+            ]}
+            currentStepKey={stepperStepKey}
+            isStepReachable={(stepKey) => stepKey !== 'review'}
+            onStepClick={setStepperStepKey}
+          />
         </Section>
 
         <Section title="Dialog, ConfirmDialog, Tooltip, Popover, Menu">

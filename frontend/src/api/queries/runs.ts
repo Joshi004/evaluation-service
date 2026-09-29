@@ -1,4 +1,5 @@
 import {
+  keepPreviousData,
   queryOptions,
   useMutation,
   useQueries,
@@ -9,10 +10,14 @@ import {
 } from '@tanstack/react-query'
 import {
   apiFetch,
+  type CreateRunsRequest,
   type RunDetail,
   type RunGroupCancellation,
   type RunListFilters,
   type RunListItem,
+  type RunPreview,
+  type RunPreviewRequest,
+  type RunSubmission,
 } from '../client'
 import { isActiveRunStatus } from '../../utils/runStatus'
 import { queryKeys } from './queryKeys'
@@ -129,6 +134,60 @@ export function useCancelRunGroup(): UseMutationResult<RunGroupCancellation, Err
       for (const runId of cancellation.cancelled_run_ids) {
         queryClient.invalidateQueries({ queryKey: queryKeys.run(runId) })
       }
+    },
+  })
+}
+
+// New evaluation's own dry-run preview (Phase 10, docs/UI_REDESIGN_PLAN.md
+// §8.10) -- moved out of SubmitPage.tsx's own inlined query so
+// NewEvaluationWizard owns no fetch logic of its own, the same "one
+// hook, one call site's worth of comments" reasoning as useCancelRun
+// above. `request` is built by the caller from its own current
+// selection and overrides; the query key is the same object, so the
+// two can never drift apart (queryKeys.runPreview's own docstring).
+export function useRunPreview(request: RunPreviewRequest, enabled: boolean): UseQueryResult<RunPreview> {
+  return useQuery({
+    queryKey: queryKeys.runPreview(request),
+    queryFn: () =>
+      apiFetch<RunPreview>('/runs/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+      }),
+    // POST /runs/preview 422s on an empty checkpoint_ids or standard_ids
+    // (Field(min_length=1), app/schemas/runs.py) -- the caller passes
+    // `enabled` false until its own grid has both axes selected.
+    enabled,
+    // Keeps the last preview on screen while a new one loads, instead
+    // of blanking out to a loading state on every checkbox click or
+    // settled keystroke -- New evaluation's own "live" framing for its
+    // findings and setup-alignment lines implies updating in place, not
+    // flickering.
+    placeholderData: keepPreviousData,
+  })
+}
+
+// The one submit mutation (`POST /runs`) -- moved out of SubmitPage.tsx
+// for the same reason useRunPreview was above. Every catalog a submit
+// can mint a new row in gets invalidated here once, rather than at
+// each call site: a submit with a label on any override mints a new
+// standard, sampling profile and/or serving profile, and the catalog
+// queries' own multi-minute staleTime (CATALOG_QUERY_OPTIONS) would
+// otherwise hide it until that window passes.
+export function useCreateRuns(): UseMutationResult<RunSubmission, Error, CreateRunsRequest> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (request: CreateRunsRequest) =>
+      apiFetch<RunSubmission>('/runs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.allRuns() })
+      queryClient.invalidateQueries({ queryKey: queryKeys.standards() })
+      queryClient.invalidateQueries({ queryKey: queryKeys.samplingProfiles() })
+      queryClient.invalidateQueries({ queryKey: queryKeys.servingProfiles() })
     },
   })
 }

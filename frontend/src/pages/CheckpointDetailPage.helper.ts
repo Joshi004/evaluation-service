@@ -30,8 +30,8 @@ export function parentName(checkpoint: CheckpointListItem, allCheckpoints: Check
 }
 
 // The checkpoints page's row-expansion state, kept as an id array (the
-// same toggle-membership idiom as SubmitGrid.helper.ts's toggleId) so
-// more than one inferred-metadata panel can be open at once.
+// same toggle-membership idiom as utils/toggleId.ts) so more than one
+// inferred-metadata panel can be open at once.
 export function toggleExpandedId(expandedIds: number[], checkpointId: number): number[] {
   return expandedIds.includes(checkpointId)
     ? expandedIds.filter((id) => id !== checkpointId)

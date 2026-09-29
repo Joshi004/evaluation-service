@@ -1,6 +1,6 @@
 import type { CheckpointListItem, ServingProfileSummary } from '../../api/client'
 import { LabelOverrideField, NumberOverrideField, TextOverrideField } from '../OverrideField/OverrideField'
-import { servingProfileDisplayName } from '../../utils/servingProfileDisplayName'
+import { SelectField } from '../SelectField/SelectField'
 import {
   servingOverrideDraftHasChange,
   type ServingOverrideDraft,
@@ -8,8 +8,9 @@ import {
 import {
   defaultServingProfileOptionLabel,
   maxModelLenPlaceholder,
-  namedServingProfiles,
   resolveBaseServingProfile,
+  servingProfileOptionLabel,
+  servingProfileOptions,
 } from './CheckpointServingCard.helper'
 
 interface CheckpointServingCardProps {
@@ -29,18 +30,14 @@ interface CheckpointServingCardProps {
   onLabelChange: (label: string) => void
 }
 
-const SELECT_CLASS_NAME =
-  'mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-200'
-
 // One selected checkpoint's serving: which base profile it starts from
 // (its own registered default, or one picked here) plus the eight
 // ServingOverrides fields, each defaulting to that base profile's own
 // value. Mirrors CheckpointSamplingCard.tsx exactly, one axis over --
-// see this repo's labels_and_serving_overrides plan for why serving
-// gained a submit-time override at all: it used to be entirely fixed at
-// registration (docs/TaskList.md item 4 has no PATCH endpoint), with no
-// way to try a different gpus/tensor_parallel_size for one run without
-// re-registering the checkpoint.
+// serving gained a submit-time override so a different
+// gpus/tensor_parallel_size can be tried for one run without
+// re-registering the checkpoint (docs/TaskList.md item 4 has no PATCH
+// endpoint for editing a registered checkpoint's own default).
 export function CheckpointServingCard({
   checkpoint,
   servingProfiles,
@@ -53,35 +50,31 @@ export function CheckpointServingCard({
   onLabelChange,
 }: CheckpointServingCardProps) {
   const baseProfile = resolveBaseServingProfile(checkpoint, profileChoice, servingProfilesById)
-  const named = namedServingProfiles(servingProfiles)
+  const options = servingProfileOptions(profileChoice, servingProfiles, servingProfilesById)
   const hasChange = servingOverrideDraftHasChange(draft)
 
   return (
-    <div className="rounded border border-slate-800 bg-slate-950 p-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm text-slate-200">{checkpoint.name}</span>
-      </div>
-
-      <label className="mt-3 block">
-        <span className="text-xs text-slate-500">Base serving profile</span>
-        <select
+    <div>
+      <label className="block">
+        <span className="text-xs text-muted-foreground">Base serving profile</span>
+        <SelectField
           value={profileChoice ?? ''}
           onChange={(event) =>
             onProfileChoiceChange(event.target.value === '' ? null : Number(event.target.value))
           }
-          className={SELECT_CLASS_NAME}
+          className="mt-1"
         >
           <option value="">{defaultServingProfileOptionLabel(checkpoint)}</option>
-          {named.map((profile) => (
+          {options.map((profile) => (
             <option key={profile.id} value={profile.id}>
-              {servingProfileDisplayName(profile.label, profile.hash)}
+              {servingProfileOptionLabel(profile)}
             </option>
           ))}
-        </select>
+        </SelectField>
       </label>
 
       {baseProfile ? (
-        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="mt-3 grid grid-cols-2 gap-3">
           <NumberOverrideField
             label="GPUs"
             step="1"
@@ -137,7 +130,7 @@ export function CheckpointServingCard({
           />
         </div>
       ) : (
-        <p className="mt-3 text-xs text-slate-500">Loading serving profile…</p>
+        <p className="mt-3 text-sm text-muted-foreground">Loading serving profile…</p>
       )}
 
       {hasChange && <LabelOverrideField value={labelValue} onValueChange={onLabelChange} />}

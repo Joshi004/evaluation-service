@@ -27,26 +27,15 @@ const THINK_HANDLING_OPTIONS = [
 // repeats, think_handling -- with that standard's own published values
 // as each field's default. Fields here never involve a checkpoint: a
 // standard's shape resolves the same way regardless of which
-// checkpoint runs it (`standard_config = base_standard.as_hashable_dict()
-// | standard_overrides_by_standard_id.get(base_standard.id, {})`,
-// app/services/runs/submit.py).
-export function StandardOverrideCard({
-  standard,
-  draft,
-  onDraftChange,
-  labelValue,
-  onLabelChange,
-}: StandardOverrideCardProps) {
+// checkpoint runs it. Rendered inside its Settings row's own "Customize
+// protocol" side panel (Phase 10, docs/UI_REDESIGN_PLAN.md §8.10) --
+// the standard's own name is the panel's title, not repeated here.
+export function StandardOverrideCard({ standard, draft, onDraftChange, labelValue, onLabelChange }: StandardOverrideCardProps) {
   const hasChange = standardOverrideDraftHasChange(draft)
 
   return (
-    <div className="rounded border border-slate-800 bg-slate-950 p-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm text-slate-200">{standard.label ?? standard.hash}</span>
-        <span className="text-xs text-slate-500">({standard.benchmark})</span>
-      </div>
-
-      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+    <div>
+      <div className="grid grid-cols-2 gap-3">
         <NumberOverrideField
           label="Sample limit"
           step="1"
@@ -82,7 +71,7 @@ export function StandardOverrideCard({
         />
       </div>
 
-      <p className="mt-3 text-xs text-slate-500">
+      <p className="mt-3 text-xs text-muted-foreground">
         Sampling mandate: {formatSamplingOverrides(standard.sampling_overrides)}
       </p>
 

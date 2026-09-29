@@ -9,7 +9,7 @@ import { RegisterCheckpointPage } from './pages/RegisterCheckpointPage'
 import { StandardsPage } from './pages/StandardsPage'
 import { SamplingProfilesPage } from './pages/SamplingProfilesPage'
 import { ServingProfilesPage } from './pages/ServingProfilesPage'
-import { SubmitPage } from './pages/SubmitPage'
+import { NewEvaluationPage } from './pages/NewEvaluationPage'
 import { RunsPage } from './pages/RunsPage'
 import { RunReportPage } from './pages/RunReportPage'
 import { RunOverviewTab } from './pages/RunOverviewTab'
@@ -104,11 +104,21 @@ export function AppRoutes() {
           }
         />
 
+        {/*
+         * New evaluation (Phase 10, docs/UI_REDESIGN_PLAN.md §8.10):
+         * NewEvaluationPage replaces SubmitPage's single stacked form
+         * with a three-step Choose/Settings/Review flow, whose own
+         * step lives in this same route's `?step=` query param rather
+         * than a further path segment -- a step has nothing to show
+         * without the axis chosen in an earlier one, the same "no
+         * server response to deep-link to" reasoning
+         * RegisterCheckpointPage's own wizard steps already follow.
+         */}
         <Route
           path="evaluate/new"
           element={
             <Page>
-              <SubmitPage />
+              <NewEvaluationPage />
             </Page>
           }
         />

@@ -1,23 +1,27 @@
-// The override-field variants Submit's per-axis cards
+// The override-field variants New evaluation's per-axis cards
 // (CheckpointSamplingCard, CheckpointServingCard, StandardOverrideCard)
-// build their fields from. Replaces OverrideEditor.tsx's bare
-// "unchanged" placeholder -- every field here shows its actual resolved
-// default as the input's placeholder, so a submitter sees the value
-// that would apply before typing anything, not just the fact that
-// something would.
+// build their fields from, composed from the TextInput/SelectField
+// primitives (Phase 10, docs/UI_REDESIGN_PLAN.md §8.10 -- the original
+// version hand-styled its own <input>/<select>).
 //
 // The default is always a placeholder, never a prefilled `value`:
 // prefilling would turn a displayed default into a submitted override
-// the moment the object is built (OverrideEditor.helper.ts's own
+// the moment the object is built (SubmitOverrides.helper.ts's own
 // sparse-overrides contract -- a field must stay entirely absent from
 // the request unless the caller actually typed into it), and for a
 // select-based field it would silently force one option to look
 // selected without the caller choosing it.
 //
 // "Changed" is `value !== ''` -- the draft's own "leave alone" sentinel
-// (see OverrideEditor.helper.ts), not a comparison against the
-// resolved default: typing the same number the default already shows
-// still counts as a deliberate override once submitted.
+// -- not a comparison against the resolved default: typing the same
+// number the default already shows still counts as a deliberate
+// override once submitted. The cue lives entirely in the field's own
+// label (a dot plus a reset link) rather than the input's border:
+// TextInput/SelectField only know `invalid`, which means something
+// different (a validation failure), not "you changed this".
+
+import { SelectField } from '../SelectField/SelectField'
+import { TextInput } from '../TextInput/TextInput'
 
 interface FieldLabelProps {
   label: string
@@ -25,29 +29,22 @@ interface FieldLabelProps {
   onReset: () => void
 }
 
-// Amber is already DryRunPreview.tsx's colour for "new standard, no
-// label" -- reused here so "you changed this" reads as the same signal
-// everywhere on Submit, not a second colour language.
 function FieldLabel({ label, isChanged, onReset }: FieldLabelProps) {
   return (
-    <span className="flex items-center gap-1.5 text-xs text-slate-500">
-      {isChanged && <span className="h-1.5 w-1.5 rounded-full bg-amber-400" title="Changed from the default" />}
+    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      {isChanged && <span className="h-1.5 w-1.5 rounded-full bg-primary" title="Changed from the default" />}
       {label}
       {isChanged && (
         <button
           type="button"
           onClick={onReset}
-          className="text-amber-400 underline decoration-dotted hover:text-amber-300"
+          className="text-primary underline decoration-dotted hover:text-primary-hover"
         >
           reset
         </button>
       )}
     </span>
   )
-}
-
-function fieldBorderClassName(isChanged: boolean): string {
-  return isChanged ? 'border-amber-500/50' : 'border-slate-700'
 }
 
 interface NumberOverrideFieldProps {
@@ -66,27 +63,20 @@ interface NumberOverrideFieldProps {
   note?: string
 }
 
-export function NumberOverrideField({
-  label,
-  step,
-  defaultValue,
-  value,
-  onValueChange,
-  note,
-}: NumberOverrideFieldProps) {
+export function NumberOverrideField({ label, step, defaultValue, value, onValueChange, note }: NumberOverrideFieldProps) {
   const isChanged = value !== ''
   return (
     <label className="block">
       <FieldLabel label={label} isChanged={isChanged} onReset={() => onValueChange('')} />
-      <input
+      <TextInput
         type="number"
         step={step}
         placeholder={defaultValue}
         value={value}
         onChange={(event) => onValueChange(event.target.value)}
-        className={`mt-1 w-full rounded border bg-slate-950 px-2 py-1 text-sm text-slate-200 ${fieldBorderClassName(isChanged)}`}
+        className="mt-1"
       />
-      {note && <p className="mt-0.5 text-[11px] text-slate-500">{note}</p>}
+      {note && <p className="mt-0.5 text-xs text-muted-foreground">{note}</p>}
     </label>
   )
 }
@@ -121,19 +111,15 @@ export function SelectOverrideField({
   return (
     <label className="block">
       <FieldLabel label={label} isChanged={isChanged} onReset={() => onValueChange('')} />
-      <select
-        value={value}
-        onChange={(event) => onValueChange(event.target.value)}
-        className={`mt-1 w-full rounded border bg-slate-950 px-2 py-1 text-sm text-slate-200 ${fieldBorderClassName(isChanged)}`}
-      >
+      <SelectField value={value} onChange={(event) => onValueChange(event.target.value)} className="mt-1">
         <option value="">{defaultOptionLabel}</option>
         {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
           </option>
         ))}
-      </select>
-      {note && <p className="mt-0.5 text-[11px] text-slate-500">{note}</p>}
+      </SelectField>
+      {note && <p className="mt-0.5 text-xs text-muted-foreground">{note}</p>}
     </label>
   )
 }
@@ -153,28 +139,20 @@ interface TextOverrideFieldProps {
 // A free-text override field -- reasoning_parser, dtype and
 // quantization (CheckpointServingCard.tsx) are strings with no fixed
 // option set, so NumberOverrideField and SelectOverrideField above
-// don't fit either. Otherwise identical to NumberOverrideField: same
-// changed-dot-plus-reset FieldLabel, same placeholder-is-the-default
-// rule.
-export function TextOverrideField({
-  label,
-  defaultValue,
-  value,
-  onValueChange,
-  note,
-}: TextOverrideFieldProps) {
+// don't fit either. Otherwise identical to NumberOverrideField.
+export function TextOverrideField({ label, defaultValue, value, onValueChange, note }: TextOverrideFieldProps) {
   const isChanged = value !== ''
   return (
     <label className="block">
       <FieldLabel label={label} isChanged={isChanged} onReset={() => onValueChange('')} />
-      <input
+      <TextInput
         type="text"
         placeholder={defaultValue}
         value={value}
         onChange={(event) => onValueChange(event.target.value)}
-        className={`mt-1 w-full rounded border bg-slate-950 px-2 py-1 text-sm text-slate-200 ${fieldBorderClassName(isChanged)}`}
+        className="mt-1"
       />
-      {note && <p className="mt-0.5 text-[11px] text-slate-500">{note}</p>}
+      {note && <p className="mt-0.5 text-xs text-muted-foreground">{note}</p>}
     </label>
   )
 }
@@ -184,25 +162,19 @@ interface LabelOverrideFieldProps {
   onValueChange: (value: string) => void
 }
 
-// A card's own name for the row it's about to mint (labels_and_serving_
-// overrides plan). Unlike the three fields above, this has no
-// "changed" state of its own to indicate: the value shown here --
-// whatever the caller already typed, or else a computed suggestion --
-// is already what would be sent, and there's no other default it could
-// visibly differ from. Clearing it to '' is itself a deliberate choice
-// (explicitly unlabelled, today's behaviour) rather than a return to
-// some previous state, so there's nothing to "reset" either.
+// A card's own name for the row it's about to mint. Unlike the three
+// fields above, this has no "changed" state of its own to indicate: the
+// value shown here -- whatever the caller already typed, or else a
+// computed suggestion -- is already what would be sent, and there's no
+// other default it could visibly differ from. Clearing it to '' is
+// itself a deliberate choice (explicitly unlabelled) rather than a
+// return to some previous state, so there's nothing to "reset" either.
 export function LabelOverrideField({ value, onValueChange }: LabelOverrideFieldProps) {
   return (
     <label className="mt-3 block">
-      <span className="text-xs text-slate-500">Label</span>
-      <input
-        type="text"
-        value={value}
-        onChange={(event) => onValueChange(event.target.value)}
-        className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-200"
-      />
-      <p className="mt-0.5 text-[11px] text-slate-500">
+      <span className="text-xs text-muted-foreground">Label</span>
+      <TextInput type="text" value={value} onChange={(event) => onValueChange(event.target.value)} className="mt-1" />
+      <p className="mt-0.5 text-xs text-muted-foreground">
         Only takes effect if this creates a new row -- clear to submit unlabelled.
       </p>
     </label>

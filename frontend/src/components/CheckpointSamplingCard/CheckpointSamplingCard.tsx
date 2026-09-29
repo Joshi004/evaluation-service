@@ -1,16 +1,16 @@
 import type { CheckpointListItem, SamplingProfileSummary, StandardSummary } from '../../api/client'
 import { LabelOverrideField, NumberOverrideField, SelectOverrideField } from '../OverrideField/OverrideField'
-import { samplingProfileDisplayName } from '../../utils/samplingProfileDisplayName'
-import { servingProfileDisplayName } from '../../utils/servingProfileDisplayName'
+import { SelectField } from '../SelectField/SelectField'
 import {
   samplingOverrideDraftHasChange,
   type SamplingOverrideDraft,
 } from '../SubmitOverrides/SubmitOverrides.helper'
 import {
   defaultProfileOptionLabel,
-  namedSamplingProfiles,
   resolveBaseSamplingProfile,
   samplingMandateNotesByField,
+  samplingProfileOptionLabel,
+  samplingProfileOptions,
 } from './CheckpointSamplingCard.helper'
 
 interface CheckpointSamplingCardProps {
@@ -32,9 +32,6 @@ interface CheckpointSamplingCardProps {
   onLabelChange: (label: string) => void
 }
 
-const SELECT_CLASS_NAME =
-  'mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-200'
-
 const ENABLE_THINKING_OPTIONS = [
   { value: 'true', label: 'Yes' },
   { value: 'false', label: 'No' },
@@ -44,9 +41,9 @@ const ENABLE_THINKING_OPTIONS = [
 // from (its own registered default, or one picked here) plus the eight
 // SamplingOverrides fields, each defaulting to that base profile's own
 // value. Picking a different base profile updates every field's
-// placeholder at once -- the merge of the old grid-wide picker's
-// read-only value table (SamplingProfilePicker.tsx, removed by this
-// change) into fields that are also where you'd type an override.
+// placeholder at once. Rendered inside its Settings row's own
+// "Customize" side panel (Phase 10, docs/UI_REDESIGN_PLAN.md §8.10) --
+// the checkpoint's own name is the panel's title, not repeated here.
 export function CheckpointSamplingCard({
   checkpoint,
   samplingProfiles,
@@ -61,44 +58,32 @@ export function CheckpointSamplingCard({
 }: CheckpointSamplingCardProps) {
   const baseProfile = resolveBaseSamplingProfile(checkpoint, profileChoice, samplingProfilesById)
   const mandateNotesByField = samplingMandateNotesByField(selectedStandards)
-  const named = namedSamplingProfiles(samplingProfiles)
+  const options = samplingProfileOptions(profileChoice, samplingProfiles, samplingProfilesById)
   const hasChange = samplingOverrideDraftHasChange(draft)
 
   return (
-    <div className="rounded border border-slate-800 bg-slate-950 p-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm text-slate-200">{checkpoint.name}</span>
-        {/* Read-only here -- caps max_tokens and drives the preview's
-            GPU count, but overriding it is CheckpointServingCard's own
-            job (the "Serving, per checkpoint" section), not this
-            card's. */}
-        <span className="text-xs text-slate-500">
-          serving:{' '}
-          {servingProfileDisplayName(checkpoint.serving_profile_label, checkpoint.serving_profile_hash)}
-        </span>
-      </div>
-
-      <label className="mt-3 block">
-        <span className="text-xs text-slate-500">Base sampling profile</span>
-        <select
+    <div>
+      <label className="block">
+        <span className="text-xs text-muted-foreground">Base sampling profile</span>
+        <SelectField
           value={profileChoice ?? ''}
           onChange={(event) =>
             onProfileChoiceChange(event.target.value === '' ? null : Number(event.target.value))
           }
-          className={SELECT_CLASS_NAME}
+          className="mt-1"
         >
           <option value="">{defaultProfileOptionLabel(checkpoint)}</option>
-          {named.map((profile) => (
+          {options.map((profile) => (
             <option key={profile.id} value={profile.id}>
-              {samplingProfileDisplayName(profile.label, profile.hash)}
+              {samplingProfileOptionLabel(profile)}
             </option>
           ))}
-        </select>
+        </SelectField>
       </label>
 
       {baseProfile ? (
         <>
-          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="mt-3 grid grid-cols-2 gap-3">
             <NumberOverrideField
               label="Temperature"
               step="0.01"
@@ -173,12 +158,12 @@ export function CheckpointSamplingCard({
           {/* Read-only, unlike the eight fields above -- seed is not a
               SamplingOverrides field (app/schemas/runs.py), so there is
               nothing to type here. */}
-          <p className="mt-3 text-xs text-slate-500">
-            Seed: <span className="font-mono text-slate-400">{baseProfile.seed}</span>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Seed: <span className="font-mono text-foreground">{baseProfile.seed}</span>
           </p>
         </>
       ) : (
-        <p className="mt-3 text-xs text-slate-500">Loading sampling profile…</p>
+        <p className="mt-3 text-sm text-muted-foreground">Loading sampling profile…</p>
       )}
 
       {hasChange && <LabelOverrideField value={labelValue} onValueChange={onLabelChange} />}

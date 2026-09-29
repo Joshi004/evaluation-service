@@ -1,16 +1,38 @@
 // Non-DOM logic for CheckpointSamplingCard.tsx.
 import type { CheckpointListItem, SamplingProfileSummary, StandardSummary } from '../../api/client'
 import { formatPreviewValue } from '../DryRunPreview/DryRunPreview.helper'
-import { samplingProfileDisplayName } from '../../utils/samplingProfileDisplayName'
+import { shortFingerprint } from '../../utils/shortFingerprint'
 import { standardDisplayName } from '../../utils/standardDisplayName'
 
 // GET /sampling-profiles returns ad-hoc rows too (label === null) --
-// this card offers a submit-time choice of one *named* profile, not a
-// customisation form, so an unlabelled row never belongs in its
-// options. Mirrors the old grid-wide SamplingProfilePicker's same rule
-// (SamplingProfilePicker.helper.ts, removed by this change).
-export function namedSamplingProfiles(profiles: SamplingProfileSummary[]): SamplingProfileSummary[] {
-  return profiles.filter((profile) => profile.label !== null)
+// this card offers a submit-time choice of a *named* profile plus,
+// when `profileChoice` already points at an unlabelled one (Re-run
+// prefill from a run that used an ad-hoc profile -- Phase 10,
+// docs/UI_REDESIGN_PLAN.md §8.10's own `from` handling), that one row
+// too, so the select always has an option matching its own current
+// value. Mirrors the old grid-wide SamplingProfilePicker's same
+// named-only rule (SamplingProfilePicker.helper.ts) for every profile
+// but the chosen one.
+export function samplingProfileOptions(
+  profileChoice: number | null,
+  samplingProfiles: SamplingProfileSummary[],
+  samplingProfilesById: Map<number, SamplingProfileSummary>,
+): SamplingProfileSummary[] {
+  const named = samplingProfiles.filter((profile) => profile.label !== null)
+  const chosen = profileChoice === null ? undefined : samplingProfilesById.get(profileChoice)
+  if (chosen === undefined || chosen.label !== null) {
+    return named
+  }
+  return [...named, chosen]
+}
+
+// An option's own label -- a named profile shows its label unchanged;
+// the one unlabelled profile samplingProfileOptions above can add shows
+// its fingerprint instead, the same "never show the raw hash" rule
+// FingerprintChip already follows, just inline here since a <select>
+// option can't render a real FingerprintChip.
+export function samplingProfileOptionLabel(profile: SamplingProfileSummary): string {
+  return profile.label ?? `Custom (${shortFingerprint(profile.hash)})`
 }
 
 // This checkpoint's base sampling profile: whichever one this card's
@@ -28,11 +50,15 @@ export function resolveBaseSamplingProfile(
 }
 
 export function defaultProfileOptionLabel(checkpoint: CheckpointListItem): string {
-  const name = samplingProfileDisplayName(
+  const name = samplingProfileOptionLabelFromParts(
     checkpoint.default_sampling_profile_label,
     checkpoint.default_sampling_profile_hash,
   )
   return `Its registered default (${name})`
+}
+
+function samplingProfileOptionLabelFromParts(label: string | null, hash: string): string {
+  return label ?? `Custom (${shortFingerprint(hash)})`
 }
 
 // One combined note per sampling field that at least one selected
