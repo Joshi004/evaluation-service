@@ -1,23 +1,25 @@
+import type { BadgeTone } from '../Badge/Badge.helper'
+
 // Maps each of the five eval_run statuses (the CheckConstraint in
-// app/models/eval_run.py) to a label and a Tailwind colour pair, in one
-// place, so every page showing a run's status renders it identically.
+// app/models/eval_run.py) to a label and a Badge tone, in one place, so
+// every page showing a run's status renders it identically.
 
 interface StatusStyle {
   label: string
-  className: string
+  tone: BadgeTone
 }
 
 const STATUS_STYLES: Record<string, StatusStyle> = {
-  queued: { label: 'Queued', className: 'bg-slate-700/60 text-slate-300' },
-  running: { label: 'Running', className: 'bg-blue-500/20 text-blue-300' },
-  done: { label: 'Done', className: 'bg-emerald-500/20 text-emerald-300' },
-  failed: { label: 'Failed', className: 'bg-red-500/20 text-red-300' },
-  cancelled: { label: 'Cancelled', className: 'bg-amber-500/20 text-amber-300' },
+  queued: { label: 'Queued', tone: 'neutral' },
+  running: { label: 'Running', tone: 'info' },
+  done: { label: 'Done', tone: 'success' },
+  failed: { label: 'Failed', tone: 'danger' },
+  cancelled: { label: 'Cancelled', tone: 'warning' },
 }
 
 const FALLBACK_STYLE: StatusStyle = {
   label: '',
-  className: 'bg-slate-700/60 text-slate-300',
+  tone: 'neutral',
 }
 
 // Falls back to the raw string rather than throwing -- a status value

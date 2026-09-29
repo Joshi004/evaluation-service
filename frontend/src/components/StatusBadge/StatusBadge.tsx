@@ -1,3 +1,4 @@
+import { Badge } from '../Badge/Badge'
 import { statusStyle } from './StatusBadge.helper'
 
 interface StatusBadgeProps {
@@ -7,11 +8,7 @@ interface StatusBadgeProps {
 // One eval_run's status as a coloured pill -- used on both the Runs
 // list and the run detail page so a status always looks the same.
 export function StatusBadge({ status }: StatusBadgeProps) {
-  const { label, className } = statusStyle(status)
+  const { label, tone } = statusStyle(status)
 
-  return (
-    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${className}`}>
-      {label}
-    </span>
-  )
+  return <Badge tone={tone}>{label}</Badge>
 }

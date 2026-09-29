@@ -13,6 +13,7 @@ import { RunDiagnosticsPage } from './pages/RunDiagnosticsPage'
 import { RunSamplePage } from './pages/RunSamplePage'
 import { ComparePage } from './pages/ComparePage'
 import { EndpointsPage } from './pages/EndpointsPage'
+import { StyleguidePage } from './pages/StyleguidePage'
 import { PrototypeApp } from './prototype/PrototypeApp'
 import { prototypeRouteElements } from './prototype/prototypeRoutes'
 
@@ -69,6 +70,15 @@ export function AppRoutes() {
       <Route path="/vision" element={<PrototypeApp />}>
         {prototypeRouteElements}
       </Route>
+
+      {/*
+       * Design-system reference (docs/UI_REDESIGN_PLAN.md Phase 1) --
+       * dev-only, so it never ships. A sibling of the real app for the
+       * same reason /vision is: it is not one of the 13 real pages and
+       * has no reason to inherit the legacy shell Phase 2 is about to
+       * replace.
+       */}
+      {import.meta.env.DEV && <Route path="/styleguide" element={<StyleguidePage />} />}
     </Routes>
   )
 }

@@ -1,4 +1,5 @@
 import type { CheckpointAvailabilityStatus } from '../../api/client'
+import { Badge } from '../Badge/Badge'
 import { availabilityStyle } from './AvailabilityBadge.helper'
 
 interface AvailabilityBadgeProps {
@@ -7,14 +8,10 @@ interface AvailabilityBadgeProps {
 
 // A checkpoint's availability as a coloured pill -- the checkpoints
 // page and the Submit grid (Phase 8) both need it to look identical,
-// built on the same base classes as StatusBadge so the app has one
-// visual language for state.
+// built on the same Badge primitive StatusBadge uses, so the app has
+// one visual language for state.
 export function AvailabilityBadge({ status }: AvailabilityBadgeProps) {
-  const { label, className } = availabilityStyle(status)
+  const { label, tone } = availabilityStyle(status)
 
-  return (
-    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${className}`}>
-      {label}
-    </span>
-  )
+  return <Badge tone={tone}>{label}</Badge>
 }

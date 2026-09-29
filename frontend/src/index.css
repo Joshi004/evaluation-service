@@ -1,1 +1,221 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+
+/*
+ * Design tokens (docs/UI_REDESIGN_PLAN.md Phase 1, §4.6). Semantic CSS
+ * variables carry the actual colour values; @theme inline maps them
+ * into Tailwind so utilities like `bg-card` and `text-muted-foreground`
+ * follow whichever theme is active, instead of a value baked in once
+ * at build time. Dark is the default; [data-theme="light"] is reachable
+ * today by setting the attribute in devtools -- Phase 14 adds the
+ * toggle UI.
+ *
+ * Radius and shadow intentionally reuse Tailwind's own scale rather
+ * than redefining it: v4's stock `rounded-md` (6px) / `rounded-lg`
+ * (8px) / `rounded-xl` (12px) already equal the sm/md/lg radii the
+ * design calls for, and its stock `shadow-*` utilities are plain black
+ * at low opacity, which already reads as "invisible on dark, soft on
+ * light" with no extra work. Most of the type scale is the same story:
+ * `text-xs` (12px) is the caption size, `text-sm` (14px) is body/base,
+ * `text-lg` / `text-xl` / `text-2xl` / `text-3xl` (18/20/24/30px) are
+ * the four heading sizes. The only size below is the one the stock
+ * scale doesn't have -- the 13px table size.
+ */
+
+:root {
+  /* Surfaces */
+  --background: oklch(0.14 0.014 260);
+  --card: oklch(0.19 0.014 260);
+  --popover: oklch(0.22 0.014 260);
+  --muted: oklch(0.24 0.014 260);
+
+  /* Text */
+  --foreground: oklch(0.96 0.005 260);
+  --muted-foreground: oklch(0.66 0.014 260);
+  --subtle-foreground: oklch(0.6 0.014 260);
+
+  /* Lines. `border` is a deliberately subtle divider -- WCAG's 3:1
+     non-text-contrast rule is for boundaries required to identify a
+     component or state, not decorative ones, and most dark-themed
+     products (this codebase's own StatusBadge/EmptyState included)
+     already ship borders this quiet. `border-strong` and `ring` are
+     the functional tier and clear 3:1 against `card` (see the phase
+     summary for the computed ratios). */
+  --border: oklch(0.32 0.014 260);
+  --border-strong: oklch(0.58 0.016 260);
+  --ring: oklch(0.56 0.19 265);
+
+  /* Brand */
+  --primary: oklch(0.56 0.19 265);
+  --primary-hover: oklch(0.5 0.2 265);
+  --primary-soft: oklch(0.27 0.08 265);
+  --primary-foreground: oklch(0.99 0.005 265);
+
+  /* Status. Text sits in the solid colour, on the matching -soft
+     background (the pattern StatusBadge/AvailabilityBadge already use
+     with raw classes today -- Badge below is the tokenised version). */
+  --success: oklch(0.72 0.17 145);
+  --success-soft: oklch(0.27 0.06 145);
+  --warning: oklch(0.78 0.15 80);
+  --warning-soft: oklch(0.28 0.05 80);
+  --danger: oklch(0.68 0.21 25);
+  --danger-soft: oklch(0.26 0.07 25);
+  --info: oklch(0.68 0.15 230);
+  --info-soft: oklch(0.27 0.06 230);
+
+  /* Data-viz: 8 categorical series, evenly spaced 45 degrees apart
+     around the hue wheel starting from the brand hue, at one fixed
+     lightness/chroma so no series reads as more "important" than
+     another. */
+  --series-1: oklch(0.68 0.15 265);
+  --series-2: oklch(0.68 0.15 310);
+  --series-3: oklch(0.68 0.15 355);
+  --series-4: oklch(0.68 0.15 40);
+  --series-5: oklch(0.68 0.15 85);
+  --series-6: oklch(0.68 0.15 130);
+  --series-7: oklch(0.68 0.15 175);
+  --series-8: oklch(0.68 0.15 220);
+
+  /* Data-viz: single-hue sequential ramp (the brand hue) for score
+     magnitude, low to high. */
+  --heat-1: oklch(0.32 0.06 265);
+  --heat-2: oklch(0.44 0.1 265);
+  --heat-3: oklch(0.56 0.15 265);
+  --heat-4: oklch(0.68 0.19 265);
+  --heat-5: oklch(0.8 0.2 265);
+}
+
+[data-theme='light'] {
+  --background: oklch(0.99 0.002 260);
+  --card: oklch(1 0 0);
+  --popover: oklch(1 0 0);
+  --muted: oklch(0.95 0.004 260);
+
+  --foreground: oklch(0.21 0.014 260);
+  --muted-foreground: oklch(0.48 0.014 260);
+  --subtle-foreground: oklch(0.55 0.014 260);
+
+  --border: oklch(0.88 0.008 260);
+  --border-strong: oklch(0.62 0.012 260);
+  --ring: oklch(0.5 0.2 265);
+
+  --primary: oklch(0.5 0.2 265);
+  --primary-hover: oklch(0.44 0.21 265);
+  --primary-soft: oklch(0.94 0.03 265);
+  --primary-foreground: oklch(0.99 0.002 265);
+
+  --success: oklch(0.48 0.15 145);
+  --success-soft: oklch(0.94 0.05 145);
+  --warning: oklch(0.52 0.14 80);
+  --warning-soft: oklch(0.94 0.05 80);
+  --danger: oklch(0.5 0.19 25);
+  --danger-soft: oklch(0.94 0.045 25);
+  --info: oklch(0.48 0.15 230);
+  --info-soft: oklch(0.94 0.03 230);
+
+  --series-1: oklch(0.5 0.15 265);
+  --series-2: oklch(0.5 0.15 310);
+  --series-3: oklch(0.5 0.15 355);
+  --series-4: oklch(0.5 0.15 40);
+  --series-5: oklch(0.5 0.15 85);
+  --series-6: oklch(0.5 0.15 130);
+  --series-7: oklch(0.5 0.15 175);
+  --series-8: oklch(0.5 0.15 220);
+
+  --heat-1: oklch(0.88 0.03 265);
+  --heat-2: oklch(0.74 0.09 265);
+  --heat-3: oklch(0.6 0.15 265);
+  --heat-4: oklch(0.46 0.19 265);
+  --heat-5: oklch(0.34 0.2 265);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-card: var(--card);
+  --color-popover: var(--popover);
+  --color-muted: var(--muted);
+
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-subtle-foreground: var(--subtle-foreground);
+
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-ring: var(--ring);
+
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
+  --color-series-3: var(--series-3);
+  --color-series-4: var(--series-4);
+  --color-series-5: var(--series-5);
+  --color-series-6: var(--series-6);
+  --color-series-7: var(--series-7);
+  --color-series-8: var(--series-8);
+
+  --color-heat-1: var(--heat-1);
+  --color-heat-2: var(--heat-2);
+  --color-heat-3: var(--heat-3);
+  --color-heat-4: var(--heat-4);
+  --color-heat-5: var(--heat-5);
+
+  /* Self-hosted via @fontsource-variable/inter; the package's own
+     @font-face rules register the family name 'Inter Variable'. */
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* The one type size the stock scale doesn't already have -- see the
+     file comment above for how the rest of the scale maps. */
+  --text-table: 0.8125rem;
+  --text-table--line-height: 1.1rem;
+}
+
+@layer base {
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: var(--primary-soft);
+    color: var(--foreground);
+  }
+
+  /* Thin scrollbars in the app's own tones rather than the browser default. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--border-strong);
+    border-radius: 9999px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
+}
