@@ -9,6 +9,13 @@ import {
 
 interface SampleDetailProps {
   sample: DiagnosticsSampleDetail
+  // Compare's side-by-side dialog (Phase 8, docs/UI_REDESIGN_PLAN.md
+  // §8.8) shows the prompt once, above every run's own column, since
+  // a flipped sample's prompt is identical across runs (verified
+  // against sample 1000 on runs 9, 13 and 15) -- each column then
+  // renders this with `showPrompt={false}` so the prompt isn't
+  // repeated once per run.
+  showPrompt?: boolean
 }
 
 // Layer 5's shared shell (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md
@@ -18,7 +25,7 @@ interface SampleDetailProps {
 // comparison. Works for every benchmark in the catalog; the per-rule
 // checklist itself is a separate sibling (IfevalRuleChecklist),
 // rendered by the caller only when sample.rules.length > 0.
-export function SampleDetail({ sample }: SampleDetailProps) {
+export function SampleDetail({ sample, showPrompt = true }: SampleDetailProps) {
   const [reasoningExpanded, setReasoningExpanded] = useState(false)
   const text = sample.text
 
@@ -42,12 +49,14 @@ export function SampleDetail({ sample }: SampleDetailProps) {
         <span className="font-mono text-xs text-muted-foreground">{formatScores(sample.scores)}</span>
       </div>
 
-      <section className="mt-4">
-        <h2 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Prompt</h2>
-        <p className="mt-1 rounded-lg border border-border bg-muted p-3 text-sm whitespace-pre-wrap text-foreground">
-          {text.prompt}
-        </p>
-      </section>
+      {showPrompt && (
+        <section className="mt-4">
+          <h2 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Prompt</h2>
+          <p className="mt-1 rounded-lg border border-border bg-muted p-3 text-sm whitespace-pre-wrap text-foreground">
+            {text.prompt}
+          </p>
+        </section>
+      )}
 
       <section className="mt-4">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">

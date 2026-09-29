@@ -39,8 +39,13 @@ export const queryKeys = {
   runDiagnostics: (runId: number) => ['run-diagnostics', runId] as const,
   runSamples: (runId: number, filters: SampleListFilters) => ['run-samples', runId, filters] as const,
   runSample: (runId: number, sampleKey: string | undefined) => ['run-sample', runId, sampleKey] as const,
-  runComparison: (leftRunId: number | null, rightRunId: number | null) =>
-    ['run-comparison', leftRunId, rightRunId] as const,
+  // Baseline first -- `compare(a, b)` and `compare(b, a)` are genuinely
+  // different requests (the backend's own left/right, and thus
+  // delta.value's sign, depend on the order), so they must be two
+  // different cache entries, not one keyed on an order-independent
+  // pair.
+  runComparison: (baselineRunId: number, otherRunId: number) =>
+    ['run-comparison', baselineRunId, otherRunId] as const,
 
   endpoints: () => ['endpoints'] as const,
   clusterPartitions: () => ['cluster-partitions'] as const,

@@ -1,4 +1,4 @@
-import { keepPreviousData, queryOptions, useQuery, type UseQueryResult } from '@tanstack/react-query'
+import { keepPreviousData, queryOptions, useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query'
 import {
   apiFetch,
   type DiagnosticsSampleDetail,
@@ -105,11 +105,13 @@ export function useRunSamples(runId: number, filters: SampleListFilters): UseQue
   })
 }
 
-export function useRunSample(
-  runId: number,
-  sampleKey: string | undefined,
-): UseQueryResult<DiagnosticsSampleDetail> {
-  return useQuery({
+// Factored out of useRunSample so Compare's own side-by-side dialog
+// (Phase 8, docs/UI_REDESIGN_PLAN.md §8.8) can fetch one sample from
+// several runs in parallel through the exact same options -- each run
+// is its own cache entry (queryKeys.runSample), shared with this run's
+// own Samples tab.
+export function runSampleQueryOptions(runId: number, sampleKey: string | undefined) {
+  return queryOptions({
     queryKey: queryKeys.runSample(runId, sampleKey),
     queryFn: () =>
       apiFetch<DiagnosticsSampleDetail>(`/runs/${runId}/samples/${encodeURIComponent(sampleKey ?? '')}`),
@@ -122,16 +124,49 @@ export function useRunSample(
   })
 }
 
-export function useRunComparison(
-  leftRunId: number | null,
-  rightRunId: number | null,
-): UseQueryResult<RunComparison> {
-  return useQuery({
-    queryKey: queryKeys.runComparison(leftRunId, rightRunId),
-    queryFn: () => apiFetch<RunComparison>(`/runs/${leftRunId}/compare/${rightRunId}`),
-    enabled: leftRunId !== null && rightRunId !== null,
+export function useRunSample(
+  runId: number,
+  sampleKey: string | undefined,
+): UseQueryResult<DiagnosticsSampleDetail> {
+  return useQuery(runSampleQueryOptions(runId, sampleKey))
+}
+
+// Compare's side-by-side dialog (Phase 8): the same sample_key, read
+// off every compared run at once -- a 404 on one side (the flip's own
+// baseline, or a run that never produced this key) is that column's
+// own not-found state, not a reason to fail every other column.
+export function useSampleAcrossRuns(
+  runIds: number[],
+  sampleKey: string | undefined,
+): UseQueryResult<DiagnosticsSampleDetail>[] {
+  return useQueries({ queries: runIds.map((runId) => runSampleQueryOptions(runId, sampleKey)) })
+}
+
+// Baseline vs one other run -- see app/services/diagnostics/compare.py.
+// `baselineRunId` is always the request's own left side, so
+// delta.value (right - left) already carries the right sign for "the
+// other run vs the baseline" with no sign-flipping at any call site.
+export function runComparisonQueryOptions(baselineRunId: number, otherRunId: number) {
+  return queryOptions({
+    queryKey: queryKeys.runComparison(baselineRunId, otherRunId),
+    queryFn: () => apiFetch<RunComparison>(`/runs/${baselineRunId}/compare/${otherRunId}`),
     // A 404 (unknown run) or 409 (not finished) won't succeed on a
-    // third attempt -- retrying would only delay the error state.
+    // third attempt -- retrying would only delay the error state. Both
+    // are pre-empted in practice: Compare only ever calls this with
+    // ids it already confirmed are `done` via useRunsById.
     retry: false,
+  })
+}
+
+// Compare's own N-way join (Phase 8): the baseline against every other
+// pinned run, in parallel -- at most 3 requests (MAX_COMPARE_RUNS - 1),
+// each independently cached so switching which run is the baseline
+// only issues requests for pairs not already seen.
+export function useRunComparisons(
+  baselineRunId: number,
+  otherRunIds: number[],
+): UseQueryResult<RunComparison>[] {
+  return useQueries({
+    queries: otherRunIds.map((otherRunId) => runComparisonQueryOptions(baselineRunId, otherRunId)),
   })
 }

@@ -96,6 +96,8 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 export function StyleguidePage() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [lgDialogOpen, setLgDialogOpen] = useState(false)
+  const [xlDialogOpen, setXlDialogOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [tab, setTab] = useState('one')
   const [checked, setChecked] = useState(true)
@@ -194,6 +196,24 @@ export function StyleguidePage() {
             <p className="text-sm text-foreground">Dialog body content goes here.</p>
           </Dialog>
 
+          {/* Phase 8 (docs/UI_REDESIGN_PLAN.md §8.8): `size="lg"` is
+              Compare's own Add run picker; `size="xl"` is its
+              side-by-side sample view, wide enough for 2-4 answer
+              columns. `size` defaults to 'md' (the dialog above). */}
+          <Button variant="secondary" onClick={() => setLgDialogOpen(true)}>
+            Open lg dialog
+          </Button>
+          <Dialog open={lgDialogOpen} onOpenChange={setLgDialogOpen} title="size=&quot;lg&quot;" size="lg">
+            <p className="text-sm text-foreground">Compare's own Add run picker uses this size.</p>
+          </Dialog>
+
+          <Button variant="secondary" onClick={() => setXlDialogOpen(true)}>
+            Open xl dialog
+          </Button>
+          <Dialog open={xlDialogOpen} onOpenChange={setXlDialogOpen} title="size=&quot;xl&quot;" size="xl">
+            <p className="text-sm text-foreground">Compare's own side-by-side sample view uses this size.</p>
+          </Dialog>
+
           <Button variant="danger" onClick={() => setConfirmOpen(true)}>
             Open confirm dialog
           </Button>
@@ -263,6 +283,19 @@ export function StyleguidePage() {
             domainMin={0.75}
             domainMax={0.95}
             className="text-foreground"
+          />
+
+          {/* Phase 8's own forest plot draws these at 240px, wide
+              enough for 2-4 overlapping intervals to stay legible on
+              one shared axis (default is 96px, above). */}
+          <IntervalWhisker
+            lower={0.822}
+            upper={0.881}
+            value={0.854}
+            domainMin={0.55}
+            domainMax={0.95}
+            width={240}
+            className="text-series-1"
           />
 
           <CopyLinkButton url="https://example.com/?bench=ifeval" />

@@ -9,8 +9,8 @@ import { Tooltip } from '../components/Tooltip/Tooltip'
 import { formatDuration } from '../utils/formatDuration'
 import { TERM_HINTS } from '../utils/labels'
 import { paths } from '../utils/paths'
+import { displayOrDash, samplingFieldRows, servingFieldRows, standardFieldRows } from '../utils/runConfigFieldRows'
 import { useRunReport } from './RunReportPage.helper'
-import { displayOrDash, samplingFieldRows, servingFieldRows, standardFieldRows } from './RunConfigTab.helper'
 import { engineOptionEntries } from './ServingProfilesPage.helper'
 
 interface ConfigCardProps {

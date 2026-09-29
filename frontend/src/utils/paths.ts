@@ -3,10 +3,8 @@
 // literal (docs/UI_REDESIGN_PLAN.md Phase 2, Appendix A: this contract
 // is owned here and used by every later phase). Some targets below
 // don't have a mounted route yet -- model/benchmark point at Phase
-// 11/12 detail pages, and compare's ?runs= shape is only read by
-// ComparePage once Phase 8 migrates it off left/right -- but the
-// builder exists now so later phases extend this file instead of
-// inventing a second path module.
+// 11/12 detail pages -- but the builder exists now so later phases
+// extend this file instead of inventing a second path module.
 export const paths = {
   leaderboard: () => '/',
   models: () => '/models',
@@ -65,15 +63,13 @@ export const paths = {
     `/runs/${runId}/samples/${encodeURIComponent(sampleKey)}`,
   runConfig: (runId: number | string) => `/runs/${runId}/config`,
   runLogs: (runId: number | string) => `/runs/${runId}/logs`,
-  // The ?runs= shape is decision territory of Phase 8 (Appendix A), but
-  // the builder is defined here so nothing later reinvents it. No
-  // Phase 2 caller passes runIds -- the sidebar's Compare link calls
-  // this with no arguments, which is just '/compare'.
+  // The canonical compare URL (Phase 8, docs/UI_REDESIGN_PLAN.md §8.8):
+  // 2-4 run ids, first = baseline. The tray's own Compare button, the
+  // Leaderboard's and Model page's "Compare with..." entry points, and
+  // Make baseline/Add run/Remove on the compare page itself all build
+  // their target through this one function. No arguments (the
+  // sidebar's Compare link) is just '/compare' -- the page's own start
+  // state then reads whatever the tray already holds.
   compare: (runIds?: number[]) => (runIds && runIds.length > 0 ? `/compare?runs=${runIds.join(',')}` : '/compare'),
-  // Temporary (Phase 5): ComparePage only reads today's ?left=&right=
-  // shape until Phase 8 migrates it to ?runs= above and raises
-  // MAX_COMPARE_RUNS to 4. CompareTray's own Compare button calls this,
-  // not paths.compare(), until then.
-  compareLeftRight: (leftRunId: number, rightRunId: number) => `/compare?left=${leftRunId}&right=${rightRunId}`,
   infrastructure: () => '/infrastructure',
 }

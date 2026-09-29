@@ -8,6 +8,7 @@ import type { BenchmarkColumn, ModelRow, SetupOption } from '../../utils/buildLe
 import { cn } from '../../utils/cn'
 import { compareCandidateFromLeaderboardCell } from '../../utils/compareTray'
 import { formatFractionAsPercent } from '../../utils/formatFractionAsPercent'
+import { computeIntervalDomain } from '../../utils/intervalDomain'
 import { paths } from '../../utils/paths'
 import { samplingProfileDisplayName } from '../../utils/samplingProfileDisplayName'
 import { shortFingerprint } from '../../utils/shortFingerprint'
@@ -21,7 +22,7 @@ import { ScoreValue } from '../ScoreValue/ScoreValue'
 import { SelectField } from '../SelectField/SelectField'
 import { Table, TableCell, TableHeaderCell } from '../Table/Table'
 import { Tooltip } from '../Tooltip/Tooltip'
-import { buildNotEvaluatedModels, buildRankedRows, computeIntervalDomain, type RankedRow } from './LeaderboardBenchmarkTable.helper'
+import { buildNotEvaluatedModels, buildRankedRows, type RankedRow } from './LeaderboardBenchmarkTable.helper'
 
 interface LeaderboardBenchmarkTableProps {
   // Unfiltered, for the Benchmark selector -- this lens ignores the

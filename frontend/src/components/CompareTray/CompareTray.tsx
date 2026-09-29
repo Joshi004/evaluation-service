@@ -3,7 +3,7 @@ import { Link } from 'react-router'
 import { useStandards } from '../../api/queries/standards'
 import { benchmarkDisplayName } from '../../utils/benchmarkDisplayName'
 import { BUTTON_LABEL_SIZE, buttonClassName } from '../Button/Button.helper'
-import { MAX_COMPARE_RUNS, setupMatch, type PinnedRun, type SetupMatch } from '../../utils/compareTray'
+import { MIN_COMPARE_RUNS, setupMatch, type PinnedRun, type SetupMatch } from '../../utils/compareTray'
 import { paths } from '../../utils/paths'
 import { useCompareTray } from '../../utils/useCompareTray'
 import { Badge } from '../Badge/Badge'
@@ -55,7 +55,7 @@ function SetupMatchBadge({ match }: { match: SetupMatch }) {
     )
   }
   return (
-    <Tooltip content="Pinned runs use different sampling profiles -- Compare will show what changed.">
+    <Tooltip content="Pinned runs don't share one setup -- the benchmark protocol or the sampling profile differs. Compare will show what changed.">
       <span tabIndex={0}>
         <Badge tone="warning" className="gap-1">
           <AlertTriangle className="h-3 w-3" aria-hidden="true" />
@@ -81,7 +81,11 @@ export function CompareTray() {
 
   const benchmarkName = benchmarkDisplayName(pinnedRuns[0].benchmark, standards.data ?? [])
   const match = setupMatch(pinnedRuns)
-  const canCompare = pinnedRuns.length >= MAX_COMPARE_RUNS
+  // MIN_COMPARE_RUNS, not MAX -- a tray sitting at exactly 2 is already
+  // a valid comparison; nothing requires filling every one of the 4
+  // slots first.
+  const canCompare = pinnedRuns.length >= MIN_COMPARE_RUNS
+  const runIds = pinnedRuns.map((run) => run.runId)
 
   return (
     <section
@@ -108,10 +112,7 @@ export function CompareTray() {
           Clear
         </Button>
         {canCompare ? (
-          <Link
-            to={paths.compareLeftRight(pinnedRuns[0].runId, pinnedRuns[1].runId)}
-            className={buttonClassName('primary', BUTTON_LABEL_SIZE.sm)}
-          >
+          <Link to={paths.compare(runIds)} className={buttonClassName('primary', BUTTON_LABEL_SIZE.sm)}>
             Compare
           </Link>
         ) : (

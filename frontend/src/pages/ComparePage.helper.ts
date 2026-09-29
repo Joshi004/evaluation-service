@@ -1,27 +1,16 @@
-// Non-DOM logic for ComparePage.tsx: the ?left=&right= URL contract,
-// the run-picker's own label, and the score/delta/significance text the
-// two score cards render (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md
-// Phase 9). Kept out of the component body per
-// .cursor/rules/frontend-components.mdc.
-
-import type { ComparisonDelta, ComparisonSide, FlipSample, RunListItem } from '../api/client'
-import { formatFractionAsPercent } from '../utils/formatFractionAsPercent'
-
-export interface CompareParams {
-  left: number | null
-  right: number | null
-}
-
-// Reads left/right off the URL's query string. Either or both can be
-// absent -- landing on a bare /compare (the nav item) shows two empty
-// pickers rather than erroring; Phase 9's "the page reads ?left= and
-// ?right= so it is linkable" doesn't require both to already be set.
-export function parseCompareParams(params: URLSearchParams): CompareParams {
-  return {
-    left: parsePositiveInt(params.get('left')),
-    right: parsePositiveInt(params.get('right')),
-  }
-}
+// Non-DOM logic for ComparePage.tsx: the canonical ?runs= URL contract
+// (Phase 8, docs/UI_REDESIGN_PLAN.md §8.8) and how a run already in
+// that list, once loaded, turns out to be unusable. Only this page
+// needs these -- once a shape here is needed by a second component
+// (like ComparePairState), it moves to src/utils/ instead
+// (.cursor/rules/frontend-components.mdc).
+import type { UseQueryResult } from '@tanstack/react-query'
+import type { RunDetail } from '../api/client'
+import { MAX_COMPARE_RUNS } from '../utils/compareTray'
+import { isNotFoundError } from '../utils/isNotFoundError'
+import { RUN_STATUS_LABELS } from '../utils/labels'
+import { paths } from '../utils/paths'
+import { readNumberListParam } from '../utils/useUrlState'
 
 function parsePositiveInt(value: string | null): number | null {
   if (value === null) {
@@ -31,83 +20,85 @@ function parsePositiveInt(value: string | null): number | null {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null
 }
 
-// The inverse of parseCompareParams, for writing the URL back out when
-// a picker changes.
-export function toCompareParams(params: CompareParams): URLSearchParams {
-  const searchParams = new URLSearchParams()
-  if (params.left !== null) {
-    searchParams.set('left', String(params.left))
+// Drops non-positive and duplicate ids (first occurrence wins) and
+// caps at MAX_COMPARE_RUNS -- the list a shared link should always
+// resolve back to, so resolveCompareRedirect below can tell a URL
+// that already IS canonical from one that needs cleaning up.
+export function normalizeRunIds(rawRunIds: number[]): number[] {
+  const seen = new Set<number>()
+  const normalized: number[] = []
+  for (const runId of rawRunIds) {
+    if (runId <= 0 || seen.has(runId)) {
+      continue
+    }
+    seen.add(runId)
+    normalized.push(runId)
+    if (normalized.length === MAX_COMPARE_RUNS) {
+      break
+    }
   }
-  if (params.right !== null) {
-    searchParams.set('right', String(params.right))
+  return normalized
+}
+
+export function parseCompareRunIds(searchParams: URLSearchParams): number[] {
+  return normalizeRunIds(readNumberListParam(searchParams, 'runs'))
+}
+
+// `/compare?left=&right=` was the canonical URL before Phase 8 (§8.8's
+// own acceptance criterion: that link must keep working); a `runs`
+// list that needed cleaning (a duplicate, an invalid id, or more than
+// MAX_COMPARE_RUNS entries) also earns a redirect, so a copied link
+// always settles on the one URL it will keep resolving to. `null`
+// means the URL is already canonical -- nothing to redirect.
+export function resolveCompareRedirect(searchParams: URLSearchParams): string | null {
+  if (!searchParams.has('runs')) {
+    const left = parsePositiveInt(searchParams.get('left'))
+    const right = parsePositiveInt(searchParams.get('right'))
+    const legacyIds = normalizeRunIds([left, right].filter((id): id is number => id !== null))
+    return legacyIds.length > 0 ? paths.compare(legacyIds) : null
   }
-  return searchParams
+
+  const parsedIds = readNumberListParam(searchParams, 'runs')
+  const normalizedIds = normalizeRunIds(parsedIds)
+  const isCanonical =
+    parsedIds.length === normalizedIds.length && parsedIds.every((id, index) => id === normalizedIds[index])
+  return isCanonical ? null : paths.compare(normalizedIds)
 }
 
-// "#13 · ifeval · merged_global_step_810" -- what each <select> option
-// reads. A bare run id means nothing to someone picking which two runs
-// to compare.
-export function runPickerLabel(run: RunListItem): string {
-  return `#${run.id} \u00b7 ${run.benchmark} \u00b7 ${run.checkpoint_name}`
+export function parseFlipsRunId(searchParams: URLSearchParams): number | null {
+  return parsePositiveInt(searchParams.get('flips'))
 }
 
-// Newest-first -- the runs someone wants to compare are almost always
-// recent ones, and "#13, #12, #11…" is faster to scan than creation
-// order once there are more than a handful of finished runs.
-export function sortRunsForPicker(runs: RunListItem[]): RunListItem[] {
-  return [...runs].sort((a, b) => b.id - a.id)
+export type ProblemReason = 'not-found' | 'not-finished' | 'load-error'
+
+export interface ProblemRun {
+  runId: number
+  reason: ProblemReason
+  // Only meaningful for 'not-finished' -- queued/running/failed/
+  // cancelled all read differently, so the message can say which.
+  status: string | null
 }
 
-// Scores are stored as 0..1 fractions (docs/DATA_MODEL_V1.md) -- shown
-// as a percentage, the same convention every other score in the app
-// uses.
-export function sideScoreText(side: ComparisonSide): string {
-  return formatFractionAsPercent(side.value)
-}
-
-export function sideConfidenceIntervalText(side: ComparisonSide): string | null {
-  if (side.confidence_interval === null) {
-    return null
+// A run qualifies the same way the compare tray's own findPinRefusal
+// does (status === 'done') -- that same rule, applied per row once the
+// run is actually loaded instead of at pin time.
+export function classifyProblemRun(runId: number, query: UseQueryResult<RunDetail>): ProblemRun | null {
+  if (query.isError) {
+    return { runId, reason: isNotFoundError(query.error) ? 'not-found' : 'load-error', status: null }
   }
-  const lower = formatFractionAsPercent(side.confidence_interval.lower)
-  const upper = formatFractionAsPercent(side.confidence_interval.upper)
-  return `95% CI ${lower}\u2013${upper}`
+  if (query.data && query.data.status !== 'done') {
+    return { runId, reason: 'not-finished', status: query.data.status }
+  }
+  return null
 }
 
-// "+1.5 points" / "-2.0 points" -- signed, since a delta's direction is
-// the entire point of this page. `right.value - left.value`, matching
-// the backend's own ComparisonDelta.value.
-export function deltaText(delta: ComparisonDelta): string {
-  const points = delta.value * 100
-  const sign = points > 0 ? '+' : ''
-  return `${sign}${points.toFixed(1)} points`
-}
-
-// "not significant — inside the combined ±4.1pt interval" or the
-// significant equivalent. docs/SCORE_DRILLDOWN_UI_PLAN.md Section 4:
-// "A 1.3-point move at ±4 points is noise and the page should say so"
-// -- this is that sentence, computed from the same two Wilson
-// intervals the score cards already show.
-export function significanceText(delta: ComparisonDelta): string {
-  const combinedPoints = (delta.combined_half_width * 100).toFixed(1)
-  return delta.is_significant
-    ? `significant \u2014 outside the combined \u00b1${combinedPoints}pt interval`
-    : `not significant \u2014 inside the combined \u00b1${combinedPoints}pt interval`
-}
-
-// Greys out a delta that isn't significant, the same "don't let noise
-// read as progress" treatment Section 4's Layer 1 asks for on the
-// leaderboard's own delta.
-export function significanceClassName(delta: ComparisonDelta): string {
-  return delta.is_significant ? 'text-slate-200' : 'text-slate-500'
-}
-
-// True once either flip list carries more than one distinct subset --
-// RunComparison has no subsets list of its own (unlike RunDiagnostics),
-// so this reads the signal off the one place a subset is actually
-// carried, the same "hidden when the benchmark has only one" rule
-// RunDiagnosticsPage applies to its own subset column.
-export function hasMultipleSubsets(failToPass: FlipSample[], passToFail: FlipSample[]): boolean {
-  const subsets = new Set([...failToPass, ...passToFail].map((sample) => sample.subset))
-  return subsets.size > 1
+export function describeProblemRun(problem: ProblemRun): string {
+  switch (problem.reason) {
+    case 'not-found':
+      return `Run #${problem.runId} doesn't exist.`
+    case 'not-finished':
+      return `Run #${problem.runId} is ${RUN_STATUS_LABELS[problem.status ?? ''] ?? problem.status} — only finished runs can be compared.`
+    case 'load-error':
+      return `Run #${problem.runId} could not be loaded.`
+  }
 }

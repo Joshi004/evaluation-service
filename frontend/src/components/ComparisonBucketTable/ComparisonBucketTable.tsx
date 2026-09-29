@@ -1,56 +1,105 @@
-import type { ComparisonBucketDelta } from '../../api/client'
+import { useState } from 'react'
+import type { RunDetail } from '../../api/client'
+import type { ComparePairState } from '../../utils/compareRuns'
 import { formatFractionAsPercent } from '../../utils/formatFractionAsPercent'
-import { bucketDeltaText } from './ComparisonBucketTable.helper'
+import { formatScoreDelta } from '../../utils/formatScore'
+import { SegmentedControl } from '../SegmentedControl/SegmentedControl'
+import { Table, TableCell, TableHeaderCell } from '../Table/Table'
+import {
+  availableBucketLevels,
+  bucketUnitLabel,
+  buildMergedBucketRows,
+  comparableBucketPairs,
+  resolveBucketLevel,
+  visibleBucketRows,
+} from './ComparisonBucketTable.helper'
 
 interface ComparisonBucketTableProps {
-  deltas: ComparisonBucketDelta[]
+  otherRuns: RunDetail[]
+  pairs: ComparePairState[]
+  level: string | null
+  onLevelChange: (level: string) => void
 }
 
-// Phase 9's bucket-delta table (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md):
-// Layer 3's per-run breakdown, diffed across two runs. Pre-sorted by the
-// backend on |pass_rate_delta|, so the row that moved most sits first
-// regardless of level -- rendered only when both runs actually produced
-// buckets (ComparePage skips this component entirely otherwise).
-export function ComparisonBucketTable({ deltas }: ComparisonBucketTableProps) {
+// §8.8 item 5: bucket-delta table merged across every comparable
+// pair by (level, name) -- the old two-run table (Phase 9,
+// docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md), now with one Δ column
+// per non-baseline run instead of exactly one.
+export function ComparisonBucketTable({ otherRuns, pairs, level, onLevelChange }: ComparisonBucketTableProps) {
+  const [expanded, setExpanded] = useState(false)
+  const bucketPairs = comparableBucketPairs(pairs)
+  const availableLevels = availableBucketLevels(bucketPairs)
+
+  // Nothing has produced a breakdown yet (every pair still loading,
+  // refused, or a benchmark with no buckets at all, e.g. GSM8K) --
+  // rendered only once there is something to show, the same rule the
+  // single-pair table always followed.
+  if (availableLevels.length === 0) {
+    return null
+  }
+
+  const effectiveLevel = resolveBucketLevel(level, availableLevels)
+  if (effectiveLevel === null) {
+    return null
+  }
+
+  const rows = buildMergedBucketRows(bucketPairs, effectiveLevel)
+  const visibleRows = visibleBucketRows(rows, expanded)
+  const unit = bucketUnitLabel(effectiveLevel)
+
   return (
-    <div className="mt-6">
-      <h2 className="text-sm font-medium text-slate-200">Where the score moved</h2>
-      <table className="mt-2 w-full border-collapse text-sm">
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-sm font-medium text-foreground">Where the score moved</h2>
+        {availableLevels.length > 1 && (
+          <SegmentedControl
+            value={effectiveLevel}
+            onValueChange={onLevelChange}
+            options={availableLevels.map((candidate) => ({ value: candidate, label: candidate }))}
+          />
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground">Counted in {unit}; rows don't add up to the total.</p>
+      <Table>
         <thead>
           <tr>
-            <th className="border-b border-slate-800 p-2 text-left font-medium text-slate-400">Name</th>
-            <th className="border-b border-slate-800 p-2 text-left font-medium text-slate-400">
-              Level
-            </th>
-            <th className="border-b border-slate-800 p-2 text-right font-medium text-slate-400">
-              Left
-            </th>
-            <th className="border-b border-slate-800 p-2 text-right font-medium text-slate-400">
-              Right
-            </th>
-            <th className="border-b border-slate-800 p-2 text-right font-medium text-slate-400">
-              Delta
-            </th>
+            <TableHeaderCell>Name</TableHeaderCell>
+            <TableHeaderCell className="text-right">Baseline</TableHeaderCell>
+            {otherRuns.map((run) => (
+              <TableHeaderCell key={run.id} className="text-right">
+                #{run.id} Δ
+              </TableHeaderCell>
+            ))}
           </tr>
         </thead>
         <tbody>
-          {deltas.map((bucket) => (
-            <tr key={`${bucket.level}:${bucket.name}`}>
-              <td className="border-b border-slate-800/50 p-2 text-slate-200">{bucket.name}</td>
-              <td className="border-b border-slate-800/50 p-2 text-slate-400">{bucket.level}</td>
-              <td className="border-b border-slate-800/50 p-2 text-right font-mono text-slate-300">
-                {formatFractionAsPercent(bucket.left_pass_rate)}
-              </td>
-              <td className="border-b border-slate-800/50 p-2 text-right font-mono text-slate-300">
-                {formatFractionAsPercent(bucket.right_pass_rate)}
-              </td>
-              <td className="border-b border-slate-800/50 p-2 text-right font-mono text-slate-100">
-                {bucketDeltaText(bucket.pass_rate_delta)}
-              </td>
+          {visibleRows.map((row) => (
+            <tr key={row.name}>
+              <TableCell>{row.name}</TableCell>
+              <TableCell className="text-right font-mono tabular-nums">
+                {row.baselinePassRate === null ? '—' : formatFractionAsPercent(row.baselinePassRate)}
+              </TableCell>
+              {otherRuns.map((run) => {
+                const cell = row.perRun.find((entry) => entry.runId === run.id)
+                return (
+                  <TableCell key={run.id} className="text-right font-mono tabular-nums">
+                    {cell && cell.delta !== null ? formatScoreDelta(cell.delta) : '—'}
+                  </TableCell>
+                )
+              })}
             </tr>
           ))}
         </tbody>
-      </table>
+      </Table>
+      {rows.length > visibleRows.length && (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="text-xs font-medium text-primary hover:underline"
+        >
+          Show all {rows.length}
+        </button>
+      )}
     </div>
   )
 }

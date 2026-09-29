@@ -161,18 +161,19 @@ export function AppRoutes() {
         />
 
         {/*
-         * Phase 9 (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md): compare
-         * mode, sideways across Layers 2-5. A sibling of the /runs
-         * tree rather than nested under it -- it takes two run ids,
-         * not one. Query shape (?left=&right= -> ?runs=) changes only
-         * in Phase 8 -- unchanged here.
+         * Compare (Phase 8, docs/UI_REDESIGN_PLAN.md §8.8): a sibling
+         * of the /runs tree rather than nested under it -- it takes
+         * 2-4 run ids via ?runs=, not one. PageWide, not Page: the
+         * score matrix's forest plot and the setup-diff table both
+         * need the full width, the same reasoning the run report's
+         * own route already applies to its Samples tab.
          */}
         <Route
           path="compare"
           element={
-            <Page>
+            <PageWide>
               <ComparePage />
-            </Page>
+            </PageWide>
           }
         />
 

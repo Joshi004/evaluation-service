@@ -26,21 +26,3 @@ export function buildRankedRows(setup: SetupOption, filteredModels: ModelRow[]):
 export function buildNotEvaluatedModels(setup: SetupOption, filteredModels: ModelRow[]): ModelRow[] {
   return filteredModels.filter((model) => setup.cellsByCheckpointId[model.checkpointId] === undefined)
 }
-
-// A shared axis for every whisker on the board, padded a little past
-// the widest interval so the end caps are never drawn flush against
-// the SVG's own edge -- what makes this genuinely a forest plot (every
-// row directly comparable) rather than each row independently zoomed
-// to its own interval.
-export function computeIntervalDomain(cells: ScoreCellData[]): { min: number; max: number } {
-  if (cells.length === 0) {
-    return { min: 0, max: 1 }
-  }
-  const lowerBounds = cells.map((cell) => cell.confidenceInterval?.lower ?? cell.value)
-  const upperBounds = cells.map((cell) => cell.confidenceInterval?.upper ?? cell.value)
-  const rawMin = Math.min(...lowerBounds)
-  const rawMax = Math.max(...upperBounds)
-  const span = rawMax - rawMin
-  const padding = span === 0 ? 0.05 : span * 0.15
-  return { min: Math.max(0, rawMin - padding), max: Math.min(1, rawMax + padding) }
-}

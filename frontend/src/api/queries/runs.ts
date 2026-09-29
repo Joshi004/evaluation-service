@@ -1,4 +1,12 @@
-import { useMutation, useQuery, useQueryClient, type UseMutationResult, type UseQueryResult } from '@tanstack/react-query'
+import {
+  queryOptions,
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+  type UseMutationResult,
+  type UseQueryResult,
+} from '@tanstack/react-query'
 import { apiFetch, type RunDetail, type RunListFilters, type RunListItem } from '../client'
 import { isActiveRunStatus } from '../../utils/runStatus'
 import { queryKeys } from './queryKeys'
@@ -50,14 +58,29 @@ export function useRuns(
 // stops polling once it has (§3 rule 11: "live where it matters, calm
 // elsewhere") -- a finished run's own row never changes again, so
 // there is nothing a 5s poll would ever catch that a page reload
-// wouldn't.
-export function useRun(runId: number): UseQueryResult<RunDetail> {
-  return useQuery({
+// wouldn't. Factored out of useRun so Compare's own useRunsById (Phase
+// 8) can fetch several runs in parallel through the exact same
+// options -- one implementation of "how a run is fetched and polled",
+// not two that could drift apart.
+export function runQueryOptions(runId: number) {
+  return queryOptions({
     queryKey: queryKeys.run(runId),
     queryFn: () => apiFetch<RunDetail>(`/runs/${runId}`),
     enabled: Number.isFinite(runId),
     refetchInterval: (query) => (isActiveRunStatus(query.state.data?.status ?? '') ? 5000 : false),
   })
+}
+
+export function useRun(runId: number): UseQueryResult<RunDetail> {
+  return useQuery(runQueryOptions(runId))
+}
+
+// Compare's own "every run in ?runs=" fetch (Phase 8,
+// docs/UI_REDESIGN_PLAN.md §8.8) -- each run is its own cache entry
+// (queryKeys.run(id)), shared with useRun, so opening a compared run's
+// own report page never re-fetches what this page already loaded.
+export function useRunsById(runIds: number[]): UseQueryResult<RunDetail>[] {
+  return useQueries({ queries: runIds.map((runId) => runQueryOptions(runId)) })
 }
 
 // The one cancel-run mutation, shared by the run report's own

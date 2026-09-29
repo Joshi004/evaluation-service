@@ -1,8 +1,9 @@
-// Non-DOM logic for RunConfigTab.tsx: reshaping a run's resolved
-// standard, sampling and serving profiles into the label/value rows
-// each grouped card renders. Moved from the deleted
-// RunDetailPage.helper.ts (Phase 7, docs/UI_REDESIGN_PLAN.md §8.7) --
-// the field lists themselves are unchanged.
+// Reshapes a run's resolved standard, sampling and serving profiles
+// into the label/value rows a grouped card renders. Promoted from
+// pages/RunConfigTab.helper.ts (Phase 7) to src/utils/ once Compare's
+// own setup check (Phase 8, docs/UI_REDESIGN_PLAN.md §8.8) became a
+// second caller -- per .cursor/rules/frontend-components.mdc, "once a
+// second component needs the same logic, promote it to src/utils/".
 
 import type { RunSamplingDetail, RunStandardDetail, ServingProfileSummary } from '../api/client'
 

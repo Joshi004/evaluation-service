@@ -7,9 +7,13 @@
 
 import type { RunListItem } from '../api/client'
 
-// Raised to 4 in Phase 8, once the compare page itself supports more
-// than two runs (today's ComparePage only reads ?left=&right=).
-export const MAX_COMPARE_RUNS = 2
+// Phase 8 (docs/UI_REDESIGN_PLAN.md §8.8) raised this from 2 to 4 once
+// the compare page itself learned to read more than two runs off
+// ?runs=. MIN_COMPARE_RUNS is what actually gates the tray's own
+// Compare button -- a tray sitting at exactly 2 is already a valid
+// comparison, it doesn't need to fill every slot first.
+export const MAX_COMPARE_RUNS = 4
+export const MIN_COMPARE_RUNS = 2
 
 // What a caller offers to pin -- source-neutral so a future caller (a
 // LeaderboardRow, which has no run status or checkpoint name of its
@@ -154,13 +158,24 @@ export function revalidatePinnedRuns(pinnedRuns: PinnedRun[], doneRuns: RunListI
   return revalidated
 }
 
+// The comparison-hash-only check shared by the tray's own badge and
+// the compare page's setup check (CompareSetupCheck, Phase 8) -- one
+// rule, so the tray's "Setups differ" and the page's own verdict can
+// never disagree. `null` below two hashes means there is nothing yet
+// to compare setups between. The first hash is always the baseline's,
+// matching both callers' own "first pinned run" / "first run in ?runs="
+// convention.
+export function setupMatchForHashes(comparisonHashes: string[]): SetupMatch {
+  if (comparisonHashes.length < 2) {
+    return null
+  }
+  const baselineHash = comparisonHashes[0]
+  const allMatch = comparisonHashes.every((hash) => hash === baselineHash)
+  return allMatch ? 'same' : 'different'
+}
+
 // 'same' / 'different' drives the tray's own setup-match badge; `null`
 // below two runs means there is nothing yet to compare setups between.
 export function setupMatch(pinnedRuns: PinnedRun[]): SetupMatch {
-  if (pinnedRuns.length < 2) {
-    return null
-  }
-  const baselineHash = pinnedRuns[0].comparisonHash
-  const allMatch = pinnedRuns.every((run) => run.comparisonHash === baselineHash)
-  return allMatch ? 'same' : 'different'
+  return setupMatchForHashes(pinnedRuns.map((run) => run.comparisonHash))
 }
