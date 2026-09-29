@@ -12,7 +12,7 @@ from typing import Annotated, Any
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.schemas.compatibility import CompatibilityFinding
-from app.schemas.diagnostics import RunPerformanceSummary
+from app.schemas.diagnostics import ConfidenceInterval, RunPerformanceSummary
 from app.schemas.serving_profiles import ServingProfileSummary
 from app.schemas.standards import SamplingFieldWarning
 
@@ -24,6 +24,17 @@ class RunListItem(BaseModel):
     benchmark, and run_group_name. Joined in server-side, the same
     reasoning as EndpointListItem's checkpoint_name/gpus
     (app/schemas/endpoints.py).
+
+    `comparison_hash`, `sampling_profile_label` and
+    `sampling_profile_hash` are what let the Runs list show the same
+    "Setup" a leaderboard cell shows, without a second round trip per
+    row -- the same (standard, resolved sampling profile) pair
+    `LeaderboardRow` groups by (S-D5). `primary_metric_*` mirror a
+    leaderboard cell's own score, interval and sample count for a
+    `done` run; all four are `None` for a queued, running, failed or
+    cancelled run, which has no metric rows yet (a LEFT JOIN in
+    `app.services.runs.queries`, not an inner one -- an inner join
+    would silently drop every non-`done` run from this list).
     """
 
     id: int
@@ -43,6 +54,41 @@ class RunListItem(BaseModel):
     created_at: datetime
     started_at: datetime | None
     finished_at: datetime | None
+    comparison_hash: str
+    sampling_profile_label: str | None
+    sampling_profile_hash: str
+    primary_metric_name: str | None
+    primary_metric_value: float | None
+    primary_metric_n_samples: int | None
+    # A 95% Wilson interval over (primary_metric_value,
+    # primary_metric_n_samples) -- the same `wilson_interval`
+    # implementation the run detail page and the leaderboard both use
+    # (app/services/diagnostics/report_summary.py), so this list's own
+    # score never disagrees with either. `None` whenever
+    # `primary_metric_n_samples` is missing.
+    primary_metric_confidence_interval: ConfidenceInterval | None
+
+
+class RunListFilters(BaseModel):
+    """Query parameters for GET /api/v1/runs, bound as one Pydantic
+    model (FastAPI's query-parameter-model support, available since
+    0.115 -- the installed 0.141.1 has it) rather than growing the
+    router function's parameter list one filter at a time. Every field
+    is optional: an absent filter means "don't narrow by this".
+
+    `extra="forbid"` so a mistyped filter name (`checkpoint` instead of
+    `checkpoint_id`) 422s instead of being silently ignored as an
+    unrecognised query parameter.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    status: str | None = None
+    run_group_id: int | None = None
+    checkpoint_id: int | None = None
+    standard_id: int | None = None
+    benchmark: str | None = None
+    comparison_hash: str | None = None
 
 
 class StandardOverrides(BaseModel):
@@ -555,12 +601,12 @@ class RunSamplingDetail(BaseModel):
 
 
 class RunDetail(RunListItem):
-    """GET /api/v1/runs/{id} -- the full row (RunListItem), plus what a
-    human reads to actually understand what happened: the resolved
-    standard, sampling profile and serving profile, the
-    `comparison_hash` they produced, the endpoint it ran against (or
-    None if it never got one -- Phase 5's known cancel-before-endpoint
-    gap), its output directory, and its metric rows.
+    """GET /api/v1/runs/{id} -- the full row (RunListItem, which already
+    carries `comparison_hash`), plus what a human reads to actually
+    understand what happened: the resolved standard, sampling profile
+    and serving profile, the endpoint it ran against (or None if it
+    never got one -- Phase 5's known cancel-before-endpoint gap), its
+    output directory, and its metric rows.
 
     `serving` is the run's own `eval_run.serving_profile_id`, not the
     checkpoint's current default (S-T12) -- the two can differ the
@@ -572,7 +618,6 @@ class RunDetail(RunListItem):
     """
 
     output_dir: str | None
-    comparison_hash: str
     # This run's own requested partition -- its run_group's column, not
     # the endpoint's (per-run SLURM partition selection). Can differ
     # from `endpoint.partition` the moment this run reused an endpoint

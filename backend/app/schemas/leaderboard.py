@@ -10,6 +10,8 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
+from app.schemas.diagnostics import ConfidenceInterval
+
 
 class LeaderboardRow(BaseModel):
     checkpoint_id: int
@@ -30,8 +32,21 @@ class LeaderboardRow(BaseModel):
     # still tells two such columns for the same benchmark apart once
     # the frontend pivot keys on comparison_hash (Phase 8).
     sampling_profile_hash: str
+    # The serving profile this row's own eval_run actually ran against
+    # (S-T12) -- not hashed into comparison_hash (S-D5: quantization-free
+    # serving can't move a score), so two rows sharing a comparison_hash
+    # could in principle carry different serving profiles; recorded here
+    # so the UI can show it without a second round trip.
+    serving_profile_label: str | None
+    serving_profile_hash: str
     metric_name: str
     metric_value: float
     n_samples: int | None
+    # A 95% Wilson interval over (metric_value, n_samples) -- the same
+    # `wilson_interval` implementation the run detail page uses
+    # (app/services/diagnostics/report_summary.py), so a leaderboard
+    # cell and its own run page never disagree. `None` only when
+    # `n_samples` is missing.
+    confidence_interval: ConfidenceInterval | None
     truncation_rate: float | None
     finished_at: datetime

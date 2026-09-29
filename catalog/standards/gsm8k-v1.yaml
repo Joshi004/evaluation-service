@@ -11,6 +11,16 @@
 
 label: gsm8k/v1
 
+# --- Presentation ------------------------------------------------------------
+# Same reasoning as ifeval-v1.yaml's own Presentation block: read at
+# request time, never hashed.
+
+display_name: GSM8K
+description: >-
+  1,319 grade-school math word problems, solved step by step with four
+  worked examples and scored on the final numeric answer.
+category: Math
+
 # --- Protocol --------------------------------------------------------------
 
 benchmark: gsm8k

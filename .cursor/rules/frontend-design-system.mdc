@@ -1,0 +1,44 @@
+---
+description: Design tokens, primitives, and state patterns for the frontend
+globs: frontend/src/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Frontend Design System
+
+## Tokens only
+
+- Use semantic token utilities (`bg-card`, `text-muted-foreground`, `border-border`, `bg-danger-soft`, ...) -- never a raw palette class (`bg-slate-800`, `text-emerald-300`, ...) or a hex value, in any new or changed file.
+- Check before finishing a change:
+  `rg "(slate|gray|zinc|neutral|stone|red|green|emerald|amber|yellow|orange|blue|sky|indigo|violet|purple|pink|rose)-[0-9]{2,3}" frontend/src --glob '!prototype/**'`
+  must return nothing for every file you touched.
+- Token roles and their values live in `frontend/src/index.css` (`:root` is dark, `[data-theme='light']` is light). `frontend/src/prototype/` is exempt -- see its own README, and don't copy its UI patterns anyway.
+- Radius and most of the type scale intentionally reuse Tailwind's own defaults rather than a custom set -- see the comment at the top of `index.css` for the mapping (e.g. `rounded-lg` is the design's "md" radius).
+
+## Primitives first
+
+- Compose from `src/components/` (`Button`, `Card`, `Dialog`, `TextInput`, `Badge`, ...) instead of hand-styling a one-off `<button>`, bordered `<div>`, or native `<select>`.
+- If a primitive is missing, add a small one to `src/components/` rather than stretching an existing primitive to fit or styling inline.
+- Radix UI backs the overlay/structural primitives (`Dialog`, `Popover`, `Tooltip`, `Tabs`, `Menu`, `SegmentedControl`); form fields (`TextInput`, `SelectField`, `Checkbox`) are styled native elements, not custom listboxes.
+- Compose class names with `cn()` (`src/utils/cn.ts`). There is no `tailwind-merge` in this project: never let two utilities that touch the same CSS property (e.g. `px-3` and `pl-9`) land in the same class string -- see `Button.helper.ts` / `TextInput.helper.ts` for the pattern of giving each caller one complete, non-conflicting size/padding string instead.
+- `/styleguide` (dev only, not part of the real app) shows every primitive in every state, in both themes.
+
+## State patterns (§4.5 of the redesign plan)
+
+| Pattern | Rule |
+|---|---|
+| Loading | `Skeleton` shaped like the final layout. Never the text "Loading…". |
+| Empty | `EmptyState`: icon, title, one sentence, one action. |
+| Error | `ErrorState`: plain message, Retry, a Details disclosure for the raw error. |
+| Feedback | `Toaster` for mutation success/failure; inline text for form validation. |
+| Destructive or costly action | `ConfirmDialog` stating exactly what happens. Never `window.confirm`. |
+| Numbers | `tabular-nums` on numeric table columns; percent with one decimal; margin of error as `±x.x`. |
+
+## Vocabulary
+
+UI copy is plain language -- no doc filenames, decision ids, or internal API paths. The full mapping is §4.3 of `docs/UI_REDESIGN_PLAN.md`; a few load-bearing ones:
+
+- `checkpoint` -> **Model** (the word "checkpoint" stays only in registration and technical fields).
+- `standard` -> **Benchmark**.
+- `comparison_hash` -> **Setup** (never show the raw hash as the primary label).
+- `eval_run` -> **Run**; `run_group` -> **Batch**.

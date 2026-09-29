@@ -8,6 +8,16 @@
 
 label: mmlu_pro/v1-full
 
+# --- Presentation ------------------------------------------------------------
+# Same reasoning as ifeval-v1.yaml's own Presentation block: read at
+# request time, never hashed.
+
+display_name: MMLU-Pro
+description: >-
+  12,032 ten-option multiple-choice questions across 14 subjects, with
+  five worked examples, scored on the chosen answer letter.
+category: Knowledge & reasoning
+
 # --- Protocol --------------------------------------------------------------
 
 benchmark: mmlu_pro

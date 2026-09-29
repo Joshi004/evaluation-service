@@ -10,7 +10,7 @@ every query against these two tables in one file.
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import Select, and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
@@ -26,12 +26,14 @@ from app.models import (
 from app.schemas.runs import (
     RunDetail,
     RunEndpointSummary,
+    RunListFilters,
     RunListItem,
     RunMetric,
     RunSamplingDetail,
     RunStandardDetail,
 )
 from app.schemas.standards import SamplingFieldWarning
+from app.services.diagnostics.report_summary import wilson_interval
 from app.services.serving_profiles.queries import to_serving_profile_summary
 from app.services.standards.capabilities import (
     SEED_NOT_APPLIED_WITH_REPEATS_MESSAGE,
@@ -41,6 +43,59 @@ from app.services.standards.capabilities import (
 
 _ACTIVE_STATUSES = ("queued", "running")
 
+# One row of the shared list/detail SELECT below, positional and in the
+# exact order the statement selects them -- both `list_runs` and
+# `get_run_list_item` feed a row of this shape into `_to_run_list_item`,
+# per that function's own parameter order.
+_RunListRow = tuple[
+    EvalRun,
+    str,  # checkpoint_name
+    str | None,  # standard_label
+    str,  # standard_hash
+    str,  # benchmark
+    str,  # run_group_name
+    str | None,  # sampling_profile_label
+    str,  # sampling_profile_hash
+    str | None,  # primary_metric_name
+    float | None,  # primary_metric_value
+    int | None,  # primary_metric_n_samples
+]
+
+
+def _run_list_item_statement() -> Select[_RunListRow]:
+    """The one SELECT shared by `list_runs` and `get_run_list_item`, so
+    the two can never drift onto a different column set -- previously
+    two separate, positionally-fed selects that had to be kept in sync
+    by hand (docs/UI_REDESIGN_PLAN.md Phase 3's own documented trap).
+
+    LEFT JOINs the run's primary metric row (`Metric.is_primary`,
+    scoped to this run via the `and_` rather than a second `WHERE`,
+    which would turn the LEFT JOIN back into an inner one): a queued,
+    running, failed or cancelled run has none, and this list must keep
+    showing those rows, not silently drop them.
+    """
+    primary_metric_join_condition = and_(Metric.eval_run_id == EvalRun.id, Metric.is_primary)
+    return (
+        select(
+            EvalRun,
+            Checkpoint.name,
+            Standard.label,
+            Standard.hash,
+            Standard.benchmark,
+            RunGroup.name,
+            SamplingProfile.label,
+            SamplingProfile.hash,
+            Metric.name,
+            Metric.value,
+            Metric.n_samples,
+        )
+        .join(Checkpoint, EvalRun.checkpoint_id == Checkpoint.id)
+        .join(Standard, EvalRun.standard_id == Standard.id)
+        .join(RunGroup, EvalRun.run_group_id == RunGroup.id)
+        .join(SamplingProfile, EvalRun.sampling_profile_id == SamplingProfile.id)
+        .outerjoin(Metric, primary_metric_join_condition)
+    )
+
 
 def _to_run_list_item(
     run: EvalRun,
@@ -49,7 +104,17 @@ def _to_run_list_item(
     standard_hash: str,
     benchmark: str,
     run_group_name: str,
+    sampling_profile_label: str | None,
+    sampling_profile_hash: str,
+    primary_metric_name: str | None,
+    primary_metric_value: float | None,
+    primary_metric_n_samples: int | None,
 ) -> RunListItem:
+    confidence_interval = (
+        wilson_interval(primary_metric_value, primary_metric_n_samples)
+        if primary_metric_value is not None and primary_metric_n_samples
+        else None
+    )
     return RunListItem(
         id=run.id,
         run_group_id=run.run_group_id,
@@ -68,36 +133,37 @@ def _to_run_list_item(
         created_at=run.created_at,
         started_at=run.started_at,
         finished_at=run.finished_at,
+        comparison_hash=run.comparison_hash,
+        sampling_profile_label=sampling_profile_label,
+        sampling_profile_hash=sampling_profile_hash,
+        primary_metric_name=primary_metric_name,
+        primary_metric_value=primary_metric_value,
+        primary_metric_n_samples=primary_metric_n_samples,
+        primary_metric_confidence_interval=confidence_interval,
     )
 
 
-async def list_runs(
-    db: AsyncSession, status: str | None, run_group_id: int | None
-) -> list[RunListItem]:
-    """Eval runs, most recent first, optionally filtered by status
-    and/or run group. Joins in checkpoint name, standard label/hash/
-    benchmark and run group name -- the same join get_run_list_item
-    below uses for one run, so the Runs list and a run's detail page can
-    never show a different name for the same ids.
+async def list_runs(db: AsyncSession, filters: RunListFilters) -> list[RunListItem]:
+    """Eval runs, most recent first, narrowed by whichever `filters`
+    fields are set. Joins in checkpoint name, standard label/hash/
+    benchmark, run group name, resolved sampling profile and primary
+    metric -- the same join `get_run_list_item` below uses for one run
+    (`_run_list_item_statement`), so the Runs list and a run's detail
+    page can never show a different name or score for the same ids.
     """
-    stmt = (
-        select(
-            EvalRun,
-            Checkpoint.name,
-            Standard.label,
-            Standard.hash,
-            Standard.benchmark,
-            RunGroup.name,
-        )
-        .join(Checkpoint, EvalRun.checkpoint_id == Checkpoint.id)
-        .join(Standard, EvalRun.standard_id == Standard.id)
-        .join(RunGroup, EvalRun.run_group_id == RunGroup.id)
-        .order_by(EvalRun.created_at.desc())
-    )
-    if status is not None:
-        stmt = stmt.where(EvalRun.status == status)
-    if run_group_id is not None:
-        stmt = stmt.where(EvalRun.run_group_id == run_group_id)
+    stmt = _run_list_item_statement().order_by(EvalRun.created_at.desc())
+    if filters.status is not None:
+        stmt = stmt.where(EvalRun.status == filters.status)
+    if filters.run_group_id is not None:
+        stmt = stmt.where(EvalRun.run_group_id == filters.run_group_id)
+    if filters.checkpoint_id is not None:
+        stmt = stmt.where(EvalRun.checkpoint_id == filters.checkpoint_id)
+    if filters.standard_id is not None:
+        stmt = stmt.where(EvalRun.standard_id == filters.standard_id)
+    if filters.benchmark is not None:
+        stmt = stmt.where(Standard.benchmark == filters.benchmark)
+    if filters.comparison_hash is not None:
+        stmt = stmt.where(EvalRun.comparison_hash == filters.comparison_hash)
 
     rows = (await db.execute(stmt)).all()
     return [_to_run_list_item(*row) for row in rows]
@@ -108,20 +174,7 @@ async def get_run_list_item(db: AsyncSession, eval_run_id: int) -> RunListItem |
     response (controllers/runs.py) needs it too, not just the bare
     eval_run row worker.cancel_run returns.
     """
-    stmt = (
-        select(
-            EvalRun,
-            Checkpoint.name,
-            Standard.label,
-            Standard.hash,
-            Standard.benchmark,
-            RunGroup.name,
-        )
-        .join(Checkpoint, EvalRun.checkpoint_id == Checkpoint.id)
-        .join(Standard, EvalRun.standard_id == Standard.id)
-        .join(RunGroup, EvalRun.run_group_id == RunGroup.id)
-        .where(EvalRun.id == eval_run_id)
-    )
+    stmt = _run_list_item_statement().where(EvalRun.id == eval_run_id)
     row = (await db.execute(stmt)).first()
     if row is None:
         return None
@@ -253,7 +306,6 @@ async def get_run_detail(db: AsyncSession, eval_run_id: int) -> RunDetail | None
     return RunDetail(
         **run_list_item.model_dump(),
         output_dir=eval_run.output_dir,
-        comparison_hash=eval_run.comparison_hash,
         partition=run_group.partition,
         standard=_to_run_standard_detail(standard),
         sampling=_to_run_sampling_detail(sampling_profile, standard.framework, standard.repeats),

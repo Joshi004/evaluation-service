@@ -299,9 +299,20 @@ export interface LeaderboardRow {
   // still tells two such columns for the same benchmark apart once the
   // pivot keys on comparison_hash (Phase 8).
   sampling_profile_hash: string
+  // The serving profile this row's own eval_run actually ran against --
+  // not hashed into comparison_hash (quantization-free serving can't
+  // move a score), so two rows sharing a comparison_hash could in
+  // principle carry different serving profiles.
+  serving_profile_label: string | null
+  serving_profile_hash: string
   metric_name: string
   metric_value: number
   n_samples: number | null
+  // A 95% Wilson interval over (metric_value, n_samples) -- the same
+  // implementation the run detail page's ConfidenceInterval uses, so a
+  // leaderboard cell and its own run page never disagree. Null only
+  // when n_samples is missing.
+  confidence_interval: ConfidenceInterval | null
   truncation_rate: number | null
   finished_at: string
 }
@@ -411,6 +422,12 @@ export interface StandardSummary {
   // never part of what the standard measures.
   eval_batch_size: number
   request_timeout_seconds: number
+  // Presentation only, not hashed (S-D7) -- null for a standard loaded
+  // before docs/UI_REDESIGN_PLAN.md Phase 3's YAML update, until the
+  // next catalog reload backfills it.
+  display_name: string | null
+  description: string | null
+  category: string | null
   created_at: string
   warnings: SamplingFieldWarning[]
   source_yaml: string | null
@@ -420,6 +437,13 @@ export interface StandardSummary {
 // to read it without a second round trip -- see app/schemas/runs.py's
 // RunListItem. standard_label falls back to null for an unlabelled
 // override, in which case standard_hash is what identifies it.
+//
+// comparison_hash/sampling_profile_label/sampling_profile_hash are the
+// same "Setup" a leaderboard cell shows (the (standard, resolved
+// sampling profile) pair, S-D5); primary_metric_* mirror a leaderboard
+// cell's own score, interval and sample count. All four primary_metric_*
+// fields are null for a queued, running, failed or cancelled run, which
+// has no metric rows yet.
 export interface RunListItem {
   id: number
   run_group_id: number
@@ -438,6 +462,17 @@ export interface RunListItem {
   created_at: string
   started_at: string | null
   finished_at: string | null
+  comparison_hash: string
+  sampling_profile_label: string | null
+  sampling_profile_hash: string
+  primary_metric_name: string | null
+  primary_metric_value: number | null
+  primary_metric_n_samples: number | null
+  // A 95% Wilson interval over (primary_metric_value,
+  // primary_metric_n_samples) -- the same implementation the run detail
+  // page and the leaderboard both use. Null whenever
+  // primary_metric_n_samples is missing.
+  primary_metric_confidence_interval: ConfidenceInterval | null
 }
 
 // A user override of a base standard's protocol fields -- see
@@ -817,20 +852,18 @@ export interface RunSamplingDetail {
   warnings: SamplingFieldWarning[]
 }
 
-// GET /api/v1/runs/{id} -- the full row (RunListItem) plus what a human
-// reads to actually understand what happened: the resolved standard,
-// sampling profile and serving profile, the comparison_hash they
-// produced (S-D5 -- what the leaderboard groups by), the endpoint it
-// ran against (or null if it never got one -- Phase 5's known
-// cancel-before-endpoint gap), its output directory, and its metric
-// rows. `serving` is the run's own recorded profile (S-T12), not
-// necessarily the checkpoint's current default -- reuses
-// ServingProfileSummary rather than a fourth resolved-detail type,
-// since nothing about a serving profile's shape changes for the run
-// context.
+// GET /api/v1/runs/{id} -- the full row (RunListItem, which already
+// carries comparison_hash) plus what a human reads to actually
+// understand what happened: the resolved standard, sampling profile and
+// serving profile, the endpoint it ran against (or null if it never got
+// one -- Phase 5's known cancel-before-endpoint gap), its output
+// directory, and its metric rows. `serving` is the run's own recorded
+// profile (S-T12), not necessarily the checkpoint's current default --
+// reuses ServingProfileSummary rather than a fourth resolved-detail
+// type, since nothing about a serving profile's shape changes for the
+// run context.
 export interface RunDetail extends RunListItem {
   output_dir: string | null
-  comparison_hash: string
   // This run's own requested partition -- its run_group's column, not
   // the endpoint's. Can differ from `endpoint.partition` the moment
   // this run reused an endpoint already running elsewhere; null only

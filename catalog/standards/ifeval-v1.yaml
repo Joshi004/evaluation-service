@@ -10,6 +10,18 @@
 
 label: ifeval/v1
 
+# --- Presentation (docs/UI_REDESIGN_PLAN.md Phase 3, D11) -------------------
+# Read at request time into StandardSummary; never part of the hash --
+# editing any of the three below and reloading updates this row in
+# place, the same as eval_batch_size (S-D7).
+
+display_name: IFEval
+description: >-
+  541 writing prompts with verifiable rules such as 'use no commas' or
+  'write exactly three paragraphs'; the score is the share of prompts
+  where every rule was followed.
+category: Instruction following
+
 # --- Protocol --------------------------------------------------------------
 
 benchmark: ifeval

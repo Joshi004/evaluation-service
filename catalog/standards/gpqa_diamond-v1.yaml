@@ -8,6 +8,17 @@
 
 label: gpqa_diamond/v1
 
+# --- Presentation ------------------------------------------------------------
+# Same reasoning as ifeval-v1.yaml's own Presentation block: read at
+# request time, never hashed.
+
+display_name: GPQA-Diamond
+description: >-
+  198 graduate-level multiple-choice science questions written to resist
+  web search; each is answered four times and the score is the average
+  accuracy.
+category: Knowledge & reasoning
+
 # --- Protocol --------------------------------------------------------------
 
 benchmark: gpqa_diamond

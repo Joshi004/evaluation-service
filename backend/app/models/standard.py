@@ -128,6 +128,18 @@ class Standard(Base):
     # the wrong one.
     request_timeout_seconds: Mapped[int] = mapped_column(Integer, server_default="1800")
 
+    # Presentation only (docs/UI_REDESIGN_PLAN.md Phase 3, D7/D11): none
+    # of the three can change what a benchmark measures, so -- same
+    # reasoning as eval_batch_size above -- they are not hashed. All
+    # three are nullable: an ad-hoc override with no YAML file has none
+    # of its own (`resolve_standard` copies its base standard's values
+    # instead), and a labelled row predating this migration reads as
+    # `null` until the catalog loader's `sync_unhashed_columns` backfills
+    # it from the YAML on the next reload.
+    display_name: Mapped[str | None] = mapped_column(Text, default=None)
+    description: Mapped[str | None] = mapped_column(Text, default=None)
+    category: Mapped[str | None] = mapped_column(Text, default=None)
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     def as_hashable_dict(self) -> dict[str, Any]:

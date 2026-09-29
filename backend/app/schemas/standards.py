@@ -109,6 +109,15 @@ class StandardDocument(CatalogDocument):
     # Operational -- not hashed (S-D7; see as_unhashed_dict below).
     eval_batch_size: int
     request_timeout_seconds: int
+    # Presentation only (docs/UI_REDESIGN_PLAN.md Phase 3, D7/D11) -- not
+    # hashed, same reasoning as eval_batch_size above, and genuinely
+    # optional (unlike the "required but nullable" fields above): a
+    # standard predating this phase's YAML update has none of these
+    # keys at all, not an explicit `null`, so these default to `None`
+    # rather than requiring every existing file to be edited at once.
+    display_name: str | None = None
+    description: str | None = None
+    category: str | None = None
 
     @field_validator("subsets")
     @classmethod
@@ -183,10 +192,18 @@ class StandardDocument(CatalogDocument):
         writes these back onto an existing row even when the hash already
         matched, which is how editing one in the YAML and reloading
         updates the row in place instead of doing nothing.
+
+        `display_name`/`description`/`category` (Phase 3, D7/D11) follow
+        the same precedent: none can change what gets measured, only how
+        the benchmark is presented, so editing one in the YAML and
+        reloading updates the row in place the same way.
         """
         return {
             "eval_batch_size": self.eval_batch_size,
             "request_timeout_seconds": self.request_timeout_seconds,
+            "display_name": self.display_name,
+            "description": self.description,
+            "category": self.category,
         }
 
 
@@ -215,6 +232,10 @@ class StandardSummary(BaseModel):
     source-rendering decision). `source_yaml` is `None` for an ad-hoc
     row: it was minted from a submit-time override, not loaded from a
     file.
+
+    `display_name`/`description`/`category` (Phase 3, D7/D11) are `None`
+    for a standard loaded before this phase's YAML update, until the
+    next catalog reload backfills them.
     """
 
     id: int
@@ -240,6 +261,9 @@ class StandardSummary(BaseModel):
     subsets: list[str]
     eval_batch_size: int
     request_timeout_seconds: int
+    display_name: str | None
+    description: str | None
+    category: str | None
     created_at: datetime
     warnings: list[SamplingFieldWarning]
     source_yaml: str | None

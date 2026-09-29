@@ -31,15 +31,20 @@ async def resolve_standard(
     existing = await standards_queries.get_standard_by_hash(db, hash_value)
     if existing:
         return existing
-    # eval_batch_size / request_timeout_seconds are never part of
-    # `overrides` (a submit only overrides hashed protocol fields, per
-    # StandardOverrides) and never part of the hash, so there is nothing
-    # for an override to say about them. The new row inherits the base
-    # standard's current operational values rather than silently
-    # falling back to insert_standard's column defaults.
+    # eval_batch_size / request_timeout_seconds / display_name /
+    # description / category are never part of `overrides` (a submit
+    # only overrides hashed protocol fields, per StandardOverrides) and
+    # never part of the hash, so there is nothing for an override to say
+    # about them. The new row inherits the base standard's current
+    # operational and presentation values rather than silently falling
+    # back to insert_standard's column defaults (which would show an
+    # overridden IFEval with no name at all).
     unhashed_config = {
         "eval_batch_size": base.eval_batch_size,
         "request_timeout_seconds": base.request_timeout_seconds,
+        "display_name": base.display_name,
+        "description": base.description,
+        "category": base.category,
     }
     return await standards_queries.insert_standard(
         db, config | unhashed_config, hash_value, label=label

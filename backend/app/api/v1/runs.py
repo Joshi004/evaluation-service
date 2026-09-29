@@ -5,8 +5,9 @@ the single-run detail, and SSE log streaming.
 """
 
 from collections.abc import AsyncIterator
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,6 +16,7 @@ from app.db import get_db
 from app.schemas.runs import (
     CreateRunsRequest,
     RunDetail,
+    RunListFilters,
     RunListItem,
     RunPreview,
     RunPreviewRequest,
@@ -29,11 +31,10 @@ router = APIRouter()
 
 @router.get("", response_model=list[RunListItem])
 async def list_runs(
-    status: str | None = None,
-    run_group_id: int | None = None,
+    filters: Annotated[RunListFilters, Query()],
     db: AsyncSession = Depends(get_db),
 ) -> list[RunListItem]:
-    return await runs_controller.list_runs(db, status, run_group_id)
+    return await runs_controller.list_runs(db, filters)
 
 
 @router.post("", response_model=RunSubmission, status_code=202)

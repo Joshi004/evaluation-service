@@ -8,6 +8,7 @@ from app.config import get_settings
 from app.schemas.runs import (
     CreateRunsRequest,
     RunDetail,
+    RunListFilters,
     RunListItem,
     RunPreview,
     RunPreviewRequest,
@@ -23,10 +24,8 @@ from app.services.standards import queries as standards_service
 settings = get_settings()
 
 
-async def list_runs(
-    db: AsyncSession, status: str | None, run_group_id: int | None
-) -> list[RunListItem]:
-    return await runs_service.list_runs(db, status, run_group_id)
+async def list_runs(db: AsyncSession, filters: RunListFilters) -> list[RunListItem]:
+    return await runs_service.list_runs(db, filters)
 
 
 async def submit_runs(db: AsyncSession, request: CreateRunsRequest) -> RunSubmission | None:

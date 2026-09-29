@@ -9,6 +9,16 @@
 
 label: ifbench/v1
 
+# --- Presentation ------------------------------------------------------------
+# Same reasoning as ifeval-v1.yaml's own Presentation block: read at
+# request time, never hashed.
+
+display_name: IFBench
+description: >-
+  AllenAI's 300-prompt out-of-domain follow-up to IFEval, with new and
+  harder verifiable constraints, scored the same way.
+category: Instruction following
+
 # --- Protocol --------------------------------------------------------------
 
 benchmark: ifbench
