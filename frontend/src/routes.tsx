@@ -1,6 +1,6 @@
 import { Route, Routes } from 'react-router'
 import { AppShell } from './components/AppShell/AppShell'
-import { Page } from './components/Page/Page'
+import { Page, PageWide } from './components/Page/Page'
 import { RedirectPreservingSearch } from './components/RedirectPreservingSearch/RedirectPreservingSearch'
 import { paths } from './utils/paths'
 import { LeaderboardPage } from './pages/LeaderboardPage'
@@ -25,11 +25,11 @@ import { prototypeRouteElements } from './prototype/prototypeRoutes'
 // the old flat-nav App component -- docs/UI_REDESIGN_PLAN.md Phase 2).
 // Leaderboard is the index route ("/"). Every route below mounts an
 // existing page component verbatim -- Phase 2 only moves where each
-// one lives, per §4.2's route map; no page body changes here. Each is
-// wrapped in Page (not PageWide) so none of them shift width from what
-// App.tsx's old max-w-6xl already gave them; a later phase that
-// rewrites a page into a wide data table swaps that one route's
-// wrapper for PageWide, with no change to AppShell.
+// one lives, per §4.2's route map; no page body changes here, except
+// where a later phase's own spec says otherwise (Phase 6 rewrites the
+// Leaderboard into a wide data table, so that one route now wraps in
+// PageWide instead). A later phase that rewrites a page the same way
+// swaps that one route's wrapper, with no change to AppShell.
 export function AppRoutes() {
   return (
     <Routes>
@@ -37,9 +37,9 @@ export function AppRoutes() {
         <Route
           index
           element={
-            <Page>
+            <PageWide>
               <LeaderboardPage />
-            </Page>
+            </PageWide>
           }
         />
 
@@ -66,6 +66,15 @@ export function AppRoutes() {
             </Page>
           }
         />
+        {/*
+         * Temporary (Phase 6, docs/UI_REDESIGN_PLAN.md §8.6): the
+         * Leaderboard's row header and "Run history" links already
+         * point at paths.model(id), a page Phase 11 has not built yet.
+         * Redirecting its whole subtree to the models list keeps those
+         * links from 404ing in the meantime; Phase 11 replaces this
+         * with the real ModelDetailPage route.
+         */}
+        <Route path="models/:modelId/*" element={<RedirectPreservingSearch to={paths.models()} />} />
 
         <Route
           path="benchmarks"

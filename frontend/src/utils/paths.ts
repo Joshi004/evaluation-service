@@ -16,8 +16,36 @@ export const paths = {
   benchmark: (benchmarkId: number | string) => `/benchmarks/${benchmarkId}`,
   profilesSampling: () => '/profiles/sampling',
   profilesServing: () => '/profiles/serving',
-  newEvaluation: () => '/evaluate/new',
-  runs: () => '/runs',
+  // `params` prefills the Choose step (Phase 10's own `?models=&
+  // benchmarks=` contract, Appendix A) -- the Leaderboard's empty-cell
+  // and "Evaluate on missing benchmarks" links are today's only
+  // callers that pass one; every other call site keeps calling this
+  // with no arguments, which still returns the bare path.
+  newEvaluation: (params?: { models?: number[]; benchmarks?: number[] }) => {
+    const models = params?.models ?? []
+    const benchmarks = params?.benchmarks ?? []
+    if (models.length === 0 && benchmarks.length === 0) {
+      return '/evaluate/new'
+    }
+    const search = new URLSearchParams()
+    if (models.length > 0) search.set('models', models.join(','))
+    if (benchmarks.length > 0) search.set('benchmarks', benchmarks.join(','))
+    return `/evaluate/new?${search.toString()}`
+  },
+  // `filters` narrows Phase 9's own `?model=&benchmark=` contract
+  // (Appendix A) -- the Leaderboard's "N other setup" and "view this
+  // model's run history" links are today's only callers.
+  runs: (filters?: { model?: number; benchmark?: string }) => {
+    const model = filters?.model
+    const benchmark = filters?.benchmark
+    if (model === undefined && benchmark === undefined) {
+      return '/runs'
+    }
+    const search = new URLSearchParams()
+    if (model !== undefined) search.set('model', String(model))
+    if (benchmark !== undefined) search.set('benchmark', benchmark)
+    return `/runs?${search.toString()}`
+  },
   run: (runId: number | string) => `/runs/${runId}`,
   runDiagnostics: (runId: number | string) => `/runs/${runId}/diagnostics`,
   runSample: (runId: number | string, sampleKey: string) =>

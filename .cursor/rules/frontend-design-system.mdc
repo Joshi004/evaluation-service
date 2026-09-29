@@ -19,7 +19,8 @@ alwaysApply: false
 
 - Compose from `src/components/` (`Button`, `Card`, `Dialog`, `TextInput`, `Badge`, ...) instead of hand-styling a one-off `<button>`, bordered `<div>`, or native `<select>`.
 - If a primitive is missing, add a small one to `src/components/` rather than stretching an existing primitive to fit or styling inline.
-- Radix UI backs the overlay/structural primitives (`Dialog`, `Popover`, `Tooltip`, `Tabs`, `Menu`, `SegmentedControl`); form fields (`TextInput`, `SelectField`, `Checkbox`) are styled native elements, not custom listboxes.
+- Radix UI backs the overlay/structural primitives (`Dialog`, `Popover`, `Tooltip`, `Tabs`, `Menu`, `SegmentedControl`, `MultiSelectMenu`); form fields (`TextInput`, `SelectField`, `Checkbox`) are styled native elements, not custom listboxes.
+- `HoverCard` (Phase 6) is a Popover variant that opens on hover *or* focus and renders with no `Portal`, so its content stays in the natural tab order right after its trigger -- reach for it instead of Radix's own `react-hover-card` (not installed; its content is deliberately outside the tab order). `IntervalWhisker` (Phase 6) is a plain-SVG confidence-interval whisker for a shared axis -- no chart library for a shape this simple. `CopyLinkButton` (Phase 6) is `CopyButton`'s labelled sibling for "copy the current URL".
 - Compose class names with `cn()` (`src/utils/cn.ts`). There is no `tailwind-merge` in this project: never let two utilities that touch the same CSS property (e.g. `px-3` and `pl-9`) land in the same class string -- see `Button.helper.ts` / `TextInput.helper.ts` for the pattern of giving each caller one complete, non-conflicting size/padding string instead.
 - `/styleguide` (dev only, not part of the real app) shows every primitive in every state, in both themes.
 

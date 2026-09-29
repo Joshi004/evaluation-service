@@ -13,6 +13,10 @@ import { ConfirmDialog } from '../components/ConfirmDialog/ConfirmDialog'
 import { Tooltip } from '../components/Tooltip/Tooltip'
 import { Popover } from '../components/Popover/Popover'
 import { Menu } from '../components/Menu/Menu'
+import { HoverCard } from '../components/HoverCard/HoverCard'
+import { MultiSelectMenu } from '../components/MultiSelectMenu/MultiSelectMenu'
+import { IntervalWhisker } from '../components/IntervalWhisker/IntervalWhisker'
+import { CopyLinkButton } from '../components/CopyLinkButton/CopyLinkButton'
 import { TextInput } from '../components/TextInput/TextInput'
 import { SearchInput } from '../components/SearchInput/SearchInput'
 import { SelectField } from '../components/SelectField/SelectField'
@@ -95,6 +99,7 @@ export function StyleguidePage() {
   const [checked, setChecked] = useState(true)
   const [segment, setSegment] = useState('comfortable')
   const [search, setSearch] = useState('leaderboard')
+  const [selectedBenchmarks, setSelectedBenchmarks] = useState<string[]>(['ifeval'])
 
   return (
     <div
@@ -198,6 +203,50 @@ export function StyleguidePage() {
               { label: 'Disabled action', onSelect: () => {}, disabled: true },
             ]}
           />
+        </Section>
+
+        {/* Phase 6 (docs/UI_REDESIGN_PLAN.md §8.6): the Leaderboard's own
+            four new primitives, checked here first per the phase's own
+            plan -- HoverCard's focus/hover handling in particular is
+            "the riskiest piece" and easiest to verify in isolation. */}
+        <Section title="HoverCard, MultiSelectMenu, IntervalWhisker, CopyLinkButton">
+          <HoverCard trigger={<Button variant="secondary">Hover or focus me</Button>}>
+            <p className="text-sm text-foreground">85.4% · 462 of 541 passed</p>
+            <p className="mt-1 text-xs text-muted-foreground">Tab moves into the actions below; Esc closes.</p>
+            <div className="mt-2 flex gap-2">
+              <Button size="sm">Open run</Button>
+              <Button size="sm" variant="secondary">
+                Add to compare
+              </Button>
+            </div>
+          </HoverCard>
+
+          <MultiSelectMenu
+            trigger={<Button variant="secondary">Benchmarks ({selectedBenchmarks.length})</Button>}
+            groups={[
+              {
+                heading: 'Instruction following',
+                options: [
+                  { value: 'ifeval', label: 'IFEval' },
+                  { value: 'ifbench', label: 'IFBench' },
+                ],
+              },
+              { heading: 'Math', options: [{ value: 'gsm8k', label: 'GSM8K' }] },
+            ]}
+            selected={selectedBenchmarks}
+            onChange={setSelectedBenchmarks}
+          />
+
+          <IntervalWhisker
+            lower={0.822}
+            upper={0.881}
+            value={0.854}
+            domainMin={0.75}
+            domainMax={0.95}
+            className="text-foreground"
+          />
+
+          <CopyLinkButton url="https://example.com/?bench=ifeval" />
         </Section>
 
         <Section title="TextInput, SearchInput, SelectField, Checkbox, SegmentedControl">

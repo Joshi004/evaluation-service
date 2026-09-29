@@ -52,6 +52,25 @@ export function compareCandidateFromRun(run: RunListItem): CompareCandidate {
   }
 }
 
+// The same shape, built from the Leaderboard's own reshaped board data
+// (utils/buildLeaderboard.ts's ScoreCellData/SetupOption/ModelRow)
+// instead of a RunListItem -- by the time a cell or a By-benchmark row
+// can offer a pin, the raw LeaderboardRow it came from has already been
+// folded into that shape. GET /leaderboard's own WHERE clause only ever
+// returns `done` runs, so this always reports 'done' rather than
+// reading a status field the board doesn't carry.
+export function compareCandidateFromLeaderboardCell(params: {
+  runId: number
+  benchmark: string
+  comparisonHash: string
+  modelName: string
+  samplingProfileLabel: string | null
+  samplingProfileHash: string
+  scoreFraction: number
+}): CompareCandidate {
+  return { ...params, status: 'done' }
+}
+
 // Exported so CompareTrayProvider can build the same shape when a pin
 // succeeds, instead of re-listing PinnedRun's fields a second time at
 // the call site.

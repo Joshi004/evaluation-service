@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Check, Copy } from 'lucide-react'
 import { toast } from 'sonner'
 import { IconButton } from '../IconButton/IconButton'
-import { copyToClipboard } from './CopyButton.helper'
+import { copyToClipboard } from '../../utils/copyToClipboard'
 
 interface CopyButtonProps {
   value: string
