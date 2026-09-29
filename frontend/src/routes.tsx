@@ -11,9 +11,11 @@ import { SamplingProfilesPage } from './pages/SamplingProfilesPage'
 import { ServingProfilesPage } from './pages/ServingProfilesPage'
 import { SubmitPage } from './pages/SubmitPage'
 import { RunsPage } from './pages/RunsPage'
-import { RunDetailPage } from './pages/RunDetailPage'
-import { RunDiagnosticsPage } from './pages/RunDiagnosticsPage'
-import { RunSamplePage } from './pages/RunSamplePage'
+import { RunReportPage } from './pages/RunReportPage'
+import { RunOverviewTab } from './pages/RunOverviewTab'
+import { RunSamplesTab } from './pages/RunSamplesTab'
+import { RunConfigTab } from './pages/RunConfigTab'
+import { RunLogsTab } from './pages/RunLogsTab'
 import { ComparePage } from './pages/ComparePage'
 import { EndpointsPage } from './pages/EndpointsPage'
 import { NotFoundPage } from './pages/NotFoundPage'
@@ -119,35 +121,43 @@ export function AppRoutes() {
             </Page>
           }
         />
+        {/*
+         * The run report (Phase 7, docs/UI_REDESIGN_PLAN.md §8.7):
+         * RunReportPage owns the header, the verdict band (done runs
+         * only) and the tab strip; each child route below is one tab,
+         * rendered into RunReportPage's own <Outlet> and reading the
+         * already-loaded run through its outlet context
+         * (RunReportPage.helper.ts's useRunReport). Both Samples routes
+         * mount the same RunSamplesTab, which reads its own optional
+         * :sampleKey -- there is no nested outlet for the sample panel,
+         * since it is plain content inside that one tab, not a route of
+         * its own. PageWide, not Page: the Samples tab's list-plus-panel
+         * view needs the full width once a sample is open.
+         */}
         <Route
           path="runs/:runId"
           element={
-            <Page>
-              <RunDetailPage />
-            </Page>
+            <PageWide>
+              <RunReportPage />
+            </PageWide>
           }
-        />
+        >
+          <Route index element={<RunOverviewTab />} />
+          <Route path="samples" element={<RunSamplesTab />} />
+          <Route path="samples/:sampleKey" element={<RunSamplesTab />} />
+          <Route path="config" element={<RunConfigTab />} />
+          <Route path="logs" element={<RunLogsTab />} />
+        </Route>
         {/*
-         * Layer 4 (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md Phase 4):
-         * the sample list. Layer 5's sample detail page (Phase 7)
-         * lives at the nested route below. Renames to .../samples only
-         * in Phase 7 -- unchanged here.
+         * Old URL from before Phase 7 renamed this tab to .../samples,
+         * keeping the same query params (outcome, subset, rule, tag, q,
+         * offset -- Appendix A, frozen). A sibling of the report route
+         * above, not nested under it -- its only job is to redirect,
+         * never to render inside RunReportPage's own frame.
          */}
         <Route
           path="runs/:runId/diagnostics"
-          element={
-            <Page>
-              <RunDiagnosticsPage />
-            </Page>
-          }
-        />
-        <Route
-          path="runs/:runId/samples/:sampleKey"
-          element={
-            <Page>
-              <RunSamplePage />
-            </Page>
-          }
+          element={<RedirectPreservingSearch to={(params) => paths.runSamples(params.runId ?? '')} />}
         />
 
         {/*

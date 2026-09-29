@@ -17,39 +17,54 @@ export const paths = {
   profilesSampling: () => '/profiles/sampling',
   profilesServing: () => '/profiles/serving',
   // `params` prefills the Choose step (Phase 10's own `?models=&
-  // benchmarks=` contract, Appendix A) -- the Leaderboard's empty-cell
-  // and "Evaluate on missing benchmarks" links are today's only
-  // callers that pass one; every other call site keeps calling this
-  // with no arguments, which still returns the bare path.
-  newEvaluation: (params?: { models?: number[]; benchmarks?: number[] }) => {
+  // benchmarks=&from=` contract, Appendix A) -- the Leaderboard's
+  // empty-cell and "Evaluate on missing benchmarks" links pass
+  // `models`/`benchmarks`; the run report's Re-run action (Phase 7)
+  // passes `from` alone. Every other call site keeps calling this with
+  // no arguments, which still returns the bare path.
+  newEvaluation: (params?: { models?: number[]; benchmarks?: number[]; from?: number }) => {
     const models = params?.models ?? []
     const benchmarks = params?.benchmarks ?? []
-    if (models.length === 0 && benchmarks.length === 0) {
+    const from = params?.from
+    if (models.length === 0 && benchmarks.length === 0 && from === undefined) {
       return '/evaluate/new'
     }
     const search = new URLSearchParams()
     if (models.length > 0) search.set('models', models.join(','))
     if (benchmarks.length > 0) search.set('benchmarks', benchmarks.join(','))
+    if (from !== undefined) search.set('from', String(from))
     return `/evaluate/new?${search.toString()}`
   },
-  // `filters` narrows Phase 9's own `?model=&benchmark=` contract
+  // `filters` narrows Phase 9's own `?model=&benchmark=&batch=` contract
   // (Appendix A) -- the Leaderboard's "N other setup" and "view this
-  // model's run history" links are today's only callers.
-  runs: (filters?: { model?: number; benchmark?: string }) => {
+  // model's run history" links pass `model`/`benchmark`; the run
+  // report's batch link (Phase 7) passes `batch` alone. RunsPage itself
+  // doesn't read `batch` yet -- Phase 9 rewrites it to.
+  runs: (filters?: { model?: number; benchmark?: string; batch?: number }) => {
     const model = filters?.model
     const benchmark = filters?.benchmark
-    if (model === undefined && benchmark === undefined) {
+    const batch = filters?.batch
+    if (model === undefined && benchmark === undefined && batch === undefined) {
       return '/runs'
     }
     const search = new URLSearchParams()
     if (model !== undefined) search.set('model', String(model))
     if (benchmark !== undefined) search.set('benchmark', benchmark)
+    if (batch !== undefined) search.set('batch', String(batch))
     return `/runs?${search.toString()}`
   },
   run: (runId: number | string) => `/runs/${runId}`,
-  runDiagnostics: (runId: number | string) => `/runs/${runId}/diagnostics`,
+  // Phase 7 (docs/UI_REDESIGN_PLAN.md §8.7) renames the old
+  // .../diagnostics route to .../samples, keeping the same query
+  // params (outcome, subset, rule, tag, q, offset -- Appendix A,
+  // frozen). There is no `runDiagnostics` builder any more: the one
+  // remaining reference to that path is routes.tsx's own redirect
+  // source, which nothing should be minting new links to.
+  runSamples: (runId: number | string) => `/runs/${runId}/samples`,
   runSample: (runId: number | string, sampleKey: string) =>
     `/runs/${runId}/samples/${encodeURIComponent(sampleKey)}`,
+  runConfig: (runId: number | string) => `/runs/${runId}/config`,
+  runLogs: (runId: number | string) => `/runs/${runId}/logs`,
   // The ?runs= shape is decision territory of Phase 8 (Appendix A), but
   // the builder is defined here so nothing later reinvents it. No
   // Phase 2 caller passes runIds -- the sidebar's Compare link calls

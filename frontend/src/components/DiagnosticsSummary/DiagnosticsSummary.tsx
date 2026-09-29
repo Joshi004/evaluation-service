@@ -1,5 +1,6 @@
 import type { DiagnosticsSummary as DiagnosticsSummaryData } from '../../api/client'
-import { tagChipLabel } from './DiagnosticsSummary.helper'
+import { cn } from '../../utils/cn'
+import { tagChipLabel, tagOverlapCaption } from './DiagnosticsSummary.helper'
 
 interface DiagnosticsSummaryProps {
   summary: DiagnosticsSummaryData
@@ -13,6 +14,17 @@ interface DiagnosticsSummaryProps {
 // counts the tag chips show, never an LLM call -- "a wrong summary
 // about wrongness is worse than no summary." Chips, not a pie chart,
 // because one sample can carry several tags.
+//
+// Bare content, no card chrome of its own (Phase 7,
+// docs/UI_REDESIGN_PLAN.md §8.7): the Samples tab and the Overview
+// tab's own "What the data says" panel each wrap this in their own
+// Card, so it composes into either without a nested double border.
+// `onTagChange` means two different things depending on which one --
+// the Samples tab wires it to its own URL filter (an in-place toggle);
+// the Overview tab wires it to a navigation into the Samples tab
+// instead (docs/UI_REDESIGN_PLAN.md §8.7, item 4: "tag chips that link
+// to filtered Samples") -- this component only ever calls it, never
+// cares which.
 export function DiagnosticsSummary({ summary, activeTag, onTagChange }: DiagnosticsSummaryProps) {
   if (summary.narrative.length === 0 && summary.tag_counts.length === 0) {
     return null
@@ -20,39 +32,43 @@ export function DiagnosticsSummary({ summary, activeTag, onTagChange }: Diagnost
 
   function handleChipClick(tag: string) {
     // Clicking the already-active chip clears the filter -- the same
-    // toggle FailureBreakdown's rule rows use.
+    // toggle FailureBreakdown's rule rows use. Meaningless on the
+    // Overview tab (activeTag is always null there, since nothing is
+    // filtered yet), so it is simply never triggered from that caller.
     onTagChange(activeTag === tag ? null : tag)
   }
 
   return (
-    <section className="mt-4 rounded-lg border border-slate-800 bg-slate-900 p-4">
+    <div className="space-y-3">
       {summary.narrative.map((sentence) => (
-        <p key={sentence} className="mt-2 text-sm text-slate-300 first:mt-0">
+        <p key={sentence} className="text-sm text-foreground">
           {sentence}
         </p>
       ))}
 
       {summary.tag_counts.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {summary.tag_counts.map((tagCount) => {
-            const isActive = tagCount.tag === activeTag
-            return (
-              <button
-                key={tagCount.tag}
-                type="button"
-                onClick={() => handleChipClick(tagCount.tag)}
-                className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                  isActive
-                    ? 'bg-blue-500/20 text-blue-300'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                }`}
-              >
-                {tagChipLabel(tagCount)}
-              </button>
-            )
-          })}
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-2">
+            {summary.tag_counts.map((tagCount) => {
+              const isActive = tagCount.tag === activeTag
+              return (
+                <button
+                  key={tagCount.tag}
+                  type="button"
+                  onClick={() => handleChipClick(tagCount.tag)}
+                  className={cn(
+                    'rounded-full px-2.5 py-1 text-xs font-medium',
+                    isActive ? 'bg-primary-soft text-primary' : 'bg-muted text-muted-foreground hover:bg-border',
+                  )}
+                >
+                  {tagChipLabel(tagCount)}
+                </button>
+              )
+            })}
+          </div>
+          <p className="text-xs text-subtle-foreground">{tagOverlapCaption(summary.failed)}</p>
         </div>
       )}
-    </section>
+    </div>
   )
 }

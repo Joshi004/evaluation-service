@@ -1,7 +1,12 @@
-import { Link } from 'react-router'
+import type { MouseEvent } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router'
 import type { DiagnosticsSample } from '../../api/client'
+import { cn } from '../../utils/cn'
+import { paths } from '../../utils/paths'
 import { previewText } from '../../utils/previewText'
 import { tagLabel } from '../../utils/tagLabel'
+import { Badge } from '../Badge/Badge'
+import { Table, TableCell, TableHeaderCell } from '../Table/Table'
 import { outcomeBadge, primaryScoreText } from './SampleList.helper'
 
 interface SampleListProps {
@@ -10,96 +15,105 @@ interface SampleListProps {
   primaryMetricName: string
   primaryMetricDisplayName: string
   showSubsetColumn: boolean
+  selectedSampleKey: string | null
+  // Hides the Output and score columns once the panel is open
+  // (docs/UI_REDESIGN_PLAN.md §8.7, item 4) -- there is no room for
+  // them once the panel takes half the width, and the panel itself
+  // already shows both in full.
+  compact: boolean
 }
 
 // Layer 4's table (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md Phase 4):
 // renders whichever page of already-filtered samples the caller
-// fetched. Every row deep-links to /runs/:runId/samples/:sampleKey --
-// "a URL you can paste into Slack and have a colleague land on the
-// exact question" (docs/SCORE_DRILLDOWN_UI_PLAN.md Section 4, Layer 4)
-// is most of what makes this table useful rather than a static report.
+// fetched. Every row deep-links to /runs/:runId/samples/:sampleKey,
+// keeping the current filter query string, so a colleague following the
+// link lands on the same filtered view this row came from, not just the
+// bare sample.
 export function SampleList({
   runId,
   samples,
   primaryMetricName,
   primaryMetricDisplayName,
   showSubsetColumn,
+  selectedSampleKey,
+  compact,
 }: SampleListProps) {
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  // The whole row is clickable (§8.7's own acceptance), but the Key
+  // cell keeps a real <Link> too -- for keyboard focus, screen readers,
+  // and right-click/open-in-new-tab. A click that started on that link
+  // already navigated on its own; skip the row's own navigate so it
+  // isn't pushed to history twice.
+  function handleRowClick(event: MouseEvent<HTMLTableRowElement>, sampleKey: string): void {
+    if ((event.target as HTMLElement).closest('a')) {
+      return
+    }
+    navigate({ pathname: paths.runSample(runId, sampleKey), search: location.search })
+  }
+
   return (
-    <table className="w-full border-collapse text-sm">
+    <Table>
       <thead>
         <tr>
-          <th className="border-b border-slate-800 p-2 text-left font-medium text-slate-400">Key</th>
-          {showSubsetColumn && (
-            <th className="border-b border-slate-800 p-2 text-left font-medium text-slate-400">
-              Subset
-            </th>
-          )}
-          <th className="border-b border-slate-800 p-2 text-left font-medium text-slate-400">
-            Outcome
-          </th>
-          <th className="border-b border-slate-800 p-2 text-left font-medium text-slate-400">Tags</th>
-          <th className="border-b border-slate-800 p-2 text-left font-medium text-slate-400">Input</th>
-          <th className="border-b border-slate-800 p-2 text-left font-medium text-slate-400">Output</th>
-          <th className="border-b border-slate-800 p-2 text-right font-medium text-slate-400">
-            {primaryMetricDisplayName}
-          </th>
+          <TableHeaderCell>Key</TableHeaderCell>
+          {showSubsetColumn && <TableHeaderCell>Subset</TableHeaderCell>}
+          <TableHeaderCell>Outcome</TableHeaderCell>
+          <TableHeaderCell>Tags</TableHeaderCell>
+          <TableHeaderCell>Input</TableHeaderCell>
+          {!compact && <TableHeaderCell>Output</TableHeaderCell>}
+          {!compact && <TableHeaderCell className="text-right">{primaryMetricDisplayName}</TableHeaderCell>}
         </tr>
       </thead>
       <tbody>
         {samples.map((sample) => {
           const badge = outcomeBadge(sample.passed)
+          const isSelected = sample.sample_key === selectedSampleKey
           return (
-            <tr key={sample.sample_key}>
-              <td className="border-b border-slate-800/50 p-2">
+            <tr
+              key={sample.sample_key}
+              onClick={(event) => handleRowClick(event, sample.sample_key)}
+              className={cn('cursor-pointer hover:bg-muted', isSelected && 'bg-primary-soft')}
+            >
+              <TableCell>
                 <Link
-                  to={`/runs/${runId}/samples/${encodeURIComponent(sample.sample_key)}`}
-                  className="text-blue-400 hover:underline"
+                  to={{ pathname: paths.runSample(runId, sample.sample_key), search: location.search }}
+                  className="font-mono text-primary hover:underline"
                 >
                   {sample.sample_key}
                 </Link>
-              </td>
-              {showSubsetColumn && (
-                <td className="border-b border-slate-800/50 p-2 text-slate-300">{sample.subset}</td>
-              )}
-              <td className="border-b border-slate-800/50 p-2">
-                <span
-                  className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}
-                >
-                  {badge.label}
-                </span>
-              </td>
-              <td className="border-b border-slate-800/50 p-2">
+              </TableCell>
+              {showSubsetColumn && <TableCell>{sample.subset}</TableCell>}
+              <TableCell>
+                <Badge tone={badge.tone}>{badge.label}</Badge>
+              </TableCell>
+              <TableCell>
                 <div className="flex flex-wrap gap-1">
                   {sample.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="inline-block rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-300"
-                    >
+                    <Badge key={tag} tone="neutral">
                       {tagLabel(tag)}
-                    </span>
+                    </Badge>
                   ))}
                 </div>
-              </td>
-              <td
-                className="max-w-[24rem] truncate border-b border-slate-800/50 p-2 text-slate-300"
-                title={sample.input_preview}
-              >
+              </TableCell>
+              <TableCell className="max-w-[24rem] truncate" title={sample.input_preview}>
                 {previewText(sample.input_preview)}
-              </td>
-              <td
-                className="max-w-[24rem] truncate border-b border-slate-800/50 p-2 text-slate-300"
-                title={sample.output_preview}
-              >
-                {previewText(sample.output_preview)}
-              </td>
-              <td className="border-b border-slate-800/50 p-2 text-right font-mono text-slate-100">
-                {primaryScoreText(sample.scores, primaryMetricName)}
-              </td>
+              </TableCell>
+              {!compact && (
+                <TableCell className="max-w-[24rem] truncate" title={sample.output_preview}>
+                  {previewText(sample.output_preview)}
+                </TableCell>
+              )}
+              {!compact && (
+                <TableCell className="text-right font-mono tabular-nums">
+                  {primaryScoreText(sample.scores, primaryMetricName)}
+                </TableCell>
+              )}
             </tr>
           )
         })}
       </tbody>
-    </table>
+    </Table>
   )
 }

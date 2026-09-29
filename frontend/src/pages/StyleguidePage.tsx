@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Search, Trash2 } from 'lucide-react'
+import { MemoryRouter } from 'react-router'
 import { Button } from '../components/Button/Button'
 import { IconButton } from '../components/IconButton/IconButton'
 import { CopyButton } from '../components/CopyButton/CopyButton'
@@ -8,6 +9,7 @@ import { Badge } from '../components/Badge/Badge'
 import { Card } from '../components/Card/Card'
 import { PageHeader } from '../components/PageHeader/PageHeader'
 import { Tabs } from '../components/Tabs/Tabs'
+import { TabNav } from '../components/TabNav/TabNav'
 import { Dialog } from '../components/Dialog/Dialog'
 import { ConfirmDialog } from '../components/ConfirmDialog/ConfirmDialog'
 import { Tooltip } from '../components/Tooltip/Tooltip'
@@ -162,6 +164,23 @@ export function StyleguidePage() {
               { value: 'two', label: 'Two', content: <p className="text-sm text-muted-foreground">Panel two.</p> },
             ]}
           />
+        </Section>
+
+        {/* Phase 7 (docs/UI_REDESIGN_PLAN.md §8.7): a NavLink-based tab
+            strip for path-based tabs (the run report's own tabs;
+            Phases 11-12's Model and Benchmark detail pages reuse it) --
+            wrapped in its own MemoryRouter so clicking through the demo
+            never navigates the real page away from /styleguide. */}
+        <Section title="TabNav">
+          <MemoryRouter initialEntries={['/overview']}>
+            <TabNav
+              items={[
+                { to: '/overview', label: 'Overview', end: true },
+                { to: '/samples', label: 'Samples', badge: 79 },
+                { to: '/config', label: 'Configuration' },
+              ]}
+            />
+          </MemoryRouter>
         </Section>
 
         <Section title="Dialog, ConfirmDialog, Tooltip, Popover, Menu">

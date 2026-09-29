@@ -1,15 +1,16 @@
-// Non-DOM logic for RunHealthBand.tsx: turning a RunPerformanceSummary
-// into the display-ready strings the band renders. Kept out of the
-// component body per .cursor/rules/frontend-components.mdc -- "data
-// should already be in the shape it needs by the time it reaches JSX."
+// Non-DOM logic for RunVerdictBand.tsx: turning a RunPerformanceSummary
+// into the display-ready strings the band renders. Moved from
+// RunHealthBand.helper.ts (Phase 7, docs/UI_REDESIGN_PLAN.md §8.7) --
+// the headline and confidence-interval formatting are unchanged; the
+// cost line is trimmed to total tokens and throughput now that the
+// mean/max per-request token figures live in the Overview tab's own
+// Health details instead (RunHealthDetails).
 //
-// Score formatting itself moved to utils/formatScore.ts in Phase 4,
-// once the ScoreValue domain component became a second caller -- this
-// file now composes that shared formatter instead of keeping its own
-// copy.
+// Kept out of the component body per
+// .cursor/rules/frontend-components.mdc -- "data should already be in
+// the shape it needs by the time it reaches JSX."
 import type {
   ConfidenceInterval,
-  LatencySeconds,
   MetricDisplay,
   OutputTokens,
   RunPerformanceSummary,
@@ -29,17 +30,16 @@ export function formatConfidenceInterval(
   return `95% CI ${lower}\u2013${upper}`
 }
 
-// Compact notation ("1.44M") for a large token total; exact
-// comma-grouped notation ("2,661") for anything small enough to read
-// digit-by-digit -- matches docs/SCORE_DRILLDOWN_UI_PLAN.md Section 4's
-// Layer 2 mock ("1.44M output tokens ... 2,661 mean, 7,468 max").
+// Compact notation ("1.44M") for a large token total -- matches
+// docs/SCORE_DRILLDOWN_UI_PLAN.md Section 4's Layer 2 mock ("1.44M
+// output tokens").
 function formatCompactCount(value: number): string {
   return new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 2 }).format(
     value,
   )
 }
 
-export interface HealthBandHeadline {
+export interface VerdictHeadline {
   countsText: string | null
   failedText: string | null
   metricLabel: string
@@ -52,7 +52,7 @@ export interface HealthBandHeadline {
 // falling back to just the metric's value when it isn't --
 // MetricPerformance.passed/failed/confidence_interval are only ever set
 // on the primary metric (app/schemas/diagnostics.py).
-export function buildHeadline(performance: RunPerformanceSummary): HealthBandHeadline | null {
+export function buildHeadline(performance: RunPerformanceSummary): VerdictHeadline | null {
   const primaryMetric = performance.metrics.find((metric) => metric.is_primary)
   if (primaryMetric === undefined) {
     return null
@@ -73,9 +73,11 @@ export function buildHeadline(performance: RunPerformanceSummary): HealthBandHea
   }
 }
 
-// "1.44M output tokens · 2,661 mean, 7,468 max · 108.8 tok/s" -- omits
-// whichever half is missing rather than rendering a placeholder, and
-// returns null (skip the whole "Cost" row) when both are.
+// "1.44M output tokens · 108.8 tok/s" -- just the run-wide cost; the
+// mean/max per-request token figures now live in the Overview tab's own
+// Health details (RunHealthDetails). Omits whichever half is missing
+// rather than a placeholder, and returns null (skip the row) when both
+// are.
 export function buildCostText(
   outputTokens: OutputTokens | null,
   throughput: Throughput | null,
@@ -83,34 +85,9 @@ export function buildCostText(
   const parts: string[] = []
   if (outputTokens !== null) {
     parts.push(`${formatCompactCount(outputTokens.total)} output tokens`)
-    parts.push(
-      `${Math.round(outputTokens.mean).toLocaleString()} mean, ` +
-        `${Math.round(outputTokens.max).toLocaleString()} max`,
-    )
   }
   if (throughput !== null) {
     parts.push(`${throughput.output_tokens_per_second.toFixed(1)} tok/s`)
-  }
-  return parts.length > 0 ? parts.join(' \u00b7 ') : null
-}
-
-// "0.0% truncated · latency 24.5s mean, 19.2s median, 100.4s p99" --
-// truncation and latency only (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md
-// Phase 1): empty-answer and errored-request counts arrive in a later
-// phase, so this must never show a placeholder for either.
-export function buildHealthText(
-  truncationRate: number | null,
-  latencySeconds: LatencySeconds | null,
-): string | null {
-  const parts: string[] = []
-  if (truncationRate !== null) {
-    parts.push(`${(truncationRate * 100).toFixed(1)}% truncated`)
-  }
-  if (latencySeconds !== null) {
-    parts.push(
-      `latency ${latencySeconds.mean.toFixed(1)}s mean, ` +
-        `${latencySeconds.p50.toFixed(1)}s median, ${latencySeconds.p99.toFixed(1)}s p99`,
-    )
   }
   return parts.length > 0 ? parts.join(' \u00b7 ') : null
 }

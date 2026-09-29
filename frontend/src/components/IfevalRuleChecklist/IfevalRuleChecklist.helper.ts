@@ -1,7 +1,3 @@
-// Non-DOM logic for IfevalRuleChecklist.tsx: turning one rule's
-// strict/loose outcome into display text and a colour. Kept out of
-// the component body per .cursor/rules/frontend-components.mdc.
-
 import type { RuleCheck } from '../../api/client'
 
 // `null` means the recheck never ran for this sample (Phase 7: "When
@@ -16,9 +12,9 @@ export function ruleOutcomeText(value: boolean | null): string {
 
 export function ruleOutcomeClassName(value: boolean | null): string {
   if (value === null) {
-    return 'text-slate-500'
+    return 'text-muted-foreground'
   }
-  return value ? 'text-emerald-400' : 'font-medium text-red-400'
+  return value ? 'text-success' : 'font-medium text-danger'
 }
 
 // A sample's rule_results is either entirely known or entirely

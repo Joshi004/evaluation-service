@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery, type UseQueryResult } from '@tanstack/react-query'
+import { keepPreviousData, queryOptions, useQuery, type UseQueryResult } from '@tanstack/react-query'
 import {
   apiFetch,
   type DiagnosticsSampleDetail,
@@ -60,18 +60,44 @@ export function buildSamplesPath(runId: number, filters: SampleListFilters): str
   return `/runs/${runId}/samples?${params.toString()}`
 }
 
-export function useRunDiagnostics(runId: number): UseQueryResult<RunDiagnostics> {
+export interface UseRunDiagnosticsOptions {
+  // The diagnostics endpoint 409s for a queued, running, failed or
+  // cancelled run (Phase 3 of docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md
+  // -- "do not call for them", restated as a ground rule). Callers that
+  // already know the run's status (RunReportPage, once per run) pass
+  // `enabled: run.status === 'done'`; defaults to `true` so existing
+  // call sites (a page that only ever mounts for a finished run) don't
+  // need to change.
+  enabled?: boolean
+}
+
+export function useRunDiagnostics(
+  runId: number,
+  options: UseRunDiagnosticsOptions = {},
+): UseQueryResult<RunDiagnostics> {
   return useQuery({
     queryKey: queryKeys.runDiagnostics(runId),
     queryFn: () => apiFetch<RunDiagnostics>(`/runs/${runId}/diagnostics`),
-    enabled: Number.isFinite(runId),
+    enabled: Number.isFinite(runId) && (options.enabled ?? true),
+  })
+}
+
+// Factored out of useRunSamples so a Prev/Next that needs the next page
+// of samples (RunSamplesTab, crossing a SAMPLE_PAGE_SIZE boundary) can
+// pull it through the same query the list itself uses --
+// `queryClient.query(runSamplesQueryOptions(...))` populates the exact
+// cache entry useRunSamples would read on the next render, instead of a
+// second, differently-keyed fetch.
+export function runSamplesQueryOptions(runId: number, filters: SampleListFilters) {
+  return queryOptions({
+    queryKey: queryKeys.runSamples(runId, filters),
+    queryFn: () => apiFetch<SamplePage>(buildSamplesPath(runId, filters)),
   })
 }
 
 export function useRunSamples(runId: number, filters: SampleListFilters): UseQueryResult<SamplePage> {
   return useQuery({
-    queryKey: queryKeys.runSamples(runId, filters),
-    queryFn: () => apiFetch<SamplePage>(buildSamplesPath(runId, filters)),
+    ...runSamplesQueryOptions(runId, filters),
     enabled: Number.isFinite(runId),
     // Keeps the previous page's rows on screen while a filter change or
     // a page turn is in flight, instead of flashing an empty table.

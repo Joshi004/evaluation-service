@@ -1,10 +1,8 @@
-// Non-DOM logic for RunDetailPage.tsx: reshaping a run's resolved
-// standard and resolved sampling profile into the label/value rows the
-// page renders. Kept out of the component body per
-// .cursor/rules/frontend-components.mdc -- "data should already be in
-// the shape it needs by the time it reaches JSX." Timestamp formatting
-// moved to utils/formatTimestamp.ts once RelativeTime (Phase 4) became
-// a second user.
+// Non-DOM logic for RunConfigTab.tsx: reshaping a run's resolved
+// standard, sampling and serving profiles into the label/value rows
+// each grouped card renders. Moved from the deleted
+// RunDetailPage.helper.ts (Phase 7, docs/UI_REDESIGN_PLAN.md §8.7) --
+// the field lists themselves are unchanged.
 
 import type { RunSamplingDetail, RunStandardDetail, ServingProfileSummary } from '../api/client'
 
@@ -13,10 +11,10 @@ export interface FieldRow {
   value: string
 }
 
-// `null` covers both the standard's own nullable fields (dataset_revision,
-// split, sample_limit) and the endpoint's slurm_job_id; numbers and
-// booleans are stringified so every row in the resulting table is a
-// plain string, matching FieldRow.
+// `null` covers both the standard's own nullable fields
+// (dataset_revision, split, sample_limit) and the endpoint's
+// slurm_job_id; numbers and booleans are stringified so every row in
+// the resulting table is a plain string, matching FieldRow.
 export function displayOrDash(value: string | number | boolean | null): string {
   if (value === null) {
     return '—'
@@ -28,12 +26,10 @@ export function displayOrDash(value: string | number | boolean | null): string {
 }
 
 // The fields a human needs to know exactly what ran, from the resolved
-// standard -- task/dataset shape plus think_handling, a protocol field
-// (docs/STANDARDS_AND_PROFILES_PHASES.md Phase 3 moved sampling off the
-// standard entirely; see samplingFieldRows below for that half).
-// prompt_template, few_shot_prompt_template and extraction are
-// intentionally left out: all three are better suited to the Standards
-// page's raw-YAML view than to a run's summary row.
+// standard -- task/dataset shape plus think_handling. prompt_template,
+// few_shot_prompt_template and extraction are left out: all three are
+// better suited to the Benchmarks page's own raw-YAML view (Phase 12)
+// than to a run's configuration summary.
 export function standardFieldRows(standard: RunStandardDetail): FieldRow[] {
   return [
     { label: 'Benchmark', value: standard.benchmark },
@@ -71,12 +67,11 @@ export function samplingFieldRows(sampling: RunSamplingDetail): FieldRow[] {
 }
 
 // The fields a human needs to know exactly how the model's server was
-// started, from the run's own recorded serving profile (S-T12: this is
-// eval_run.serving_profile_id, not necessarily the checkpoint's current
-// default). engine_options is left out -- its keys vary per profile, so
-// RunDetailPage renders it as its own list below this grid, the same
-// call ServingProfilesPage.helper.ts's buildServingValueRows already
-// made for the Serving Profiles page.
+// started, from the run's own recorded serving profile (not necessarily
+// the checkpoint's current default). engine_options is left out --
+// its keys vary per profile, so RunConfigTab renders it as its own list
+// below this grid, the same call ServingProfilesPage.helper.ts's
+// buildServingValueRows already makes for the Serving Profiles page.
 export function servingFieldRows(serving: ServingProfileSummary): FieldRow[] {
   return [
     { label: 'Engine', value: serving.engine },

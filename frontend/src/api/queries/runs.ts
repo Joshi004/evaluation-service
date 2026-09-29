@@ -1,4 +1,4 @@
-import { useQuery, type UseQueryResult } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, type UseMutationResult, type UseQueryResult } from '@tanstack/react-query'
 import { apiFetch, type RunDetail, type RunListFilters, type RunListItem } from '../client'
 import { isActiveRunStatus } from '../../utils/runStatus'
 import { queryKeys } from './queryKeys'
@@ -46,12 +46,32 @@ export function useRuns(
   })
 }
 
-// Keeps status, phase and metrics live while watching a run finish.
+// Keeps status, phase and metrics live while watching a run finish, and
+// stops polling once it has (§3 rule 11: "live where it matters, calm
+// elsewhere") -- a finished run's own row never changes again, so
+// there is nothing a 5s poll would ever catch that a page reload
+// wouldn't.
 export function useRun(runId: number): UseQueryResult<RunDetail> {
   return useQuery({
     queryKey: queryKeys.run(runId),
     queryFn: () => apiFetch<RunDetail>(`/runs/${runId}`),
     enabled: Number.isFinite(runId),
-    refetchInterval: 5000,
+    refetchInterval: (query) => (isActiveRunStatus(query.state.data?.status ?? '') ? 5000 : false),
+  })
+}
+
+// The one cancel-run mutation, shared by the run report's own
+// RunCancelButton (Phase 7) and RunsPage's row action (inlined there
+// today, moved onto this hook once Phase 9 rewrites that page) -- one
+// implementation of "what happens after a cancel succeeds" instead of
+// two invalidation lists that can drift apart.
+export function useCancelRun(): UseMutationResult<RunListItem, Error, number> {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (runId: number) => apiFetch<RunListItem>(`/runs/${runId}/cancel`, { method: 'POST' }),
+    onSuccess: (_data, runId) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.run(runId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.allRuns() })
+    },
   })
 }

@@ -1,4 +1,5 @@
 import type { RuleCheck } from '../../api/client'
+import { Table, TableCell, TableHeaderCell } from '../Table/Table'
 import { hasKnownOutcome, ruleOutcomeClassName, ruleOutcomeText } from './IfevalRuleChecklist.helper'
 
 interface IfevalRuleChecklistProps {
@@ -27,57 +28,49 @@ export function IfevalRuleChecklist({ rules }: IfevalRuleChecklistProps) {
 
   return (
     <section className="mt-4">
-      <h2 className="text-xs font-medium uppercase tracking-wide text-slate-500">Rules</h2>
-      <p className="mt-1 text-xs text-slate-500">
+      <h2 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Rules</h2>
+      <p className="mt-1 text-xs text-muted-foreground">
         Recomputed diagnostic detail — may disagree with the stored score by an instruction or
         two. The score above stays authoritative.
       </p>
       {!showsOutcomes && (
-        <p className="mt-1 text-xs text-amber-400">
+        <p className="mt-1 text-xs text-warning">
           The per-rule recheck hasn't produced an outcome for this sample — showing the rules
           without ticks.
         </p>
       )}
-      <table className="mt-2 w-full border-collapse text-sm">
-        <thead>
-          <tr>
-            <th className="border-b border-slate-800 p-2 text-left font-medium text-slate-400">
-              Rule
-            </th>
-            <th className="border-b border-slate-800 p-2 text-right font-medium text-slate-400">
-              Strict
-            </th>
-            <th className="border-b border-slate-800 p-2 text-right font-medium text-slate-400">
-              Loose
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {/* Keyed on rule_id plus position, not rule_id alone -- the
-              same rule id can appear twice on one sample with
-              different kwargs (run-13 key 1040's
-              change_case:capital_word_frequency, once passing at
-              "less than 10", once failing at "at least 1"). */}
-          {rules.map((rule, index) => (
-            <tr key={`${rule.rule_id}-${index}`}>
-              <td className="border-b border-slate-800/50 p-2 text-slate-200">
-                {rule.description}
-                <span className="ml-2 font-mono text-xs text-slate-600">{rule.rule_id}</span>
-              </td>
-              <td
-                className={`border-b border-slate-800/50 p-2 text-right font-mono ${ruleOutcomeClassName(rule.strict)}`}
-              >
-                {ruleOutcomeText(rule.strict)}
-              </td>
-              <td
-                className={`border-b border-slate-800/50 p-2 text-right font-mono ${ruleOutcomeClassName(rule.loose)}`}
-              >
-                {ruleOutcomeText(rule.loose)}
-              </td>
+      <div className="mt-2">
+        <Table>
+          <thead>
+            <tr>
+              <TableHeaderCell>Rule</TableHeaderCell>
+              <TableHeaderCell className="text-right">Strict</TableHeaderCell>
+              <TableHeaderCell className="text-right">Loose</TableHeaderCell>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {/* Keyed on rule_id plus position, not rule_id alone -- the
+                same rule id can appear twice on one sample with
+                different kwargs (run-13 key 1040's
+                change_case:capital_word_frequency, once passing at
+                "less than 10", once failing at "at least 1"). */}
+            {rules.map((rule, index) => (
+              <tr key={`${rule.rule_id}-${index}`}>
+                <TableCell>
+                  {rule.description}
+                  <span className="ml-2 font-mono text-xs text-subtle-foreground">{rule.rule_id}</span>
+                </TableCell>
+                <TableCell className={`text-right font-mono ${ruleOutcomeClassName(rule.strict)}`}>
+                  {ruleOutcomeText(rule.strict)}
+                </TableCell>
+                <TableCell className={`text-right font-mono ${ruleOutcomeClassName(rule.loose)}`}>
+                  {ruleOutcomeText(rule.loose)}
+                </TableCell>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </div>
     </section>
   )
 }

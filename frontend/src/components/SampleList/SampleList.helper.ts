@@ -1,7 +1,8 @@
-// Non-DOM logic for SampleList.tsx: formatting one sample's score, its
-// pass/fail badge, and its preview text. Kept out of the component
-// body per .cursor/rules/frontend-components.mdc -- "data should
-// already be in the shape it needs by the time it reaches JSX."
+// Non-DOM logic for SampleList.tsx: formatting one sample's score and
+// its pass/fail badge tone. Kept out of the component body per
+// .cursor/rules/frontend-components.mdc -- "data should already be in
+// the shape it needs by the time it reaches JSX."
+import type { BadgeTone } from '../Badge/Badge.helper'
 
 // The per-sample primary score, read straight out of `scores` by name.
 // DiagnosticsSample carries no display hint (only RunDetail's
@@ -14,15 +15,14 @@ export function primaryScoreText(scores: Record<string, number>, primaryMetricNa
 
 export interface OutcomeBadgeStyle {
   label: string
-  className: string
+  tone: BadgeTone
 }
 
-// A local pass/fail badge rather than reusing StatusBadge -- that
-// component's own helper maps the five eval_run statuses and says so
-// explicitly; "pass"/"fail" would just fall through to its grey
-// fallback instead of reading as an outcome.
+// A local pass/fail badge rather than RunStatusChip -- that component's
+// own helper maps the five eval_run statuses and says so explicitly;
+// "pass"/"fail" would just fall through to its neutral fallback instead
+// of reading as an outcome. Shared with SamplePanel (Phase 7), so the
+// list's own badge and the panel's own header badge never disagree.
 export function outcomeBadge(passed: boolean): OutcomeBadgeStyle {
-  return passed
-    ? { label: 'Pass', className: 'bg-emerald-500/20 text-emerald-300' }
-    : { label: 'Fail', className: 'bg-red-500/20 text-red-300' }
+  return passed ? { label: 'Pass', tone: 'success' } : { label: 'Fail', tone: 'danger' }
 }

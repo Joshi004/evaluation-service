@@ -81,11 +81,8 @@ export function LeaderboardScoreCard({ column, model, setup, cell }: Leaderboard
             scoreFraction: cell.value,
           })}
         />
-        {/* Phase 7 (docs/UI_REDESIGN_PLAN.md §8.7) renames this route to
-            .../samples and this link with it; today's route is still
-            .../diagnostics. */}
         <Link
-          to={`${paths.runDiagnostics(cell.evalRunId)}?outcome=failed`}
+          to={`${paths.runSamples(cell.evalRunId)}?outcome=failed`}
           className="text-xs font-medium text-primary hover:underline"
         >
           View failures

@@ -1,4 +1,4 @@
-// Non-DOM logic for SampleFilters.tsx: the outcome dropdown's fixed
+// Non-DOM logic for SampleFilters.tsx: the outcome control's fixed
 // option list and a subset's display label. Kept out of the component
 // body per .cursor/rules/frontend-components.mdc.
 

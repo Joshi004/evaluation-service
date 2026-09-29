@@ -1,7 +1,11 @@
-import { Navigate, useLocation } from 'react-router'
+import { Navigate, useLocation, useParams } from 'react-router'
 
 interface RedirectPreservingSearchProps {
-  to: string
+  // A function target reads this route's own params (Phase 7's
+  // `/runs/:runId/diagnostics` -> `/runs/:runId/samples` redirect is the
+  // first caller that needs one) -- a plain string still covers every
+  // param-free old path from §4.2's route map.
+  to: string | ((params: Readonly<Record<string, string | undefined>>) => string)
 }
 
 // Every old URL in docs/UI_REDESIGN_PLAN.md §4.2's route map keeps
@@ -10,5 +14,7 @@ interface RedirectPreservingSearchProps {
 // browser history between the new page and wherever the user came from.
 export function RedirectPreservingSearch({ to }: RedirectPreservingSearchProps) {
   const location = useLocation()
-  return <Navigate to={{ pathname: to, search: location.search }} replace />
+  const params = useParams()
+  const pathname = typeof to === 'function' ? to(params) : to
+  return <Navigate to={{ pathname, search: location.search }} replace />
 }

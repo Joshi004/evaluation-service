@@ -43,3 +43,15 @@ export function formatMargin(
   const halfWidth = (interval.upper - interval.lower) / 2
   return `\u00b1${formatScore(halfWidth, display)}`
 }
+
+// "−1.5 pts" -- a signed delta between two scores (e.g. a run report's
+// "vs the previous run" line, Phase 8's own run-vs-baseline deltas).
+// Always suffixed "pts", never the metric's own %/unit: the value being
+// formatted is a *difference* of two percents, and showing it as
+// "−1.5%" would read as "the score is 1.5%", not "the score moved by
+// 1.5 points". Uses the typographic minus (U+2212), matching every
+// other signed number in the redesign plan's own mockups.
+export function formatScoreDelta(delta: number, display: MetricDisplay | null = null): string {
+  const sign = delta < 0 ? '\u2212' : '+'
+  return `${sign}${formatScore(Math.abs(delta), display)} pts`
+}

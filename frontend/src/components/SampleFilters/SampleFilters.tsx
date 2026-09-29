@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react'
+import { X } from 'lucide-react'
 import type { DiagnosticsSubset } from '../../api/client'
 import type { SampleListFilters, SampleOutcome } from '../../api/queries/runDiagnostics'
 import { useDebouncedValue } from '../../utils/useDebouncedValue'
+import { IconButton } from '../IconButton/IconButton'
+import { SearchInput } from '../SearchInput/SearchInput'
+import { SegmentedControl } from '../SegmentedControl/SegmentedControl'
+import { SelectField } from '../SelectField/SelectField'
 import { OUTCOME_OPTIONS, subsetOptionLabel } from './SampleFilters.helper'
 
 interface SampleFiltersProps {
@@ -15,15 +20,16 @@ interface SampleFiltersProps {
 // keystroke.
 const SEARCH_DEBOUNCE_MS = 300
 
-const SELECT_CLASS_NAME = 'rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm text-slate-200'
-
 // Layer 4's filter row (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md Phase
 // 4). Filter state lives in the URL, not here (Section 4's "a filtered
 // view has to be shareable" requirement) -- every change calls
-// `onChange`, and RunDiagnosticsPage is what actually rewrites the URL.
-// The only local state is the search box's typed-but-not-yet-committed
+// `onChange`, and RunSamplesTab is what actually rewrites the URL. The
+// only local state is the search box's typed-but-not-yet-committed
 // draft, so every keystroke doesn't itself trigger a refetch or a URL
-// rewrite.
+// rewrite. The active rule (set by clicking a row in FailureBreakdown,
+// or by following a link from the Overview tab's own breakdown preview)
+// shows here as its own removable pill, now that FailureBreakdown's
+// matching in-place notice is collapsed by default (Phase 7).
 export function SampleFilters({ filters, subsets, onChange }: SampleFiltersProps) {
   const [syncedQuery, setSyncedQuery] = useState(filters.q)
   const [searchDraft, setSearchDraft] = useState(filters.q)
@@ -57,61 +63,52 @@ export function SampleFilters({ filters, subsets, onChange }: SampleFiltersProps
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch])
 
-  function handleOutcomeChange(outcome: SampleOutcome) {
-    onChange({ ...filters, outcome, offset: 0 })
+  function handleOutcomeChange(outcome: string): void {
+    onChange({ ...filters, outcome: outcome as SampleOutcome, offset: 0 })
   }
 
-  function handleSubsetChange(subset: string) {
+  function handleSubsetChange(subset: string): void {
     onChange({ ...filters, subset: subset === '' ? null : subset, offset: 0 })
   }
 
+  function handleClearRule(): void {
+    onChange({ ...filters, rule: null, offset: 0 })
+  }
+
   return (
-    <div className="flex flex-wrap items-end gap-3">
-      <label className="text-sm">
-        <span className="mb-1 block text-xs text-slate-500">Outcome</span>
-        <select
-          value={filters.outcome}
-          onChange={(event) => handleOutcomeChange(event.target.value as SampleOutcome)}
-          className={SELECT_CLASS_NAME}
-        >
-          {OUTCOME_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </label>
+    <div className="flex flex-wrap items-center gap-3">
+      <SegmentedControl options={OUTCOME_OPTIONS} value={filters.outcome} onValueChange={handleOutcomeChange} />
 
       {/* IFEval's single "default" subset shows no control; MMLU-Pro's
           14 do (Phase 4's "hidden when the benchmark has only one"). */}
       {subsets.length > 1 && (
-        <label className="text-sm">
-          <span className="mb-1 block text-xs text-slate-500">Subset</span>
-          <select
-            value={filters.subset ?? ''}
-            onChange={(event) => handleSubsetChange(event.target.value)}
-            className={SELECT_CLASS_NAME}
-          >
-            <option value="">All subsets</option>
-            {subsets.map((subset) => (
-              <option key={subset.name} value={subset.name}>
-                {subsetOptionLabel(subset)}
-              </option>
-            ))}
-          </select>
-        </label>
+        <SelectField value={filters.subset ?? ''} onChange={(event) => handleSubsetChange(event.target.value)} className="w-48">
+          <option value="">All subsets</option>
+          {subsets.map((subset) => (
+            <option key={subset.name} value={subset.name}>
+              {subsetOptionLabel(subset)}
+            </option>
+          ))}
+        </SelectField>
       )}
 
-      <label className="text-sm">
-        <span className="mb-1 block text-xs text-slate-500">Search</span>
-        <input
-          type="text"
-          value={searchDraft}
-          onChange={(event) => setSearchDraft(event.target.value)}
-          placeholder="Search prompt or answer…"
-          className="w-64 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-200"
-        />
-      </label>
+      <SearchInput
+        value={searchDraft}
+        onChange={(event) => setSearchDraft(event.target.value)}
+        onClear={() => setSearchDraft('')}
+        placeholder="Search prompt or answer…"
+        className="w-64"
+      />
+
+      {filters.rule !== null && (
+        <span className="flex items-center gap-1.5 rounded-md border border-border bg-muted px-2 py-1 text-xs">
+          <span className="text-muted-foreground">Rule</span>
+          <span className="font-mono text-foreground">{filters.rule}</span>
+          <IconButton aria-label="Clear rule filter" variant="ghost" size="sm" onClick={handleClearRule}>
+            <X className="h-3.5 w-3.5" aria-hidden="true" />
+          </IconButton>
+        </span>
+      )}
     </div>
   )
 }
