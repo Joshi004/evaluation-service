@@ -17,7 +17,7 @@ import {
 import { Button } from '../Button/Button'
 import { IconButton } from '../IconButton/IconButton'
 import { RunStatusFilter } from '../RunStatusFilter/RunStatusFilter'
-import { RunsLiveIndicator } from '../RunsLiveIndicator/RunsLiveIndicator'
+import { LiveIndicator } from '../LiveIndicator/LiveIndicator'
 import { SearchInput } from '../SearchInput/SearchInput'
 import { SegmentedControl } from '../SegmentedControl/SegmentedControl'
 import { SelectField } from '../SelectField/SelectField'
@@ -78,7 +78,7 @@ export function RunsToolbar({
     <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <RunStatusFilter value={filters.status} counts={statusCounts} onChange={onStatusChange} />
-        <RunsLiveIndicator
+        <LiveIndicator
           pollIntervalMs={runsPollIntervalMs(runsQuery.data)}
           isRefetchError={runsQuery.isRefetchError}
           lastCheckedAt={runsQuery.dataUpdatedAt || null}

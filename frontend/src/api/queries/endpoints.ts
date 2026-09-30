@@ -3,7 +3,7 @@ import type { UseMutationResult, UseQueryResult } from '@tanstack/react-query'
 import { apiFetch, type EndpointListItem } from '../client'
 import { queryKeys } from './queryKeys'
 
-// Exported so ModelServerList's own RunsLiveIndicator can state the
+// Exported so ModelServerList's own LiveIndicator can state the
 // real interval without a second literal that could drift from this
 // one (the same "one computation, not two" reasoning runsPollIntervalMs
 // already documents for the Runs page).

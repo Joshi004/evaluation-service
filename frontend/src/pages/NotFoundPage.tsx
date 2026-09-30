@@ -4,10 +4,10 @@ import { buttonClassName, BUTTON_LABEL_SIZE } from '../components/Button/Button.
 import { paths } from '../utils/paths'
 
 // Reached only through the shell's catch-all route -- any path that
-// isn't a real page, one of the seven redirects, or /vision|/styleguide
-// (their own separate top-level routes). Rendered inside AppShell like
-// every other page (routes.tsx wraps it in Page, same as the rest), so
-// the sidebar and top bar are still there to navigate away from.
+// isn't a real page or one of the seven redirects (/styleguide is its
+// own separate top-level route). Rendered inside AppShell like every
+// other page (routes.tsx wraps it in Page, same as the rest), so the
+// sidebar and top bar are still there to navigate away from.
 export function NotFoundPage() {
   return (
     <PageHeader

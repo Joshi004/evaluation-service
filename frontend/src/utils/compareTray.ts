@@ -114,11 +114,10 @@ export function findPinRefusal(pinnedRuns: PinnedRun[], candidate: CompareCandid
   return null
 }
 
-// The plain-language text for each refusal (§8.5, item 4's own
-// wording). `trayBenchmarkName` is a display name the caller already
-// resolved (e.g. via benchmarkDisplayName) -- this function stays a
-// pure string builder with no catalog lookup of its own, the same
-// division of labour setupLabel.ts uses.
+// The plain-language text for each refusal. `trayBenchmarkName` is a
+// display name the caller already resolved (e.g. via
+// benchmarkDisplayName) -- this function stays a pure string builder
+// with no catalog lookup of its own.
 export function pinRefusalReason(refusal: PinRefusal, trayBenchmarkName: string): string {
   switch (refusal) {
     case 'already-pinned':

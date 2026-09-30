@@ -7,7 +7,6 @@ import { CopyButton } from '../components/CopyButton/CopyButton'
 import { Badge } from '../components/Badge/Badge'
 import { Card } from '../components/Card/Card'
 import { PageHeader } from '../components/PageHeader/PageHeader'
-import { Tabs } from '../components/Tabs/Tabs'
 import { TabNav } from '../components/TabNav/TabNav'
 import { Dialog } from '../components/Dialog/Dialog'
 import { SidePanel } from '../components/SidePanel/SidePanel'
@@ -44,7 +43,7 @@ import { RelativeTime } from '../components/RelativeTime/RelativeTime'
 import { RunStatusChip } from '../components/RunStatusChip/RunStatusChip'
 import { BatchProgressBar } from '../components/BatchProgressBar/BatchProgressBar'
 import { RunFailureReason } from '../components/RunFailureReason/RunFailureReason'
-import { RunsLiveIndicator } from '../components/RunsLiveIndicator/RunsLiveIndicator'
+import { LiveIndicator } from '../components/LiveIndicator/LiveIndicator'
 import { TimeToLiveBar } from '../components/TimeToLiveBar/TimeToLiveBar'
 import { classifyRunError } from '../utils/classifyRunError'
 import { shortenModelName } from '../utils/shortenModelName'
@@ -168,7 +167,6 @@ export function StyleguidePage() {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [sidePanelOpen, setSidePanelOpen] = useState(false)
   const [stepperStepKey, setStepperStepKey] = useState('settings')
-  const [tab, setTab] = useState('one')
   const [checked, setChecked] = useState(true)
   const [segment, setSegment] = useState('comfortable')
   const [search, setSearch] = useState('leaderboard')
@@ -226,18 +224,7 @@ export function StyleguidePage() {
           <Card className="w-64">A Card is the one panel primitive every boxed section sits inside.</Card>
         </Section>
 
-        <Section title="Tabs">
-          <Tabs
-            value={tab}
-            onValueChange={setTab}
-            items={[
-              { value: 'one', label: 'One', content: <p className="text-sm text-muted-foreground">Panel one.</p> },
-              { value: 'two', label: 'Two', content: <p className="text-sm text-muted-foreground">Panel two.</p> },
-            ]}
-          />
-        </Section>
-
-        {/* Phase 7 (docs/UI_REDESIGN_PLAN.md §8.7): a NavLink-based tab
+        {/* A NavLink-based tab
             strip for path-based tabs (the run report's own tabs;
             Phases 11-12's Model and Benchmark detail pages reuse it).
             "Overview" points at this page's own real path so it reads
@@ -556,9 +543,9 @@ export function StyleguidePage() {
         <Section title="Runs activity">
           <div className="flex w-full flex-col gap-4">
             <div className="flex flex-wrap items-center gap-6">
-              <RunsLiveIndicator pollIntervalMs={5_000} isRefetchError={false} lastCheckedAt={NOW_EXAMPLE_MS} />
-              <RunsLiveIndicator pollIntervalMs={30_000} isRefetchError={false} lastCheckedAt={NOW_EXAMPLE_MS} />
-              <RunsLiveIndicator pollIntervalMs={30_000} isRefetchError lastCheckedAt={NOW_EXAMPLE_MS - 45_000} />
+              <LiveIndicator pollIntervalMs={5_000} isRefetchError={false} lastCheckedAt={NOW_EXAMPLE_MS} />
+              <LiveIndicator pollIntervalMs={30_000} isRefetchError={false} lastCheckedAt={NOW_EXAMPLE_MS} />
+              <LiveIndicator pollIntervalMs={30_000} isRefetchError lastCheckedAt={NOW_EXAMPLE_MS - 45_000} />
             </div>
             <BatchProgressBar
               runs={[{ status: 'done' }, { status: 'done' }, { status: 'failed' }, { status: 'running' }]}

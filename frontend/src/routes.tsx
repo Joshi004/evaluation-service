@@ -30,8 +30,6 @@ import { ComparePage } from './pages/ComparePage'
 import { InfrastructurePage } from './pages/InfrastructurePage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { StyleguidePage } from './pages/StyleguidePage'
-import { PrototypeApp } from './prototype/PrototypeApp'
-import { prototypeRouteElements } from './prototype/prototypeRoutes'
 
 // The real pages, nested under AppShell (sidebar + top bar; replaces
 // the old flat-nav App component -- docs/UI_REDESIGN_PLAN.md Phase 2).
@@ -302,23 +300,9 @@ export function AppRoutes() {
       </Route>
 
       {/*
-       * VISION PROTOTYPE — a fully mocked demo for management buy-in, not
-       * part of the real product. A sibling of the route above, not a
-       * child of it, so it gets its own shell/nav instead of inheriting
-       * the real one. See src/prototype/README.md for what's mocked and
-       * exactly how to remove this block and the folder it points to.
-       * No nav link to it any more (decision D5) -- still reachable by
-       * pasting the URL.
-       */}
-      <Route path="/vision" element={<PrototypeApp />}>
-        {prototypeRouteElements}
-      </Route>
-
-      {/*
-       * Design-system reference (docs/UI_REDESIGN_PLAN.md Phase 1) --
-       * dev-only, so it never ships. A sibling of the real app for the
-       * same reason /vision is: it is not one of the real pages and has
-       * no reason to inherit AppShell.
+       * Design-system reference -- dev-only, so it never ships. A
+       * sibling of the real app, not a child of it: it is not one of
+       * the real pages and has no reason to inherit AppShell.
        */}
       {import.meta.env.DEV && <Route path="/styleguide" element={<StyleguidePage />} />}
     </Routes>

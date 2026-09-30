@@ -4,7 +4,7 @@ import { formatTimestamp } from '../../utils/formatTimestamp'
 import { Badge } from '../Badge/Badge'
 import { Tooltip } from '../Tooltip/Tooltip'
 
-interface RunsLiveIndicatorProps {
+interface LiveIndicatorProps {
   // Milliseconds between automatic refreshes -- the caller reads this
   // off runsPollIntervalMs (api/queries/runs.ts) rather than this
   // component taking a whole UseQueryResult itself, so all three states
@@ -15,15 +15,16 @@ interface RunsLiveIndicatorProps {
   lastCheckedAt: number | null
 }
 
-// §8.9 item 5's own live indicator: a pulsing dot plus "Live" while
-// polling every 5s (something in view is queued or running), a steady
-// dot at the 30s baseline, and a warning state when a background
-// refresh itself fails. `isRefetchError` (TanStack Query's own flag for
-// "the last fetch failed but the data already on screen is still
-// there") is what tells that apart from a first-load failure, which the
-// page's own ErrorState already owns -- this indicator never replaces
-// the loaded table with an error.
-export function RunsLiveIndicator({ pollIntervalMs, isRefetchError, lastCheckedAt }: RunsLiveIndicatorProps) {
+// A pulsing dot plus "Live" while polling every 5s (something in view
+// is queued or running), a steady dot at the 30s baseline, and a
+// warning state when a background refresh itself fails.
+// `isRefetchError` (TanStack Query's own flag for "the last fetch
+// failed but the data already on screen is still there") is what tells
+// that apart from a first-load failure, which the page's own
+// ErrorState already owns -- this indicator never replaces the loaded
+// table with an error. Shared by the Runs toolbar and the model server
+// list, both of which poll on their own interval.
+export function LiveIndicator({ pollIntervalMs, isRefetchError, lastCheckedAt }: LiveIndicatorProps) {
   const intervalSeconds = pollIntervalMs / 1000
   const isFastPoll = intervalSeconds <= 5
   const lastChecked = lastCheckedAt === null ? null : formatTimestamp(new Date(lastCheckedAt).toISOString())

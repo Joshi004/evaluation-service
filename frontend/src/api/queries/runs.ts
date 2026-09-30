@@ -41,7 +41,7 @@ function hasActiveRun(runs: RunListItem[] | undefined): boolean {
 }
 
 // Shared by useRuns' own refetchInterval below and the Runs page's own
-// live indicator (docs/UI_REDESIGN_PLAN.md §8.9, RunsLiveIndicator) --
+// live indicator (docs/UI_REDESIGN_PLAN.md §8.9, LiveIndicator) --
 // "5s while something in view is active, else 30s" is one computation
 // both read, not two literals that could drift apart.
 export function runsPollIntervalMs(runs: RunListItem[] | undefined): number {

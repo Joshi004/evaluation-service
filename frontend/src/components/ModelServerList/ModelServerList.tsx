@@ -8,7 +8,7 @@ import { EmptyState } from '../EmptyState/EmptyState'
 import { ErrorState } from '../ErrorState/ErrorState'
 import { ModelServerCard } from '../ModelServerCard/ModelServerCard'
 import { ModelServersSkeleton } from '../ModelServersSkeleton/ModelServersSkeleton'
-import { RunsLiveIndicator } from '../RunsLiveIndicator/RunsLiveIndicator'
+import { LiveIndicator } from '../LiveIndicator/LiveIndicator'
 import { modelServerListSummary, sumGpus } from './ModelServerList.helper'
 
 interface ModelServerListProps {
@@ -35,7 +35,7 @@ export function ModelServerList({ endpoints, onStartClick }: ModelServerListProp
   }
 
   // A background refetch failing (isRefetchError) keeps the last-good
-  // list on screen and is RunsLiveIndicator's own job to surface --
+  // list on screen and is LiveIndicator's own job to surface --
   // only a failure with nothing loaded yet blocks the whole section
   // (the same split RunsPage's own hasBlockingError already makes).
   const hasBlockingError = endpoints.isError && endpoints.data === undefined
@@ -72,7 +72,7 @@ export function ModelServerList({ endpoints, onStartClick }: ModelServerListProp
             {modelServerListSummary(liveEndpoints.length, sumGpus(liveEndpoints))}
           </span>
         </h2>
-        <RunsLiveIndicator
+        <LiveIndicator
           pollIntervalMs={ENDPOINTS_POLL_INTERVAL_MS}
           isRefetchError={endpoints.isRefetchError}
           lastCheckedAt={endpoints.dataUpdatedAt || null}

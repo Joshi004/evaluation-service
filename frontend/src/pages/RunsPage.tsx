@@ -95,7 +95,7 @@ export function RunsPage() {
   }
 
   // A background refetch failing (isRefetchError) keeps the last-good
-  // `data` on screen and is RunsLiveIndicator's own job to surface, not
+  // `data` on screen and is LiveIndicator's own job to surface, not
   // this page's -- only a failure with nothing loaded yet blocks the
   // whole view.
   const hasBlockingError = runs.isError && runs.data === undefined

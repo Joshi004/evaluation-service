@@ -27,11 +27,10 @@ const HEIGHT = 16
 const CAP_HALF_HEIGHT = 3
 
 // A plain-SVG "|----o----|" for one score's 95% confidence interval --
-// no chart library: both `recharts` and `@xyflow/react` stay confined
-// to `prototype/` per D5, and this shape is simple enough that adding
-// one back for it would be ceremony, not a payoff. Phase 8's forest
-// plot draws several of these on one shared axis; the By-benchmark
-// lens (Phase 6) draws one per ranked row.
+// no chart library needed, this shape is simple enough that pulling
+// one in would be ceremony, not a payoff. The forest plot draws
+// several of these on one shared axis; the By-benchmark lens draws
+// one per ranked row.
 export function IntervalWhisker({
   lower,
   upper,
