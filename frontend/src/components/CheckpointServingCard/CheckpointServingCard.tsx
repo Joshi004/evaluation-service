@@ -59,19 +59,18 @@ export function CheckpointServingCard({
       <label className="block">
         <span className="text-xs text-muted-foreground">Base serving profile</span>
         <SelectField
-          value={profileChoice ?? ''}
-          onChange={(event) =>
-            onProfileChoiceChange(event.target.value === '' ? null : Number(event.target.value))
-          }
-          className="mt-1"
-        >
-          <option value="">{defaultServingProfileOptionLabel(checkpoint)}</option>
-          {options.map((profile) => (
-            <option key={profile.id} value={profile.id}>
-              {servingProfileOptionLabel(profile)}
-            </option>
-          ))}
-        </SelectField>
+          value={profileChoice === null ? '' : String(profileChoice)}
+          onValueChange={(value) => onProfileChoiceChange(value === '' ? null : Number(value))}
+          groups={[
+            {
+              options: [
+                { value: '', label: defaultServingProfileOptionLabel(checkpoint) },
+                ...options.map((profile) => ({ value: String(profile.id), label: servingProfileOptionLabel(profile) })),
+              ],
+            },
+          ]}
+          className="mt-1 w-full"
+        />
       </label>
 
       {baseProfile ? (

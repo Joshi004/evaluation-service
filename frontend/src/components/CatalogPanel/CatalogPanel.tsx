@@ -6,6 +6,7 @@ import { Badge } from '../Badge/Badge'
 import { CatalogDeleteButton } from '../CatalogDeleteButton/CatalogDeleteButton'
 import { CatalogPruneButton } from '../CatalogPruneButton/CatalogPruneButton'
 import { CatalogReloadButton } from '../CatalogReloadButton/CatalogReloadButton'
+import { Disclosure } from '../Disclosure/Disclosure'
 import { EmptyState } from '../EmptyState/EmptyState'
 import { ErrorState } from '../ErrorState/ErrorState'
 import { Skeleton } from '../Skeleton/Skeleton'
@@ -83,10 +84,7 @@ export function CatalogPanel({ resource }: CatalogPanelProps) {
         </Table>
       )}
 
-      <details>
-        <summary className="cursor-pointer text-xs font-medium text-muted-foreground hover:text-foreground">
-          What these states mean
-        </summary>
+      <Disclosure summary="What these states mean" size="sm">
         <ul className="mt-2 space-y-2">
           {STATE_LEGEND_ORDER.map((state) => (
             <li key={state} className="flex items-baseline gap-2 text-xs">
@@ -97,7 +95,7 @@ export function CatalogPanel({ resource }: CatalogPanelProps) {
             </li>
           ))}
         </ul>
-      </details>
+      </Disclosure>
     </div>
   )
 }

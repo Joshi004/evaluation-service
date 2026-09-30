@@ -1,4 +1,5 @@
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
+import { cn } from '../../utils/cn'
 import { BatchProgressBar } from '../BatchProgressBar/BatchProgressBar'
 import { RelativeTime } from '../RelativeTime/RelativeTime'
 import { RunGroupCancelButton } from '../RunGroupCancelButton/RunGroupCancelButton'
@@ -41,11 +42,10 @@ export function RunsBatchHeaderRow({ batch, columnCount, expanded, onToggle }: R
               aria-expanded={expanded}
               className="flex items-center gap-1.5 text-sm font-medium text-foreground"
             >
-              {expanded ? (
-                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-              ) : (
-                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-              )}
+              <ChevronRight
+                className={cn('h-4 w-4 shrink-0 text-muted-foreground motion-safe:transition-transform', expanded && 'rotate-90')}
+                aria-hidden="true"
+              />
               <span className="truncate">{batch.runGroupName}</span>
               {batch.disambiguator && (
                 <span className="shrink-0 text-xs font-normal text-muted-foreground">{batch.disambiguator}</span>

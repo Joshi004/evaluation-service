@@ -11,9 +11,9 @@ export const OUTCOME_OPTIONS: { value: SampleOutcome; label: string }[] = [
   { value: 'all', label: 'All samples' },
 ]
 
-// "default (541)" -- the subset's own sample count, so a benchmark
+// The subset's own sample count as the option's hint, so a benchmark
 // with unevenly sized subsets shows that before a click is needed to
-// find out.
-export function subsetOptionLabel(subset: DiagnosticsSubset): string {
-  return `${subset.name} (${subset.n_samples})`
+// find out -- e.g. "default" with a hint of "541 samples".
+export function subsetOptionHint(subset: DiagnosticsSubset): string {
+  return `${subset.n_samples} sample${subset.n_samples === 1 ? '' : 's'}`
 }

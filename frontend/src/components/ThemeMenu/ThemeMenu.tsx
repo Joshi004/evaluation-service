@@ -5,6 +5,7 @@ import { useTheme } from '../../utils/useTheme'
 import { isThemePreference } from '../../utils/theme'
 import type { ThemePreference } from '../../utils/theme'
 import { cn } from '../../utils/cn'
+import { MENU_CONTENT_CLASS_NAME, MENU_ITEM_CLASS_NAME } from '../Menu/Menu.helper'
 
 const THEME_PREFERENCES: ThemePreference[] = ['system', 'light', 'dark']
 
@@ -51,21 +52,14 @@ export function ThemeMenu() {
         <DropdownMenuPrimitive.Content
           align="end"
           sideOffset={6}
-          className="z-50 min-w-36 rounded-lg border border-border bg-popover p-1 shadow-md"
+          className={cn(MENU_CONTENT_CLASS_NAME, 'min-w-36')}
         >
           <DropdownMenuPrimitive.RadioGroup value={preference} onValueChange={handlePreferenceChange}>
             {THEME_PREFERENCES.map((value) => (
               <DropdownMenuPrimitive.RadioItem
                 key={value}
                 value={value}
-                className={cn(
-                  'flex cursor-pointer items-center justify-between gap-4 rounded-md px-2.5 py-1.5 text-sm text-foreground',
-                  // No plain outline-none -- Menu.tsx's own Item has the
-                  // full reasoning for why that would break this same
-                  // focus-visible outline instead of just hiding it at rest.
-                  'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring',
-                  'data-[highlighted]:bg-muted',
-                )}
+                className={cn(MENU_ITEM_CLASS_NAME, 'flex items-center justify-between gap-4 text-foreground')}
               >
                 {THEME_LABELS[value]}
                 <DropdownMenuPrimitive.ItemIndicator>

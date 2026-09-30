@@ -1,4 +1,5 @@
 import type { CreatedItem } from '../DryRunPreview/DryRunPreview.helper'
+import { Disclosure } from '../Disclosure/Disclosure'
 import { DryRunPreview } from '../DryRunPreview/DryRunPreview'
 import { PartitionPicker } from '../PartitionPicker/PartitionPicker'
 import { TextInput } from '../TextInput/TextInput'
@@ -82,12 +83,11 @@ export function NewEvaluationReviewStep({
         </label>
       </div>
 
-      <details>
-        <summary className="cursor-pointer text-sm font-medium text-foreground">Advanced</summary>
+      <Disclosure summary="Advanced" size="md">
         <div className="mt-3 max-w-xs">
           <PartitionPicker value={partition} onValueChange={onPartitionChange} />
         </div>
-      </details>
+      </Disclosure>
     </div>
   )
 }

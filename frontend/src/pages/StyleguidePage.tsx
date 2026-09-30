@@ -23,7 +23,10 @@ import { TextInput } from '../components/TextInput/TextInput'
 import { SearchInput } from '../components/SearchInput/SearchInput'
 import { SelectField } from '../components/SelectField/SelectField'
 import { Checkbox } from '../components/Checkbox/Checkbox'
+import { Radio } from '../components/Radio/Radio'
 import { SegmentedControl } from '../components/SegmentedControl/SegmentedControl'
+import { FilterChip } from '../components/FilterChip/FilterChip'
+import { Disclosure } from '../components/Disclosure/Disclosure'
 import { Skeleton } from '../components/Skeleton/Skeleton'
 import { Spinner } from '../components/Spinner/Spinner'
 import { Callout } from '../components/Callout/Callout'
@@ -167,9 +170,12 @@ export function StyleguidePage() {
   const [sidePanelOpen, setSidePanelOpen] = useState(false)
   const [stepperStepKey, setStepperStepKey] = useState('settings')
   const [checked, setChecked] = useState(true)
+  const [radioValue, setRadioValue] = useState('a')
   const [segment, setSegment] = useState('comfortable')
   const [search, setSearch] = useState('leaderboard')
   const [selectedBenchmarks, setSelectedBenchmarks] = useState<string[]>(['ifeval'])
+  const [selectFieldValue, setSelectFieldValue] = useState('ifeval')
+  const [filterChipVisible, setFilterChipVisible] = useState(true)
 
   return (
     <div data-theme={theme} className="min-h-screen bg-background p-8 text-foreground">
@@ -351,7 +357,7 @@ export function StyleguidePage() {
           </HoverCard>
 
           <MultiSelectMenu
-            trigger={<Button variant="secondary">Benchmarks ({selectedBenchmarks.length})</Button>}
+            label="Benchmarks"
             groups={[
               {
                 heading: 'Instruction following',
@@ -391,7 +397,7 @@ export function StyleguidePage() {
           <CopyLinkButton url="https://example.com/?bench=ifeval" />
         </Section>
 
-        <Section title="TextInput, SearchInput, SelectField, Checkbox, SegmentedControl">
+        <Section title="TextInput, SearchInput, Checkbox, Radio, SegmentedControl, FilterChip">
           <TextInput placeholder="Text input" className="w-48" />
           <TextInput placeholder="Invalid" invalid className="w-48" />
           <TextInput placeholder="Disabled" disabled className="w-48" />
@@ -403,13 +409,21 @@ export function StyleguidePage() {
             placeholder="Search"
             aria-label="Search"
           />
-          <SelectField className="w-40" defaultValue="ifeval">
-            <option value="ifeval">IFEval</option>
-            <option value="gsm8k">GSM8K</option>
-          </SelectField>
           <label className="flex items-center gap-2 text-sm text-foreground">
             <Checkbox checked={checked} onChange={(event) => setChecked(event.target.checked)} />
             Checkbox
+          </label>
+          <label className="flex items-center gap-2 text-sm text-foreground">
+            <Radio name="styleguide-radio" checked={radioValue === 'a'} onChange={() => setRadioValue('a')} />
+            Radio A
+          </label>
+          <label className="flex items-center gap-2 text-sm text-foreground">
+            <Radio name="styleguide-radio" checked={radioValue === 'b'} onChange={() => setRadioValue('b')} />
+            Radio B
+          </label>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Radio checked={false} disabled onChange={() => {}} />
+            Radio (disabled)
           </label>
           <SegmentedControl
             value={segment}
@@ -419,6 +433,105 @@ export function StyleguidePage() {
               { value: 'compact', label: 'Compact' },
             ]}
             aria-label="Density"
+          />
+          {filterChipVisible ? (
+            <FilterChip
+              label="Batch"
+              value="if-eval-02"
+              onClear={() => setFilterChipVisible(false)}
+              clearLabel="Clear batch filter"
+            />
+          ) : (
+            <Button size="sm" variant="secondary" onClick={() => setFilterChipVisible(true)}>
+              Reset FilterChip
+            </Button>
+          )}
+        </Section>
+
+        {/* Six variants: SelectField's own trigger sizing (md is the
+            default, sm is RunsToolbar's own filter row), the disabled
+            and invalid states shared with TextInput above, a grouped
+            example (StartModelServerDialog's own family groups) and a
+            hint example (a setup picker's own model count). Every
+            non-interactive one below uses an empty value plus a
+            placeholder naming what it demonstrates, the same
+            "placeholder as its own label" TextInput's own Invalid and
+            Disabled examples above use -- only the first is wired to
+            real state, to check that Radix's own keyboard and mouse
+            selection actually still works from this page. */}
+        <Section title="SelectField">
+          <SelectField
+            value={selectFieldValue}
+            onValueChange={setSelectFieldValue}
+            groups={[
+              {
+                options: [
+                  { value: 'ifeval', label: 'IFEval' },
+                  { value: 'gsm8k', label: 'GSM8K' },
+                ],
+              },
+            ]}
+            aria-label="Benchmark"
+            className="w-40"
+          />
+          <SelectField
+            value=""
+            onValueChange={() => {}}
+            size="sm"
+            placeholder="Small (sm)"
+            groups={[{ options: [{ value: 'a', label: 'Option' }] }]}
+            aria-label="Small select example"
+            className="w-32"
+          />
+          <SelectField
+            value=""
+            onValueChange={() => {}}
+            placeholder="Disabled"
+            disabled
+            groups={[{ options: [{ value: 'a', label: 'Option' }] }]}
+            aria-label="Disabled select example"
+            className="w-40"
+          />
+          <SelectField
+            value=""
+            onValueChange={() => {}}
+            placeholder="Invalid"
+            invalid
+            groups={[{ options: [{ value: 'a', label: 'Option' }] }]}
+            aria-label="Invalid select example"
+            className="w-40"
+          />
+          <SelectField
+            value=""
+            onValueChange={() => {}}
+            placeholder="Grouped"
+            groups={[
+              {
+                heading: 'Instruction following',
+                options: [
+                  { value: 'ifeval', label: 'IFEval' },
+                  { value: 'ifbench', label: 'IFBench' },
+                ],
+              },
+              { heading: 'Math', options: [{ value: 'gsm8k', label: 'GSM8K' }] },
+            ]}
+            aria-label="Grouped select example"
+            className="w-48"
+          />
+          <SelectField
+            value=""
+            onValueChange={() => {}}
+            placeholder="With hint"
+            groups={[
+              {
+                options: [
+                  { value: 'a', label: 'Setup A', hint: '12 models' },
+                  { value: 'b', label: 'Setup B', hint: '5 models' },
+                ],
+              },
+            ]}
+            aria-label="Select with hint example"
+            className="w-48"
           />
         </Section>
 
@@ -472,11 +585,20 @@ export function StyleguidePage() {
           </Table>
         </Section>
 
-        {/* A collapsible, copyable "raw JSON, verbatim" view -- shared by
-            InspectionSummary's own config.json disclosure and a
-            model's own Configuration tab (generation_config). */}
-        <Section title="JsonDetails">
+        {/* JsonDetails (a collapsible, copyable "raw JSON, verbatim" view --
+            shared by InspectionSummary's own config.json disclosure and a
+            model's own Configuration tab) is itself built on Disclosure,
+            shown here at both sizes: sm is JsonDetails' own size and
+            CatalogPanel's state legend; md is NewEvaluationReviewStep's
+            own "Advanced" section and BenchmarkProtocolTab's source file. */}
+        <Section title="JsonDetails & Disclosure">
           <JsonDetails summary="config.json (verbatim)" value={{ model_type: 'qwen3', torch_dtype: 'bfloat16' }} />
+          <Disclosure summary="Advanced (md)">
+            <p className="mt-2 text-sm text-muted-foreground">Content shown at the default md size.</p>
+          </Disclosure>
+          <Disclosure summary="What these states mean (sm)" size="sm">
+            <p className="mt-2 text-xs text-muted-foreground">Content shown at the sm size.</p>
+          </Disclosure>
         </Section>
 
         {/* CodeBlock is the <pre>+CopyButton shell JsonDetails above now

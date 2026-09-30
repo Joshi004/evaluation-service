@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react'
-import { X } from 'lucide-react'
 import type { DiagnosticsSubset } from '../../api/client'
 import type { SampleListFilters, SampleOutcome } from '../../api/queries/runDiagnostics'
 import { useDebouncedValue } from '../../utils/useDebouncedValue'
-import { IconButton } from '../IconButton/IconButton'
+import { FilterChip } from '../FilterChip/FilterChip'
 import { SearchInput } from '../SearchInput/SearchInput'
 import { SegmentedControl } from '../SegmentedControl/SegmentedControl'
 import { SelectField } from '../SelectField/SelectField'
-import { OUTCOME_OPTIONS, subsetOptionLabel } from './SampleFilters.helper'
+import { OUTCOME_OPTIONS, subsetOptionHint } from './SampleFilters.helper'
 
 interface SampleFiltersProps {
   filters: SampleListFilters
@@ -88,17 +87,18 @@ export function SampleFilters({ filters, subsets, onChange }: SampleFiltersProps
       {subsets.length > 1 && (
         <SelectField
           value={filters.subset ?? ''}
-          onChange={(event) => handleSubsetChange(event.target.value)}
+          onValueChange={handleSubsetChange}
+          groups={[
+            {
+              options: [
+                { value: '', label: 'All subsets' },
+                ...subsets.map((subset) => ({ value: subset.name, label: subset.name, hint: subsetOptionHint(subset) })),
+              ],
+            },
+          ]}
           aria-label="Subset"
           className="w-48"
-        >
-          <option value="">All subsets</option>
-          {subsets.map((subset) => (
-            <option key={subset.name} value={subset.name}>
-              {subsetOptionLabel(subset)}
-            </option>
-          ))}
-        </SelectField>
+        />
       )}
 
       <SearchInput
@@ -111,13 +111,7 @@ export function SampleFilters({ filters, subsets, onChange }: SampleFiltersProps
       />
 
       {filters.rule !== null && (
-        <span className="flex items-center gap-1.5 rounded-md border border-border bg-muted px-2 py-1 text-xs">
-          <span className="text-muted-foreground">Rule</span>
-          <span className="font-mono text-foreground">{filters.rule}</span>
-          <IconButton aria-label="Clear rule filter" variant="ghost" size="sm" onClick={handleClearRule}>
-            <X className="h-3.5 w-3.5" aria-hidden="true" />
-          </IconButton>
-        </span>
+        <FilterChip label="Rule" value={filters.rule} onClear={handleClearRule} clearLabel="Clear rule filter" />
       )}
     </div>
   )

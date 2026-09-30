@@ -116,14 +116,12 @@ export function SelectOverrideField({
   return (
     <label className="block">
       <FieldLabel label={label} isChanged={isChanged} onReset={() => onValueChange('')} />
-      <SelectField value={value} onChange={(event) => onValueChange(event.target.value)} className="mt-1">
-        <option value="">{defaultOptionLabel}</option>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </SelectField>
+      <SelectField
+        value={value}
+        onValueChange={onValueChange}
+        groups={[{ options: [{ value: '', label: defaultOptionLabel }, ...options] }]}
+        className="mt-1 w-full"
+      />
       {note && <p className="mt-0.5 text-xs text-muted-foreground">{note}</p>}
     </label>
   )

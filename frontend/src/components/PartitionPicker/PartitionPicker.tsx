@@ -43,16 +43,17 @@ export function PartitionPicker({ value, onValueChange }: PartitionPickerProps) 
       <SelectField
         id="partition-picker-select"
         value={value ?? ''}
-        onChange={(event) => onValueChange(event.target.value === '' ? null : event.target.value)}
-        className="mt-1"
-      >
-        <option value="">{defaultPartitionName ? `Default (${defaultPartitionName})` : 'Default'}</option>
-        {options.map((option) => (
-          <option key={option.value} value={option.value} disabled={option.disabled}>
-            {option.label}
-          </option>
-        ))}
-      </SelectField>
+        onValueChange={(next) => onValueChange(next === '' ? null : next)}
+        groups={[
+          {
+            options: [
+              { value: '', label: defaultPartitionName ? `Default (${defaultPartitionName})` : 'Default' },
+              ...options,
+            ],
+          },
+        ]}
+        className="mt-1 w-full"
+      />
       {partitionsQuery.isLoading && <Skeleton className="mt-1 h-3 w-32" />}
       {partitionsQuery.isError && (
         <p className="mt-1 text-xs text-danger">

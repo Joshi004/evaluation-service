@@ -1,5 +1,4 @@
 import type { UseQueryResult } from '@tanstack/react-query'
-import { X } from 'lucide-react'
 import type { RunListItem } from '../../api/client'
 import { runsPollIntervalMs } from '../../api/queries/runs'
 import {
@@ -15,7 +14,7 @@ import {
   type SubmittedByFilterOption,
 } from '../../pages/RunsPage.helper'
 import { Button } from '../Button/Button'
-import { IconButton } from '../IconButton/IconButton'
+import { FilterChip } from '../FilterChip/FilterChip'
 import { RunStatusFilter } from '../RunStatusFilter/RunStatusFilter'
 import { LiveIndicator } from '../LiveIndicator/LiveIndicator'
 import { SearchInput } from '../SearchInput/SearchInput'
@@ -97,66 +96,56 @@ export function RunsToolbar({
 
         <SelectField
           value={filters.modelId === null ? '' : String(filters.modelId)}
-          onChange={(event) => onModelChange(event.target.value === '' ? null : Number(event.target.value))}
+          onValueChange={(value) => onModelChange(value === '' ? null : Number(value))}
+          groups={[
+            {
+              options: [
+                { value: '', label: 'All models' },
+                ...modelOptions.map((option) => ({ value: String(option.checkpointId), label: option.name })),
+              ],
+            },
+          ]}
           aria-label="Model"
           className="w-40"
-        >
-          <option value="">All models</option>
-          {modelOptions.map((option) => (
-            <option key={option.checkpointId} value={option.checkpointId}>
-              {option.name}
-            </option>
-          ))}
-        </SelectField>
+        />
 
         <SelectField
           value={filters.benchmark ?? ''}
-          onChange={(event) => onBenchmarkChange(event.target.value === '' ? null : event.target.value)}
+          onValueChange={(value) => onBenchmarkChange(value === '' ? null : value)}
+          groups={[
+            {
+              options: [
+                { value: '', label: 'All benchmarks' },
+                ...benchmarkOptions.map((option) => ({ value: option.benchmark, label: option.label })),
+              ],
+            },
+          ]}
           aria-label="Benchmark"
           className="w-40"
-        >
-          <option value="">All benchmarks</option>
-          {benchmarkOptions.map((option) => (
-            <option key={option.benchmark} value={option.benchmark}>
-              {option.label}
-            </option>
-          ))}
-        </SelectField>
+        />
 
         <SelectField
           value={filters.submittedBy ?? ''}
-          onChange={(event) => onSubmittedByChange(event.target.value === '' ? null : event.target.value)}
+          onValueChange={(value) => onSubmittedByChange(value === '' ? null : value)}
+          groups={[
+            {
+              options: [{ value: '', label: 'Anyone' }, ...submittedByOptions],
+            },
+          ]}
           aria-label="Submitted by"
           className="w-40"
-        >
-          <option value="">Anyone</option>
-          {submittedByOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </SelectField>
+        />
 
         <SelectField
           value={filters.since}
-          onChange={(event) => onSinceChange(event.target.value as RunsSincePreset)}
+          onValueChange={(value) => onSinceChange(value as RunsSincePreset)}
+          groups={[{ options: SINCE_FILTER_OPTIONS }]}
           aria-label="Date"
           className="w-40"
-        >
-          {SINCE_FILTER_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </SelectField>
+        />
 
         {batchChipLabel && (
-          <span className="flex items-center gap-2 rounded-md border border-border bg-muted px-2 py-1 text-sm text-foreground">
-            Batch: {batchChipLabel}
-            <IconButton variant="ghost" size="sm" aria-label="Clear batch filter" onClick={onClearBatch}>
-              <X className="h-3.5 w-3.5" aria-hidden="true" />
-            </IconButton>
-          </span>
+          <FilterChip label="Batch" value={batchChipLabel} onClear={onClearBatch} clearLabel="Clear batch filter" />
         )}
 
         {hasActiveFilters(filters) && (

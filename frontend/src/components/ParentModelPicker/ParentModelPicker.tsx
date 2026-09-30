@@ -7,6 +7,7 @@ import { groupCheckpointsByFamily } from '../../utils/familyGroups'
 import { filterCheckpointsByQuery } from '../ModelPicker/ModelPicker.helper'
 import { AvailabilityBadge } from '../AvailabilityBadge/AvailabilityBadge'
 import { ModelName } from '../ModelName/ModelName'
+import { Radio } from '../Radio/Radio'
 import { SearchInput } from '../SearchInput/SearchInput'
 
 interface ParentModelPickerProps {
@@ -37,8 +38,7 @@ export function ParentModelPicker({ checkpoints, selectedParentId, onSelectedPar
       />
       <div className="mt-3 max-h-72 space-y-4 overflow-y-auto">
         <label className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted">
-          <input
-            type="radio"
+          <Radio
             name={RADIO_GROUP_NAME}
             className="mt-0.5"
             checked={selectedParentId === null}
@@ -59,8 +59,7 @@ export function ParentModelPicker({ checkpoints, selectedParentId, onSelectedPar
                 {group.checkpoints.map((checkpoint) => (
                   <li key={checkpoint.id}>
                     <label className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted">
-                      <input
-                        type="radio"
+                      <Radio
                         name={RADIO_GROUP_NAME}
                         className="mt-0.5"
                         checked={selectedParentId === checkpoint.id}

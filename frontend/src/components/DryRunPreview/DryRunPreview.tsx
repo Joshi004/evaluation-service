@@ -1,5 +1,6 @@
 import type { RunPreview } from '../../api/client'
 import { Callout } from '../Callout/Callout'
+import { Disclosure } from '../Disclosure/Disclosure'
 import { ErrorState } from '../ErrorState/ErrorState'
 import { Skeleton } from '../Skeleton/Skeleton'
 import { groupFindingsByCode, type CreatedItem, type GroupedFinding } from './DryRunPreview.helper'
@@ -23,7 +24,7 @@ interface FindingGroupItemProps {
 }
 
 // One collapsed finding: its message once, plus which pairs it applies
-// to -- inline when there's only one, behind a <details> toggle when a
+// to -- inline when there's only one, behind a Disclosure toggle when a
 // grid-wide finding would otherwise repeat itself for every pair it hit.
 function FindingGroupItem({ finding, textClassName }: FindingGroupItemProps) {
   return (
@@ -32,16 +33,13 @@ function FindingGroupItem({ finding, textClassName }: FindingGroupItemProps) {
       {finding.pairLabels.length === 1 ? (
         <span className="ml-1 text-muted-foreground">({finding.pairLabels[0]})</span>
       ) : (
-        <details className="mt-0.5">
-          <summary className="cursor-pointer text-xs text-muted-foreground">
-            {finding.pairLabels.length} pairs affected
-          </summary>
+        <Disclosure summary={`${finding.pairLabels.length} pairs affected`} size="sm" className="mt-0.5">
           <ul className="mt-1 ml-4 list-disc space-y-0.5 text-xs text-muted-foreground">
             {finding.pairLabels.map((pairLabel) => (
               <li key={pairLabel}>{pairLabel}</li>
             ))}
           </ul>
-        </details>
+        </Disclosure>
       )}
     </li>
   )

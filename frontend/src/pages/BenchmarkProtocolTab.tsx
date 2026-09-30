@@ -1,5 +1,6 @@
 import { Card } from '../components/Card/Card'
 import { CodeBlock } from '../components/CodeBlock/CodeBlock'
+import { Disclosure } from '../components/Disclosure/Disclosure'
 import { KeyValueList } from '../components/KeyValueList/KeyValueList'
 import { standardFieldRows } from '../utils/runConfigFieldRows'
 import { buildSamplingMandateRows } from './BenchmarkProtocolTab.helper'
@@ -78,16 +79,14 @@ export function BenchmarkProtocolTab() {
 
       {standard.source_yaml !== null && (
         <Card>
-          {/* A native <details> here, not a Card-nested Callout or a
-          third collapsible primitive -- CatalogPanel's own "What these
-          states mean" legend already established this exact pattern
-          for a collapsible section in this codebase. */}
-          <details>
-            <summary className="cursor-pointer text-sm font-medium text-foreground">Source file</summary>
+          {/* Disclosure, not a Card-nested Callout -- CatalogPanel's own
+          "What these states mean" legend uses the same shared
+          collapsible-section primitive. */}
+          <Disclosure summary="Source file" size="md">
             <div className="mt-3">
               <CodeBlock value={standard.source_yaml} copyLabel="Copy source YAML" />
             </div>
-          </details>
+          </Disclosure>
         </Card>
       )}
     </div>

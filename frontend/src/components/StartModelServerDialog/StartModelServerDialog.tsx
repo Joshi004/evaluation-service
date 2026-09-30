@@ -112,24 +112,18 @@ export function StartModelServerDialog({
             ) : (
               <SelectField
                 id="start-model-server-select"
-                className="mt-1"
-                value={selectedCheckpointId ?? ''}
-                onChange={(event) => {
-                  const rawValue = event.target.value
-                  setSelectedCheckpointId(rawValue === '' ? null : Number(rawValue))
-                }}
-              >
-                <option value="">Select a model…</option>
-                {groupCheckpointsByFamily(checkpoints.data ?? []).map((group) => (
-                  <optgroup key={group.key} label={group.label}>
-                    {group.checkpoints.map((checkpoint) => (
-                      <option key={checkpoint.id} value={checkpoint.id}>
-                        {checkpoint.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </SelectField>
+                className="mt-1 w-full"
+                value={selectedCheckpointId === null ? '' : String(selectedCheckpointId)}
+                onValueChange={(value) => setSelectedCheckpointId(value === '' ? null : Number(value))}
+                placeholder="Select a model…"
+                groups={groupCheckpointsByFamily(checkpoints.data ?? []).map((group) => ({
+                  heading: group.label,
+                  options: group.checkpoints.map((checkpoint) => ({
+                    value: String(checkpoint.id),
+                    label: checkpoint.name,
+                  })),
+                }))}
+              />
             )}
             {checkpoints.isError && (
               <p className="mt-1 text-sm text-danger">Could not load models: {describeError(checkpoints.error)}</p>

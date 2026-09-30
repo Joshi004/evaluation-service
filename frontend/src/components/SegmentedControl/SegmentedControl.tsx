@@ -36,14 +36,19 @@ export function SegmentedControl({ options, value, onValueChange, className, 'ar
       onValueChange={(next) => {
         if (next) onValueChange(next)
       }}
-      className={cn('inline-flex rounded-md border border-border p-0.5', className)}
+      className={cn('inline-flex h-9 rounded-md border border-border p-0.5', className)}
     >
       {options.map((option) => (
         <ToggleGroupPrimitive.Item
           key={option.value}
           value={option.value}
           className={cn(
-            'rounded-sm px-2.5 py-1 text-xs font-medium text-muted-foreground',
+            // No explicit height -- the root's own flex default
+            // (align-items: stretch) already fills the row, the same
+            // 36px every other toolbar control now stands, with the
+            // root's own p-0.5 as the only difference from a
+            // SelectField's own trigger height.
+            'flex items-center justify-center rounded-sm px-2.5 text-xs font-medium text-muted-foreground',
             'data-[state=on]:bg-muted data-[state=on]:text-foreground',
           )}
         >

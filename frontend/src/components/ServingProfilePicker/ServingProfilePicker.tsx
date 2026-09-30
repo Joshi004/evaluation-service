@@ -1,6 +1,7 @@
 import type { ServingProfileRecommendation, ServingProfileSummary } from '../../api/client'
 import { servingProfileDisplayName } from '../../utils/servingProfileDisplayName'
 import { describeProfileGlance } from '../../utils/servingProfileSummary'
+import { Radio } from '../Radio/Radio'
 import { SelectField } from '../SelectField/SelectField'
 import { TextInput } from '../TextInput/TextInput'
 import {
@@ -72,8 +73,7 @@ export function ServingProfilePicker({ recommendation, profiles, choice, onChoic
       </div>
 
       <label className="flex items-start gap-2">
-        <input
-          type="radio"
+        <Radio
           name="serving-profile-choice"
           className="mt-1"
           checked={choice.kind === 'recommended'}
@@ -90,8 +90,7 @@ export function ServingProfilePicker({ recommendation, profiles, choice, onChoic
       </label>
 
       <label className="flex items-start gap-2">
-        <input
-          type="radio"
+        <Radio
           name="serving-profile-choice"
           className="mt-1"
           checked={choice.kind === 'existing'}
@@ -100,29 +99,28 @@ export function ServingProfilePicker({ recommendation, profiles, choice, onChoic
         <span className="w-full text-sm text-foreground">
           Pick an existing profile
           <SelectField
-            value={choice.kind === 'existing' && choice.profileId !== null ? choice.profileId : ''}
+            value={choice.kind === 'existing' && choice.profileId !== null ? String(choice.profileId) : ''}
             disabled={choice.kind !== 'existing'}
-            onChange={(event) =>
-              onChoiceChange({
-                kind: 'existing',
-                profileId: event.target.value === '' ? null : Number(event.target.value),
-              })
+            onValueChange={(value) =>
+              onChoiceChange({ kind: 'existing', profileId: value === '' ? null : Number(value) })
             }
-            className="mt-1"
-          >
-            <option value="">Select a profile…</option>
-            {profiles.map((profile) => (
-              <option key={profile.id} value={profile.id}>
-                {servingProfileDisplayName(profile.label, profile.hash)}
-              </option>
-            ))}
-          </SelectField>
+            placeholder="Select a profile…"
+            groups={[
+              {
+                options: profiles.map((profile) => ({
+                  value: String(profile.id),
+                  label: servingProfileDisplayName(profile.label, profile.hash),
+                })),
+              },
+            ]}
+            aria-label="Existing serving profile"
+            className="mt-1 w-full"
+          />
         </span>
       </label>
 
       <label className="flex items-start gap-2">
-        <input
-          type="radio"
+        <Radio
           name="serving-profile-choice"
           className="mt-1"
           checked={choice.kind === 'customised'}

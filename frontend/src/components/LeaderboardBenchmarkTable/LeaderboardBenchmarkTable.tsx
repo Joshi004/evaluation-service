@@ -70,28 +70,27 @@ export function LeaderboardBenchmarkTable({
         <SelectField
           className="w-56"
           value={column.benchmark}
-          onChange={(event) => onBenchmarkChange(event.target.value)}
+          onValueChange={onBenchmarkChange}
+          groups={[
+            { options: allColumns.map((candidate) => ({ value: candidate.benchmark, label: candidate.displayName })) },
+          ]}
           aria-label="Benchmark"
-        >
-          {allColumns.map((candidate) => (
-            <option key={candidate.benchmark} value={candidate.benchmark}>
-              {candidate.displayName}
-            </option>
-          ))}
-        </SelectField>
+        />
         <SelectField
           className="w-56"
           value={setup.comparisonHash}
-          onChange={(event) => onSetupChange(column.benchmark, event.target.value)}
+          onValueChange={(value) => onSetupChange(column.benchmark, value)}
+          groups={[
+            {
+              options: column.setups.map((candidate) => ({
+                value: candidate.comparisonHash,
+                label: samplingProfileDisplayName(candidate.samplingProfileLabel, candidate.samplingProfileHash),
+                hint: `${candidate.modelCount} model${candidate.modelCount === 1 ? '' : 's'}`,
+              })),
+            },
+          ]}
           aria-label="Setup"
-        >
-          {column.setups.map((candidate) => (
-            <option key={candidate.comparisonHash} value={candidate.comparisonHash}>
-              {samplingProfileDisplayName(candidate.samplingProfileLabel, candidate.samplingProfileHash)} ·{' '}
-              {candidate.modelCount} model{candidate.modelCount === 1 ? '' : 's'}
-            </option>
-          ))}
-        </SelectField>
+        />
       </div>
 
       {rankedRows.length === 0 ? (

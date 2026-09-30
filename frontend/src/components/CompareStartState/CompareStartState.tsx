@@ -97,15 +97,18 @@ export function CompareStartState({ presetRunIds }: CompareStartStateProps) {
           <SelectField
             className="w-64"
             value={selectedBenchmark ?? ''}
-            onChange={(event) => handleBenchmarkChange(event.target.value)}
+            onValueChange={handleBenchmarkChange}
+            groups={[
+              {
+                options: buildBenchmarkOptions(doneRuns.data, standards.data ?? []).map((option) => ({
+                  value: option.benchmark,
+                  label: option.displayName,
+                  hint: `${option.count} run${option.count === 1 ? '' : 's'}`,
+                })),
+              },
+            ]}
             aria-label="Benchmark"
-          >
-            {buildBenchmarkOptions(doneRuns.data, standards.data ?? []).map((option) => (
-              <option key={option.benchmark} value={option.benchmark}>
-                {option.displayName} · {option.count} run{option.count === 1 ? '' : 's'}
-              </option>
-            ))}
-          </SelectField>
+          />
 
           <CompareRunPicker
             runs={runsForBenchmark(doneRuns.data, selectedBenchmark)}

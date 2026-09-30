@@ -67,19 +67,18 @@ export function CheckpointSamplingCard({
       <label className="block">
         <span className="text-xs text-muted-foreground">Base sampling profile</span>
         <SelectField
-          value={profileChoice ?? ''}
-          onChange={(event) =>
-            onProfileChoiceChange(event.target.value === '' ? null : Number(event.target.value))
-          }
-          className="mt-1"
-        >
-          <option value="">{defaultProfileOptionLabel(checkpoint)}</option>
-          {options.map((profile) => (
-            <option key={profile.id} value={profile.id}>
-              {samplingProfileOptionLabel(profile)}
-            </option>
-          ))}
-        </SelectField>
+          value={profileChoice === null ? '' : String(profileChoice)}
+          onValueChange={(value) => onProfileChoiceChange(value === '' ? null : Number(value))}
+          groups={[
+            {
+              options: [
+                { value: '', label: defaultProfileOptionLabel(checkpoint) },
+                ...options.map((profile) => ({ value: String(profile.id), label: samplingProfileOptionLabel(profile) })),
+              ],
+            },
+          ]}
+          className="mt-1 w-full"
+        />
       </label>
 
       {baseProfile ? (

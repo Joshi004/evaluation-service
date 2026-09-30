@@ -98,25 +98,23 @@ export function ModelSettingsRow({
         <label className="block">
           <span className="text-xs text-muted-foreground">Sampling profile</span>
           <SelectField
-            value={samplingProfileChoice ?? ''}
-            onChange={(event) =>
-              onDraftsChange(
-                withSamplingProfileChoice(
-                  drafts,
-                  checkpoint.id,
-                  event.target.value === '' ? null : Number(event.target.value),
-                ),
-              )
+            value={samplingProfileChoice === null ? '' : String(samplingProfileChoice)}
+            onValueChange={(value) =>
+              onDraftsChange(withSamplingProfileChoice(drafts, checkpoint.id, value === '' ? null : Number(value)))
             }
-            className="mt-1"
-          >
-            <option value="">{defaultProfileOptionLabel(checkpoint)}</option>
-            {samplingOptions.map((profile) => (
-              <option key={profile.id} value={profile.id}>
-                {samplingProfileOptionLabel(profile)}
-              </option>
-            ))}
-          </SelectField>
+            groups={[
+              {
+                options: [
+                  { value: '', label: defaultProfileOptionLabel(checkpoint) },
+                  ...samplingOptions.map((profile) => ({
+                    value: String(profile.id),
+                    label: samplingProfileOptionLabel(profile),
+                  })),
+                ],
+              },
+            ]}
+            className="mt-1 w-full"
+          />
           {baseSamplingProfile && (
             <p className="mt-1 text-xs text-muted-foreground">{samplingSummary(baseSamplingProfile)}</p>
           )}
@@ -125,25 +123,23 @@ export function ModelSettingsRow({
         <label className="block">
           <span className="text-xs text-muted-foreground">Serving profile</span>
           <SelectField
-            value={servingProfileChoice ?? ''}
-            onChange={(event) =>
-              onDraftsChange(
-                withServingProfileChoice(
-                  drafts,
-                  checkpoint.id,
-                  event.target.value === '' ? null : Number(event.target.value),
-                ),
-              )
+            value={servingProfileChoice === null ? '' : String(servingProfileChoice)}
+            onValueChange={(value) =>
+              onDraftsChange(withServingProfileChoice(drafts, checkpoint.id, value === '' ? null : Number(value)))
             }
-            className="mt-1"
-          >
-            <option value="">{defaultServingProfileOptionLabel(checkpoint)}</option>
-            {servingOptions.map((profile) => (
-              <option key={profile.id} value={profile.id}>
-                {servingProfileOptionLabel(profile)}
-              </option>
-            ))}
-          </SelectField>
+            groups={[
+              {
+                options: [
+                  { value: '', label: defaultServingProfileOptionLabel(checkpoint) },
+                  ...servingOptions.map((profile) => ({
+                    value: String(profile.id),
+                    label: servingProfileOptionLabel(profile),
+                  })),
+                ],
+              },
+            ]}
+            className="mt-1 w-full"
+          />
           {baseServingProfile && (
             <p className="mt-1 text-xs text-muted-foreground">
               {baseServingProfile.gpus} GPU{baseServingProfile.gpus === 1 ? '' : 's'} · {baseServingProfile.dtype}

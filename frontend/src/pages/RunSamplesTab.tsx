@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { ChevronDown } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import {
   runSamplesQueryOptions,
@@ -206,16 +206,16 @@ export function RunSamplesTab() {
                 type="button"
                 onClick={() => setBreakdownExpanded((value) => !value)}
                 aria-expanded={breakdownExpanded}
-                className="flex w-full items-center justify-between p-4 text-left"
+                className="flex w-full items-center gap-1.5 p-4 text-left"
               >
-                <span className="text-sm font-medium text-foreground">Breakdown</span>
-                <ChevronDown
+                <ChevronRight
                   className={cn(
-                    'h-4 w-4 text-muted-foreground motion-safe:transition-transform',
-                    breakdownExpanded && 'rotate-180',
+                    'h-4 w-4 shrink-0 text-muted-foreground motion-safe:transition-transform',
+                    breakdownExpanded && 'rotate-90',
                   )}
                   aria-hidden="true"
                 />
+                <span className="text-sm font-medium text-foreground">Breakdown</span>
               </button>
               {breakdownExpanded && (
                 <div className="border-t border-border p-4">

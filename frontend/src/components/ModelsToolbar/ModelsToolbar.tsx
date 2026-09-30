@@ -2,7 +2,6 @@ import type { ChangeEvent } from 'react'
 import type { ModelsViewMode, ModelsWeightsFilter, ResolvedModelsView } from '../../pages/ModelsPage.helper'
 import type { FamilyOption } from '../../utils/buildLeaderboard'
 import { WEIGHTS_STATUS_LABELS } from '../../utils/labels'
-import { Button } from '../Button/Button'
 import { MultiSelectMenu } from '../MultiSelectMenu/MultiSelectMenu'
 import { SearchInput } from '../SearchInput/SearchInput'
 import { SegmentedControl } from '../SegmentedControl/SegmentedControl'
@@ -22,9 +21,13 @@ const VIEW_MODE_OPTIONS = [
   { value: 'table', label: 'Table' },
 ]
 
-function countSuffix(count: number): string {
-  return count > 0 ? ` (${count})` : ''
-}
+const WEIGHTS_OPTIONS = [
+  { value: 'all', label: 'All weights' },
+  { value: 'available', label: WEIGHTS_STATUS_LABELS.available },
+  { value: 'unavailable', label: WEIGHTS_STATUS_LABELS.unavailable },
+  { value: 'incomplete', label: WEIGHTS_STATUS_LABELS.incomplete },
+  { value: 'unknown', label: WEIGHTS_STATUS_LABELS.unknown },
+]
 
 // This toolbar: search, the family filter (options and labels from
 // familyGroups.ts, so this can never disagree with the section
@@ -50,11 +53,7 @@ export function ModelsToolbar({
         />
 
         <MultiSelectMenu
-          trigger={
-            <Button variant="secondary" size="sm">
-              Family{countSuffix(view.familyFilter.length)}
-            </Button>
-          }
+          label="Family"
           groups={[{ options: familyOptions.map((option) => ({ value: option.key, label: option.label })) }]}
           selected={view.familyFilter}
           onChange={onFamilyChange}
@@ -62,16 +61,11 @@ export function ModelsToolbar({
 
         <SelectField
           value={view.weights}
-          onChange={(event) => onWeightsChange(event.target.value as ModelsWeightsFilter)}
+          onValueChange={(value) => onWeightsChange(value as ModelsWeightsFilter)}
+          groups={[{ options: WEIGHTS_OPTIONS }]}
           aria-label="Weights"
           className="w-44"
-        >
-          <option value="all">All weights</option>
-          <option value="available">{WEIGHTS_STATUS_LABELS.available}</option>
-          <option value="unavailable">{WEIGHTS_STATUS_LABELS.unavailable}</option>
-          <option value="incomplete">{WEIGHTS_STATUS_LABELS.incomplete}</option>
-          <option value="unknown">{WEIGHTS_STATUS_LABELS.unknown}</option>
-        </SelectField>
+        />
       </div>
 
       <SegmentedControl

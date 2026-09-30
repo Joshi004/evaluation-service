@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react'
 import {
   ariaSortFor,
   DENSITY_CELL_PADDING,
@@ -14,8 +14,8 @@ import { paths } from '../../utils/paths'
 import { samplingProfileDisplayName } from '../../utils/samplingProfileDisplayName'
 import { Badge } from '../Badge/Badge'
 import { LeaderboardScoreCell } from '../LeaderboardScoreCell/LeaderboardScoreCell'
-import { Menu } from '../Menu/Menu'
 import { ModelName } from '../ModelName/ModelName'
+import { SelectField } from '../SelectField/SelectField'
 import { TableCell, TableHeaderCell } from '../Table/Table'
 import {
   HEADER_ROW1_HEIGHT_CLASS,
@@ -186,25 +186,28 @@ interface SetupPickerMenuProps {
   onSelect: (comparisonHash: string) => void
 }
 
-// Like-for-like mode's own per-benchmark setup switch -- a Menu rather
-// than a native <select> so each option can carry a model count, which
-// is what actually explains why one setup is the default.
+// Like-for-like mode's own per-benchmark setup switch -- a SelectField
+// rather than a Menu so the active setup actually shows as selected
+// (Menu's own flat action list has no notion of "current choice"); the
+// hint carries each setup's own model count, which is what actually
+// explains why one setup is the default.
 function SetupPickerMenu({ column, activeSetup, onSelect }: SetupPickerMenuProps) {
   return (
-    <Menu
-      trigger={
-        <button
-          type="button"
-          className="flex shrink-0 items-center gap-1 rounded-md border border-border px-1.5 py-0.5 text-xs font-normal text-muted-foreground hover:border-border-strong hover:text-foreground"
-        >
-          {samplingProfileDisplayName(activeSetup.samplingProfileLabel, activeSetup.samplingProfileHash)}
-          <ChevronDown className="h-3 w-3" aria-hidden="true" />
-        </button>
-      }
-      items={column.setups.map((setup) => ({
-        label: `${samplingProfileDisplayName(setup.samplingProfileLabel, setup.samplingProfileHash)} \u00b7 ${setup.modelCount} model${setup.modelCount === 1 ? '' : 's'}`,
-        onSelect: () => onSelect(setup.comparisonHash),
-      }))}
+    <SelectField
+      size="sm"
+      className="shrink-0"
+      value={activeSetup.comparisonHash}
+      onValueChange={onSelect}
+      groups={[
+        {
+          options: column.setups.map((setup) => ({
+            value: setup.comparisonHash,
+            label: samplingProfileDisplayName(setup.samplingProfileLabel, setup.samplingProfileHash),
+            hint: `${setup.modelCount} model${setup.modelCount === 1 ? '' : 's'}`,
+          })),
+        },
+      ]}
+      aria-label={`${column.displayName} setup`}
     />
   )
 }

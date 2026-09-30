@@ -8,7 +8,6 @@ import type {
   ResolvedLeaderboardView,
 } from '../../pages/LeaderboardPage.helper'
 import type { FamilyOption } from '../../utils/buildLeaderboard'
-import { Button } from '../Button/Button'
 import { Checkbox } from '../Checkbox/Checkbox'
 import { IconButton } from '../IconButton/IconButton'
 import { MultiSelectMenu } from '../MultiSelectMenu/MultiSelectMenu'
@@ -42,10 +41,6 @@ const DENSITY_OPTIONS = [
   { value: 'compact', label: 'Compact' },
 ]
 
-function countSuffix(count: number): string {
-  return count > 0 ? ` (${count})` : ''
-}
-
 // Controls that don't apply to the current lens are hidden rather
 // than disabled (Benchmarks, Setups mode and heat tint are
 // Overview-only) so the row still fits on one line at 1024px; density
@@ -69,16 +64,16 @@ export function LeaderboardToolbar({
         onChange={(event: ChangeEvent<HTMLInputElement>) => onQueryChange(event.target.value)}
         onClear={() => onQueryChange('')}
         placeholder="Search models..."
-        className="w-56"
+        // Narrower than most search boxes in the app (w-56 elsewhere) --
+        // the Overview lens packs a search box, two multiselects, two
+        // segmented controls and the Display trigger onto one row, and
+        // this is what keeps that row on one line down to 1024px.
+        className="w-48"
         aria-label="Search models"
       />
 
       <MultiSelectMenu
-        trigger={
-          <Button variant="secondary" size="sm">
-            Family{countSuffix(view.familyFilter.length)}
-          </Button>
-        }
+        label="Family"
         groups={[{ options: familyOptions.map((option) => ({ value: option.key, label: option.label })) }]}
         selected={view.familyFilter}
         onChange={onFamilyChange}
@@ -87,11 +82,7 @@ export function LeaderboardToolbar({
       {view.lens === 'overview' && (
         <>
           <MultiSelectMenu
-            trigger={
-              <Button variant="secondary" size="sm">
-                Benchmarks{countSuffix(view.benchFilter.length)}
-              </Button>
-            }
+            label="Benchmarks"
             groups={benchmarkFilterGroups}
             selected={view.benchFilter}
             onChange={onBenchChange}
