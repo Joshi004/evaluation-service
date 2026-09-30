@@ -1,8 +1,8 @@
 // The override-field variants New evaluation's per-axis cards
 // (CheckpointSamplingCard, CheckpointServingCard, StandardOverrideCard)
 // build their fields from, composed from the TextInput/SelectField
-// primitives (Phase 10, docs/UI_REDESIGN_PLAN.md §8.10 -- the original
-// version hand-styled its own <input>/<select>).
+// primitives (the original version hand-styled its own
+// <input>/<select>).
 //
 // The default is always a placeholder, never a prefilled `value`:
 // prefilling would turn a displayed default into a submitted override

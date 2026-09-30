@@ -14,12 +14,11 @@ interface RunLiveProgressProps {
 
 const TICK_INTERVAL_MS = 1000
 
-// The Overview tab's own content while a run is still queued or running
-// (docs/UI_REDESIGN_PLAN.md §8.7, item 7's "state-aware default"): the
-// three-step stepper, an elapsed time that keeps ticking between the
-// run's own 5s poll, the model server's status once it has one, and its
-// live harness log inline -- so watching a run finish never needs a
-// second tab.
+// The Overview tab's own content while a run is still queued or
+// running: the three-step stepper, an elapsed time that keeps ticking
+// between the run's own 5s poll, the model server's status once it
+// has one, and its live harness log inline -- so watching a run finish
+// never needs a second tab.
 export function RunLiveProgress({ run }: RunLiveProgressProps) {
   const now = useNow(TICK_INTERVAL_MS)
   const endpoint = run.endpoint

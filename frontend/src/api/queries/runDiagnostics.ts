@@ -62,12 +62,10 @@ export function buildSamplesPath(runId: number, filters: SampleListFilters): str
 
 export interface UseRunDiagnosticsOptions {
   // The diagnostics endpoint 409s for a queued, running, failed or
-  // cancelled run (Phase 3 of docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md
-  // -- "do not call for them", restated as a ground rule). Callers that
-  // already know the run's status (RunReportPage, once per run) pass
-  // `enabled: run.status === 'done'`; defaults to `true` so existing
-  // call sites (a page that only ever mounts for a finished run) don't
-  // need to change.
+  // cancelled run. Callers that already know the run's status
+  // (RunReportPage, once per run) pass `enabled: run.status === 'done'`;
+  // defaults to `true` so existing call sites (a page that only ever
+  // mounts for a finished run) don't need to change.
   enabled?: boolean
 }
 
@@ -105,11 +103,10 @@ export function useRunSamples(runId: number, filters: SampleListFilters): UseQue
   })
 }
 
-// Factored out of useRunSample so Compare's own side-by-side dialog
-// (Phase 8, docs/UI_REDESIGN_PLAN.md §8.8) can fetch one sample from
-// several runs in parallel through the exact same options -- each run
-// is its own cache entry (queryKeys.runSample), shared with this run's
-// own Samples tab.
+// Factored out of useRunSample so Compare's own side-by-side dialog can
+// fetch one sample from several runs in parallel through the exact
+// same options -- each run is its own cache entry (queryKeys.runSample),
+// shared with this run's own Samples tab.
 export function runSampleQueryOptions(runId: number, sampleKey: string | undefined) {
   return queryOptions({
     queryKey: queryKeys.runSample(runId, sampleKey),
@@ -131,7 +128,7 @@ export function useRunSample(
   return useQuery(runSampleQueryOptions(runId, sampleKey))
 }
 
-// Compare's side-by-side dialog (Phase 8): the same sample_key, read
+// Compare's side-by-side dialog: the same sample_key, read
 // off every compared run at once -- a 404 on one side (the flip's own
 // baseline, or a run that never produced this key) is that column's
 // own not-found state, not a reason to fail every other column.
@@ -158,7 +155,7 @@ export function runComparisonQueryOptions(baselineRunId: number, otherRunId: num
   })
 }
 
-// Compare's own N-way join (Phase 8): the baseline against every other
+// Compare's own N-way join: the baseline against every other
 // pinned run, in parallel -- at most 3 requests (MAX_COMPARE_RUNS - 1),
 // each independently cached so switching which run is the baseline
 // only issues requests for pairs not already seen.

@@ -14,9 +14,8 @@ interface CandidateBrowserProps {
   candidates: CheckpointCandidate[] | undefined
   // True once a browse (or refresh) attempt has settled, success or
   // error -- distinguishes "never asked the cluster" from "asked, and
-  // it has nothing" (Phase 11, docs/UI_REDESIGN_PLAN.md §8.11's own
-  // "reads run only on user action" decision: this never happens on
-  // mount, so the not-yet-browsed state below is the normal start).
+  // it has nothing." Browsing only ever runs on user action, never on
+  // mount, so the not-yet-browsed state below is the normal start.
   hasBrowsed: boolean
   isLoading: boolean
   isError: boolean

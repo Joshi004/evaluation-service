@@ -1,7 +1,7 @@
 // Non-DOM logic for BatchProgressBar.tsx: turning a batch's own runs
 // into stacked-bar segments and the "N of M runs finished" caption that
-// carries the meaning colour alone can't (§4.5: never colour alone).
-// Segment colours reuse RunStatusChip's own tone map and
+// carries the meaning colour alone can't. Segment colours reuse
+// RunStatusChip's own tone map and
 // SystemStatus.helper.ts's solid-fill variant of it (Badge's own
 // TONE_CLASSES is a soft-background pill, the wrong shape for a bar
 // segment) -- one tone-to-colour mapping, not a second one invented

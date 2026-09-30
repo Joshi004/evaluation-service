@@ -11,10 +11,10 @@ export interface MultiSelectOption {
 
 export interface MultiSelectGroup {
   // Omitted for a menu with only one group (nothing to head it with) --
-  // the Leaderboard's own Family and Benchmarks filters (§8.6 item 2)
-  // both group by something (a normalised family, a benchmark's
-  // category), so this stays a required part of the shape rather than
-  // a flat option list with grouping bolted on separately.
+  // the Leaderboard's own Family and Benchmarks filters both group by
+  // something (a normalised family, a benchmark's category), so this
+  // stays a required part of the shape rather than a flat option list
+  // with grouping bolted on separately.
   heading?: string
   options: MultiSelectOption[]
 }

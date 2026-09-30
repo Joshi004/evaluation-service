@@ -13,12 +13,12 @@ interface BenchmarkPickerProps {
   onSelectedStandardIdsChange: (ids: number[]) => void
 }
 
-// The Choose step's benchmark list (Phase 10, docs/UI_REDESIGN_PLAN.md
-// §8.10): selectable cards grouped by category, each with a version
-// badge, its published description and its protocol summary -- reading
-// the recommended settings doesn't need opening Customize protocol at
-// all. Assumes `standards` is non-empty (NewEvaluationPage's own
-// full-page states cover "no benchmarks in the catalog").
+// The Choose step's benchmark list: selectable cards grouped by
+// category, each with a version badge, its published description and
+// its protocol summary -- reading the recommended settings doesn't
+// need opening Customize protocol at all. Assumes `standards` is
+// non-empty (NewEvaluationPage's own full-page states cover "no
+// benchmarks in the catalog").
 export function BenchmarkPicker({ standards, selectedStandardIds, onSelectedStandardIdsChange }: BenchmarkPickerProps) {
   const groups = groupStandardsByCategory(standards)
 

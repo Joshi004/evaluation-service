@@ -22,18 +22,17 @@ const FLAT_COLUMN_COUNT = 7
 
 const STICKY_HEADER_CLASSES = 'sticky top-0 z-10'
 
-// §8.9's own table: grouped by batch by default, or a flat list with
-// its own Batch column -- both share one sticky-header scroll container
-// and the same row rendering (RunsTableRow), so nothing about a single
-// run's own row differs between the two lenses. Takes only the runs and
-// the view mode (§8.9's own plan) so Phase 11's model Runs tab can
-// reuse this unchanged for one checkpoint's own runs.
+// Grouped by batch by default, or a flat list with its own Batch
+// column -- both share one sticky-header scroll container and the same
+// row rendering (RunsTableRow), so nothing about a single run's own
+// row differs between the two lenses. Takes only the runs and the view
+// mode so the model Runs tab can reuse this unchanged for one
+// checkpoint's own runs.
 export function RunsTable({ visibleRuns, allRuns, viewMode, now }: RunsTableProps) {
   // Ids present here are *collapsed*; every other batch is expanded --
-  // batches start expanded (§8.9's own plan) with no action needed to
-  // reach that state. Local to this component, not the URL: a
-  // colleague following a shared link doesn't need someone else's
-  // collapse choices restored.
+  // batches start expanded with no action needed to reach that state.
+  // Local to this component, not the URL: a colleague following a
+  // shared link doesn't need someone else's collapse choices restored.
   const [collapsedBatchIds, setCollapsedBatchIds] = useState<Set<number>>(new Set())
 
   function toggleBatch(runGroupId: number): void {

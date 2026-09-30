@@ -13,10 +13,10 @@ export interface NavGroup {
   items: NavItem[]
 }
 
-// §4.2's four groups, in the order the sidebar sketch (§4.4.1) draws
-// them. Labels follow §4.3's vocabulary table (Models, Benchmarks, ...)
-// except "Endpoints", which the sketch keeps as-is even though the
-// route itself moves to /infrastructure.
+// Four groups, in a fixed order. Labels match the vocabulary used
+// elsewhere in the app (Models, Benchmarks, ...) except "Endpoints",
+// which keeps this label even though the route itself moves to
+// /infrastructure.
 export const NAV_GROUPS: NavGroup[] = [
   {
     heading: 'Results',
@@ -37,10 +37,9 @@ export const NAV_GROUPS: NavGroup[] = [
     heading: 'Library',
     items: [
       { label: 'Benchmarks', to: paths.benchmarks(), icon: Target },
-      // One item, not two (Phase 12, docs/UI_REDESIGN_PLAN.md §8.12):
-      // Sampling and Serving profiles are now tabs of the one Profiles
-      // page, so the sidebar only needs the one link that page's own
-      // TabNav starts on.
+      // One item, not two: Sampling and Serving profiles are now tabs
+      // of the one Profiles page, so the sidebar only needs the one
+      // link that page's own TabNav starts on.
       { label: 'Profiles', to: paths.profiles(), icon: SlidersHorizontal },
     ],
   },

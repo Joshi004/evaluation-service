@@ -1,10 +1,10 @@
-// Non-DOM logic for RunsTable.tsx (docs/UI_REDESIGN_PLAN.md §8.9): the
-// grouped view's own batch sections -- built from *all* loaded runs, so
-// a batch header summarises the whole batch even when a filter hides
-// some of its rows ("Batch headers summarise the whole batch ...
-// because Cancel batch acts on the whole batch") -- plus the
-// duplicate-batch-name suffix and the small status-breakdown caption
-// the header shows next to BatchProgressBar.
+// Non-DOM logic for RunsTable.tsx: the grouped view's own batch
+// sections -- built from *all* loaded runs, so a batch header
+// summarises the whole batch even when a filter hides some of its
+// rows ("Batch headers summarise the whole batch ... because Cancel
+// batch acts on the whole batch") -- plus the duplicate-batch-name
+// suffix and the small status-breakdown caption the header shows next
+// to BatchProgressBar.
 
 import type { RunListItem } from '../../api/client'
 import { compareRunsNewestFirst } from '../../pages/RunsPage.helper'
@@ -109,7 +109,7 @@ export function buildRunsSections(visibleRuns: RunListItem[], allRuns: RunListIt
 
 // Fixed order so two batch headers always read the same way, and only
 // statuses actually present are listed -- "1 done · 2 failed ·
-// 1 cancelled" (§8.9's own sketch), never "0 queued · 0 running · ...".
+// 1 cancelled", never "0 queued · 0 running · ...".
 const STATUS_BREAKDOWN_ORDER = ['done', 'failed', 'cancelled', 'running', 'queued'] as const
 const STATUS_BREAKDOWN_LABELS: Record<(typeof STATUS_BREAKDOWN_ORDER)[number], string> = {
   done: 'done',

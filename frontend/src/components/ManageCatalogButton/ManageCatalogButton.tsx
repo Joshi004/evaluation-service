@@ -13,11 +13,11 @@ interface ManageCatalogButtonProps {
   className?: string
 }
 
-// The one entry point into a catalog's admin actions (Phase 12,
-// docs/UI_REDESIGN_PLAN.md §8.12): a secondary button that opens a
-// SidePanel hosting CatalogPanel for one resource. Used directly from
-// a page's own toolbar/header and again as CatalogHealthBanner's own
-// Review action -- both open the exact same drawer.
+// The one entry point into a catalog's admin actions: a secondary
+// button that opens a SidePanel hosting CatalogPanel for one resource.
+// Used directly from a page's own toolbar/header and again as
+// CatalogHealthBanner's own Review action -- both open the exact same
+// drawer.
 export function ManageCatalogButton({ resource, label = 'Manage catalog', className }: ManageCatalogButtonProps) {
   const [open, setOpen] = useState(false)
 

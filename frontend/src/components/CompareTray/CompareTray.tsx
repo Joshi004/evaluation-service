@@ -34,9 +34,9 @@ function PinnedRunChip({ run, onRemove }: { run: PinnedRun; onRemove: () => void
   )
 }
 
-// "Same setup" / "Setups differ" (§8.5 item 3): the tray only enforces
-// one *benchmark* (findPinRefusal), so two pinned runs of that
-// benchmark can still carry different comparison hashes -- e.g. IFEval
+// "Same setup" / "Setups differ": the tray only enforces one
+// *benchmark* (findPinRefusal), so two pinned runs of that benchmark
+// can still carry different comparison hashes -- e.g. IFEval
 // under `greedy` vs `qwen3_5_think`. This is what tells someone their
 // pinned pair is not yet the like-for-like kind before they click
 // Compare. Not exported -- only rendered here, once at least two runs
@@ -66,9 +66,9 @@ function SetupMatchBadge({ match }: { match: SetupMatch }) {
   )
 }
 
-// §8.5: a cross-app basket of runs to compare, docked at the bottom of
-// the content area (mounted once in AppShell, a sibling of <main>, so
-// it can never cover page content). Hidden entirely when nothing is
+// A cross-app basket of runs to compare, docked at the bottom of the
+// content area (mounted once in AppShell, a sibling of <main>, so it
+// can never cover page content). Hidden entirely when nothing is
 // pinned -- there is no empty-tray affordance to design for, since
 // AddToCompareButton is how a tray ever gets its first run.
 export function CompareTray() {

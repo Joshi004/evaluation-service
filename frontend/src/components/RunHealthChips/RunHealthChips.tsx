@@ -31,9 +31,9 @@ function Chip({ chip }: { chip: HealthChip }) {
   )
 }
 
-// Four at-a-glance health signals (docs/UI_REDESIGN_PLAN.md §8.7, item
-// 2) -- never colour alone (§4.5): each chip carries an icon and text,
-// and a tooltip spells out what it means. Truncation and latency spread
+// Four at-a-glance health signals -- never colour alone: each chip
+// carries an icon and text, and a tooltip spells out what it means.
+// Truncation and latency spread
 // come straight off the run itself; empty answers and errored requests
 // need the diagnostics file, so those two chips skeleton while it loads
 // and simply don't render if it fails -- one failed chip should never

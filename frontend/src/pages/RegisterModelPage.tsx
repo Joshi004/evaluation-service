@@ -43,13 +43,12 @@ import {
   type WizardStepContext,
 } from './RegisterModelPage.helper'
 
-// The four-step registration wizard (docs/CHECKPOINT_REGISTRATION_PHASES.md
-// Phase 7, restyled docs/UI_REDESIGN_PLAN.md §8.11): browse a
-// candidate, review its inspection, choose a serving profile and
-// lineage, confirm. Steps live in this component's own state, not the
-// router (R-D30) -- a deep link to step 3 has nothing to render without
-// step 2's server response. Every hook below is called unconditionally;
-// only the JSX branches on `step` (R-T26).
+// The four-step registration wizard: browse a candidate, review its
+// inspection, choose a serving profile and lineage, confirm. Steps
+// live in this component's own state, not the router -- a deep link
+// to step 3 has nothing to render without step 2's server response.
+// Every hook below is called unconditionally; only the JSX branches
+// on `step` (R-T26).
 export function RegisterModelPage() {
   const navigate = useNavigate()
 

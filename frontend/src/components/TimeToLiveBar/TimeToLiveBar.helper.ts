@@ -1,6 +1,6 @@
 // Non-DOM logic for TimeToLiveBar.tsx: how much of a model server's
 // SLURM walltime window is still left, and the caption that carries
-// the same meaning in words (§4.5: never colour alone). `now` is a
+// the same meaning in words -- never colour alone. `now` is a
 // parameter, not `new Date()` read inline -- the caller re-renders this
 // from its own ticker (ModelServerCard's useNow), the same "compute on
 // read from a passed-in clock" choice RelativeTime and formatDuration

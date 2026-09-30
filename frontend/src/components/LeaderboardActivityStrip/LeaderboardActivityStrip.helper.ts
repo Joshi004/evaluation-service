@@ -8,10 +8,10 @@ export interface RecentActivitySummary {
   recentFailedCount: number
 }
 
-// What the strip decides to show (§8.6 item 7): anything still
-// queued/running right now, or anything that failed within the last
-// day -- older failures are Runs' own job to surface, not something
-// that should linger on the front door indefinitely.
+// What the strip decides to show: anything still queued/running right
+// now, or anything that failed within the last day -- older failures
+// are Runs' own job to surface, not something that should linger on
+// the front door indefinitely.
 export function summarizeRecentActivity(runs: RunListItem[], now: Date): RecentActivitySummary {
   let activeCount = 0
   let recentFailedCount = 0

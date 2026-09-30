@@ -20,16 +20,15 @@ interface SampleFiltersProps {
 // keystroke.
 const SEARCH_DEBOUNCE_MS = 300
 
-// Layer 4's filter row (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md Phase
-// 4). Filter state lives in the URL, not here (Section 4's "a filtered
-// view has to be shareable" requirement) -- every change calls
-// `onChange`, and RunSamplesTab is what actually rewrites the URL. The
-// only local state is the search box's typed-but-not-yet-committed
-// draft, so every keystroke doesn't itself trigger a refetch or a URL
-// rewrite. The active rule (set by clicking a row in FailureBreakdown,
-// or by following a link from the Overview tab's own breakdown preview)
-// shows here as its own removable pill, now that FailureBreakdown's
-// matching in-place notice is collapsed by default (Phase 7).
+// Filter state lives in the URL, not here -- a filtered view has to be
+// shareable, so every change calls `onChange`, and RunSamplesTab is
+// what actually rewrites the URL. The only local state is the search
+// box's typed-but-not-yet-committed draft, so every keystroke doesn't
+// itself trigger a refetch or a URL rewrite. The active rule (set by
+// clicking a row in FailureBreakdown, or by following a link from the
+// Overview tab's own breakdown preview) shows here as its own
+// removable pill, now that FailureBreakdown's matching in-place notice
+// is collapsed by default.
 export function SampleFilters({ filters, subsets, onChange }: SampleFiltersProps) {
   const [syncedQuery, setSyncedQuery] = useState(filters.q)
   const [searchDraft, setSearchDraft] = useState(filters.q)
@@ -85,7 +84,7 @@ export function SampleFilters({ filters, subsets, onChange }: SampleFiltersProps
       />
 
       {/* IFEval's single "default" subset shows no control; MMLU-Pro's
-          14 do (Phase 4's "hidden when the benchmark has only one"). */}
+          14 do -- hidden when the benchmark has only one. */}
       {subsets.length > 1 && (
         <SelectField
           value={filters.subset ?? ''}

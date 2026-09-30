@@ -10,12 +10,11 @@ interface RunFailureReasonProps {
   run: RunListItem
 }
 
-// The Runs table's own compact failure cell (docs/UI_REDESIGN_PLAN.md
-// §8.9, item 4's sketch: `"..." > details`) -- classifyRunError's
-// plain-language title inline, with its hint, the raw error and an
-// Open logs link tucked behind a popover. RunFailurePanel (Phase 7) is
-// this same classification's fuller, full-page version; a list row
-// only has room for one line plus a disclosure.
+// The Runs table's own compact failure cell (`"..." > details`) --
+// classifyRunError's plain-language title inline, with its hint, the
+// raw error and an Open logs link tucked behind a popover.
+// RunFailurePanel is this same classification's fuller, full-page
+// version; a list row only has room for one line plus a disclosure.
 export function RunFailureReason({ run }: RunFailureReasonProps) {
   const classification = classifyRunError(run.error)
 

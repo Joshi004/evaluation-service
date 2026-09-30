@@ -8,11 +8,9 @@ import { describeError } from '../../utils/describeError'
 import { HEALTH_DEPENDENCY_LABELS } from '../../utils/labels'
 import { classifySystemStatus, SYSTEM_STATUS_DOT_CLASSES } from './SystemStatus.helper'
 
-// The top bar's health pill (§4.4.1). Replaces the Leaderboard's old
-// always-visible "Backend connectivity" card (Phase 2 spec item 6) --
-// same query, same dependency list, just relocated and polling every
-// 30s instead of 10s now that it's on screen everywhere, not one page
-// among many.
+// The top bar's health pill -- same query, same dependency list, just
+// relocated and polling every 30s instead of 10s now that it's on
+// screen everywhere, not one page among many.
 export function SystemStatus() {
   const health = useHealth()
 

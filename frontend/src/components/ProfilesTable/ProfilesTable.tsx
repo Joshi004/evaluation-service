@@ -10,8 +10,8 @@ export interface ProfileTableRow {
   summary: string
   // Already formatted by the caller (ProfilesPage.helper.ts's
   // formatUsedBy) -- sampling and serving profiles count "used by"
-  // differently (decision #8), so this table only ever renders text,
-  // never re-derives it.
+  // differently, so this table only ever renders text, never
+  // re-derives it.
   usedBy: string
 }
 
@@ -20,12 +20,11 @@ interface ProfilesTableProps {
   onSelectProfile: (id: number) => void
 }
 
-// Shared by SamplingProfilesTab and ServingProfilesTab (Phase 12,
-// docs/UI_REDESIGN_PLAN.md §8.12): Name, Summary, Used by and
-// Fingerprint columns for either catalog. A row click or the name
-// button opens the ?profile=-driven drawer -- the button exists
-// alongside the row's own onClick so the same action stays reachable
-// by keyboard, not only by mouse.
+// Shared by SamplingProfilesTab and ServingProfilesTab: Name, Summary,
+// Used by and Fingerprint columns for either catalog. A row click or
+// the name button opens the ?profile=-driven drawer -- the button
+// exists alongside the row's own onClick so the same action stays
+// reachable by keyboard, not only by mouse.
 export function ProfilesTable({ rows, onSelectProfile }: ProfilesTableProps) {
   return (
     <Table>

@@ -33,12 +33,12 @@ interface BenchmarkSettingsRowProps {
   onDraftsChange: (drafts: SubmitOverrideDrafts) => void
 }
 
-// One benchmark's Settings-step row (Phase 10, docs/UI_REDESIGN_PLAN.md
-// §8.10): name, version and its recommended protocol at a glance, plus
-// a "Customize protocol" panel reusing StandardOverrideCard. Unlike
-// ModelSettingsRow, there is no inline select here -- a benchmark's
-// shape has no "which named alternative" choice the way a sampling or
-// serving profile does, only individual fields to override.
+// One benchmark's Settings-step row: name, version and its recommended
+// protocol at a glance, plus a "Customize protocol" panel reusing
+// StandardOverrideCard. Unlike ModelSettingsRow, there is no inline
+// select here -- a benchmark's shape has no "which named alternative"
+// choice the way a sampling or serving profile does, only individual
+// fields to override.
 export function BenchmarkSettingsRow({
   standard,
   selectedCheckpoints,

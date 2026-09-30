@@ -12,8 +12,7 @@ import { paths } from '../utils/paths'
 import { isActiveRunStatus } from '../utils/runStatus'
 import { useRunReport } from './RunReportPage.helper'
 
-// The run report's own state-aware default tab
-// (docs/UI_REDESIGN_PLAN.md §8.7, item 7): live progress while
+// The run report's own state-aware default tab: live progress while
 // queued/running, "what went wrong" first while failed/cancelled, or
 // the full done view -- metric cards, a breakdown preview, the written
 // narrative and health details -- once finished.
@@ -37,9 +36,7 @@ export function RunOverviewTab() {
   }
 
   // The Overview tab's own tag chips (inside DiagnosticsSummary) link
-  // out to the Samples tab's filter rather than toggling in place --
-  // docs/UI_REDESIGN_PLAN.md §8.7, item 3: "tag chips that link to
-  // filtered Samples".
+  // out to the Samples tab's filter rather than toggling in place.
   function handleTagChange(tag: string | null): void {
     const path = paths.runSamples(run.id)
     navigate(tag === null ? path : `${path}?tag=${encodeURIComponent(tag)}`)

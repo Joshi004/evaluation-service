@@ -5,8 +5,8 @@ import { cn } from '../../utils/cn'
 interface SegmentedControlOption {
   value: string
   // ReactNode, not just string -- the Runs page's own status segments
-  // (docs/UI_REDESIGN_PLAN.md §8.9) each carry a muted count alongside
-  // their label ("Done 8"), not plain text.
+  // each carry a muted count alongside their label ("Done 8"), not
+  // plain text.
   label: ReactNode
 }
 

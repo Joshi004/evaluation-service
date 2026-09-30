@@ -16,13 +16,11 @@ interface RunFailurePanelProps {
 
 const FAILURE_LOG_TAIL_LINES = 20
 
-// The Overview tab's own content for a failed or cancelled run
-// (docs/UI_REDESIGN_PLAN.md §8.7, item 7's "state-aware default":
-// "failed/cancelled -> 'what went wrong' panel first"). A failed run
-// gets classifyRunError's plain-language reason with the raw error
-// tucked behind a disclosure; a cancelled run has no `error` string at
-// all (worker.cancel_run writes the status directly, with nothing to
-// classify) and gets its own short explanation instead.
+// The Overview tab's own content for a failed or cancelled run. A
+// failed run gets classifyRunError's plain-language reason with the
+// raw error tucked behind a disclosure; a cancelled run has no `error`
+// string at all (worker.cancel_run writes the status directly, with
+// nothing to classify) and gets its own short explanation instead.
 export function RunFailurePanel({ run }: RunFailurePanelProps) {
   const now = new Date()
   const classification = run.status === 'failed' ? classifyRunError(run.error) : null

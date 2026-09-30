@@ -1,10 +1,9 @@
-// Non-DOM logic for RunsPage.tsx (docs/UI_REDESIGN_PLAN.md §8.9): the
-// URL contract, filtering an already-fetched run list in the browser
-// (no server-side filter exists for `by`/`since`/`q`, and the status
-// counts need the unfiltered list anyway -- this phase's own plan),
-// the per-chip status counts, the filter option lists built from
-// whatever the current runs actually contain, and the one newest-first
-// sort every view (grouped or flat) uses.
+// Non-DOM logic for RunsPage.tsx: the URL contract, filtering an
+// already-fetched run list in the browser (no server-side filter
+// exists for `by`/`since`/`q`, and the status counts need the
+// unfiltered list anyway), the per-chip status counts, the filter
+// option lists built from whatever the current runs actually contain,
+// and the one newest-first sort every view (grouped or flat) uses.
 
 import type { RunListItem, StandardSummary } from '../api/client'
 import { benchmarkDisplayName } from '../utils/benchmarkDisplayName'
@@ -45,10 +44,10 @@ export interface ResolvedRunsView {
   viewMode: RunsViewMode
 }
 
-// The raw shape RunsPage.tsx hands to useUrlState (§8.9's own note:
-// "the first page to use that hook, because every default here is a
-// constant" -- unlike the Leaderboard's own data-dependent defaults,
-// nothing here needs the loaded runs to know what "unset" looks like).
+// The raw shape RunsPage.tsx hands to useUrlState (this is the first
+// page to use that hook, because every default here is a constant --
+// unlike the Leaderboard's own data-dependent defaults, nothing here
+// needs the loaded runs to know what "unset" looks like).
 // Keys match the URL's own param names (`model`, `by`, `batch`), not
 // RunsFilters' domain names (`modelId`, `submittedBy`, `batchId`) --
 // resolveRunsView below is what translates between the two.
@@ -112,9 +111,7 @@ function matchesSincePreset(run: RunListItem, since: RunsSincePreset, now: Date)
 }
 
 // Batch name or model name, not benchmark or submitted-by -- those
-// already have their own dedicated filters (§8.9 item 1's own split:
-// "filters: model, benchmark, submitted by, date preset, free-text
-// (batch/model)").
+// already have their own dedicated filters.
 function matchesSearchQuery(run: RunListItem, q: string): boolean {
   const query = q.trim().toLowerCase()
   if (query === '') {
@@ -153,11 +150,10 @@ export function filterRuns(runs: RunListItem[], filters: RunsFilters, now: Date)
 }
 
 // Each count is "how many runs would show if this chip were picked,
-// given every other filter already on" (§8.9's own plan: "status
-// counts follow the other filters") -- with no filters at all, this is
-// simply how many runs the service has of each status. Delegates the
-// actual counting to runStatus.ts's countRunsByStatus once the other
-// filters have narrowed the list.
+// given every other filter already on" -- with no filters at all,
+// this is simply how many runs the service has of each status.
+// Delegates the actual counting to runStatus.ts's countRunsByStatus
+// once the other filters have narrowed the list.
 export function countRunsByStatusFilter(runs: RunListItem[], filters: RunsFilters, now: Date): RunsStatusCounts {
   const otherwiseVisible = runs.filter((run) => matchesRunsFiltersExceptStatus(run, filters, now))
   return countRunsByStatus(otherwiseVisible)
@@ -181,7 +177,7 @@ export interface ModelFilterOption {
 // /checkpoints call -- this page already has everything it needs in
 // one request. A `selectedModelId` with no matching run (a stale link)
 // still gets an option, so the control never shows a blank where the
-// URL named something (§8.9's own plan: "stays selectable").
+// URL named something.
 export function buildModelFilterOptions(runs: RunListItem[], selectedModelId: number | null): ModelFilterOption[] {
   const nameByCheckpointId = new Map<number, string>()
   for (const run of runs) {
@@ -270,9 +266,9 @@ export function hasActiveFilters(filters: RunsFilters): boolean {
   )
 }
 
-// The empty-state copy's own special case (§8.9 acceptance criteria):
-// "Nothing is running right now" reads better than a generic "no
-// matches" when Active is the *only* thing narrowing the list.
+// The empty-state copy's own special case: "Nothing is running right
+// now" reads better than a generic "no matches" when Active is the
+// *only* thing narrowing the list.
 export function isOnlyActiveStatusFilter(filters: RunsFilters): boolean {
   return (
     filters.status === 'active' &&

@@ -1,9 +1,8 @@
 // Non-DOM logic for ComparePage.tsx: the canonical ?runs= URL contract
-// (Phase 8, docs/UI_REDESIGN_PLAN.md §8.8) and how a run already in
-// that list, once loaded, turns out to be unusable. Only this page
-// needs these -- once a shape here is needed by a second component
-// (like ComparePairState), it moves to src/utils/ instead
-// (.cursor/rules/frontend-components.mdc).
+// and how a run already in that list, once loaded, turns out to be
+// unusable. Only this page needs these -- once a shape here is needed
+// by a second component (like ComparePairState), it moves to
+// src/utils/ instead (.cursor/rules/frontend-components.mdc).
 import type { UseQueryResult } from '@tanstack/react-query'
 import type { RunDetail } from '../api/client'
 import { MAX_COMPARE_RUNS } from '../utils/compareTray'
@@ -44,12 +43,12 @@ export function parseCompareRunIds(searchParams: URLSearchParams): number[] {
   return normalizeRunIds(readNumberListParam(searchParams, 'runs'))
 }
 
-// `/compare?left=&right=` was the canonical URL before Phase 8 (§8.8's
-// own acceptance criterion: that link must keep working); a `runs`
-// list that needed cleaning (a duplicate, an invalid id, or more than
-// MAX_COMPARE_RUNS entries) also earns a redirect, so a copied link
-// always settles on the one URL it will keep resolving to. `null`
-// means the URL is already canonical -- nothing to redirect.
+// `/compare?left=&right=` is the URL format from before `?runs=`, and
+// that link must keep working; a `runs` list that needed cleaning (a
+// duplicate, an invalid id, or more than MAX_COMPARE_RUNS entries)
+// also earns a redirect, so a copied link always settles on the one
+// URL it will keep resolving to. `null` means the URL is already
+// canonical -- nothing to redirect.
 export function resolveCompareRedirect(searchParams: URLSearchParams): string | null {
   if (!searchParams.has('runs')) {
     const left = parsePositiveInt(searchParams.get('left'))

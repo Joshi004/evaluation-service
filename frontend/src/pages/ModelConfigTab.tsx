@@ -18,10 +18,10 @@ import { describeProfileGlance } from '../utils/servingProfileSummary'
 import { paths } from '../utils/paths'
 import { useModelPage } from './ModelDetailPage.helper'
 
-// The model page's Configuration tab (docs/UI_REDESIGN_PLAN.md §8.11):
-// everything the old checkpoints-page expandable row showed (the nine
-// inferred fields, config.json, weights, path, serving profile,
-// parent), as Card + KeyValueList groups instead of one dense row.
+// The model page's Configuration tab: everything the old
+// checkpoints-page expandable row showed (the nine inferred fields,
+// config.json, weights, path, serving profile, parent), as Card +
+// KeyValueList groups instead of one dense row.
 export function ModelConfigTab() {
   const { checkpoint, allCheckpoints } = useModelPage()
   const servingProfiles = useServingProfiles()

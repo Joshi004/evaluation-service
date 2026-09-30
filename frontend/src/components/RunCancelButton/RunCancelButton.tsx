@@ -12,12 +12,11 @@ interface RunCancelButtonProps {
 }
 
 // The one cancel confirmation for a run (ground rule 14: never
-// `window.confirm`) -- the run report's own header action (Phase 7)
-// and the Runs table's own row action (Phase 9) both render this same
-// component. The description names exactly
-// what `worker.cancel_run` actually does: it writes 'cancelled'
-// immediately, then tears down the model server only if no other run
-// is still using it (Trap T4).
+// `window.confirm`) -- the run report's own header action and the
+// Runs table's own row action both render this same component. The
+// description names exactly what `worker.cancel_run` actually does: it
+// writes 'cancelled' immediately, then tears down the model server
+// only if no other run is still using it (Trap T4).
 export function RunCancelButton({ runId, className }: RunCancelButtonProps) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const cancelRun = useCancelRun()

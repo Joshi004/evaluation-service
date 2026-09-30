@@ -9,11 +9,11 @@ import { buildModelResults, findSharedSetups } from '../utils/modelResults'
 import { paths } from '../utils/paths'
 import { useModelPage } from './ModelDetailPage.helper'
 
-// The model page's Lineage tab (docs/UI_REDESIGN_PLAN.md §8.11): the
-// parent, compared setup-by-setup via ModelParentComparison (baseline
-// = parent, the same findSharedSetups helper Compare with... uses),
-// then the children list. Lineage itself is read-only here -- it's set
-// once at registration (see the note at the bottom).
+// The model page's Lineage tab: the parent, compared setup-by-setup
+// via ModelParentComparison (baseline = parent, the same
+// findSharedSetups helper Compare with... uses), then the children
+// list. Lineage itself is read-only here -- it's set once at
+// registration (see the note at the bottom).
 export function ModelLineageTab() {
   const { checkpoint, allCheckpoints, board, standards } = useModelPage()
   const { parent, parentMissing, children } = resolveModelLineage(checkpoint, allCheckpoints)

@@ -13,10 +13,10 @@ interface AddToCompareButtonProps {
   className?: string
 }
 
-// The pin control §8.5 puts on every run row -- Runs today; the
-// Leaderboard and Model page add their own call sites in Phases 6 and
-// 11 (Appendix A). A refused pin stays focusable and hoverable rather
-// than using the native `disabled` attribute, which would hide the
+// The pin control shown on every run row -- Runs today; the
+// Leaderboard and Model page add their own call sites too. A refused
+// pin stays focusable and hoverable rather than using the native
+// `disabled` attribute, which would hide the
 // reason from exactly the person who needs to read it: mouse hover and
 // keyboard focus both still open the tooltip, only the click is a
 // no-op (`aria-disabled`, not `disabled`).

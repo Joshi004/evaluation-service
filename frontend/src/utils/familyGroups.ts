@@ -1,12 +1,11 @@
-// The one family-grouping rule (Phase 11, docs/UI_REDESIGN_PLAN.md
-// §8.11): every screen that groups checkpoints by family -- the Models
-// list, the New evaluation ModelPicker, the Leaderboard's own family
-// filter, and the registration wizard's family input's "matches an
-// existing family" hint -- reads this instead of each computing its
-// own label for a family whose stored spelling is inconsistent
-// ("QWen3.5" vs "Qwen-3.5"). familyKey.ts is what makes the two
-// spellings collapse into one group; this file decides which spelling
-// represents the group on screen.
+// The one family-grouping rule: every screen that groups checkpoints
+// by family -- the Models list, the New evaluation ModelPicker, the
+// Leaderboard's own family filter, and the registration wizard's
+// family input's "matches an existing family" hint -- reads this
+// instead of each computing its own label for a family whose stored
+// spelling is inconsistent ("QWen3.5" vs "Qwen-3.5"). familyKey.ts is
+// what makes the two spellings collapse into one group; this file
+// decides which spelling represents the group on screen.
 import type { CheckpointListItem } from '../api/client'
 import { familyKey } from './familyKey'
 
@@ -34,10 +33,9 @@ interface SpellingStat {
   latestCreatedAt: string
 }
 
-// "Most common spelling shown" (§8.11 item 1) -- ties broken by the
-// spelling belonging to the most recently registered checkpoint,
-// since that is the spelling whoever is looking at the group typed
-// most recently.
+// "Most common spelling shown" -- ties broken by the spelling
+// belonging to the most recently registered checkpoint, since that is
+// the spelling whoever is looking at the group typed most recently.
 function pickLabelAndSpellings(checkpoints: CheckpointListItem[]): { label: string; spellings: string[] } {
   const statsBySpelling = new Map<string, SpellingStat>()
   for (const checkpoint of checkpoints) {
@@ -63,9 +61,7 @@ function pickLabelAndSpellings(checkpoints: CheckpointListItem[]): { label: stri
 }
 
 // Groups every checkpoint by its normalised family, each labelled with
-// its most common real spelling -- "No family" sorts last, mirroring
-// the Leaderboard's own pre-Phase-11 ordering, so a filter list built
-// from this never reorders once Phase 11 lands.
+// its most common real spelling -- "No family" sorts last.
 export function groupCheckpointsByFamily(checkpoints: CheckpointListItem[]): FamilyGroup[] {
   const checkpointsByKey = new Map<string, CheckpointListItem[]>()
   const noFamily: CheckpointListItem[] = []
@@ -102,9 +98,9 @@ export function groupCheckpointsByFamily(checkpoints: CheckpointListItem[]): Fam
   return groups
 }
 
-// "2 spellings" (§8.11 item 1) -- `null` for a group with one spelling
-// (the common case), so a caller renders the hint only when there is
-// something to disambiguate.
+// "2 spellings" -- `null` for a group with one spelling (the common
+// case), so a caller renders the hint only when there is something to
+// disambiguate.
 export function familySpellingsHint(group: Pick<FamilyGroup, 'spellings'>): string | null {
   return group.spellings.length > 1 ? `${group.spellings.length} spellings` : null
 }

@@ -20,9 +20,8 @@ interface ModelServerCardProps {
   now: Date
 }
 
-// One live model server (docs/UI_REDESIGN_PLAN.md §8.13, item 1): what
-// it's serving, where, its own time-to-live bar, and the one button
-// that ends it.
+// One live model server: what it's serving, where, its own
+// time-to-live bar, and the one button that ends it.
 export function ModelServerCard({ endpoint, now }: ModelServerCardProps) {
   const status = modelServerStatus(endpoint, now)
   const StatusIcon = status.icon

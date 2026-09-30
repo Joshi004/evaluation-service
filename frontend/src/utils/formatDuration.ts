@@ -7,9 +7,8 @@
 // rather than keeping its own timer -- the same choice useNow leaves to
 // its own callers, whether they tick it themselves or (RunsPage) get a
 // re-render for free from refetchInterval.
-// Renamed from formatElapsedTime.ts in Phase 4 to match the vocabulary
-// domain components import it under (RunReportPage's own duration, in
-// a later phase).
+// Named to match the vocabulary domain components import it under
+// (RunReportPage's own duration).
 export function formatDuration(start: string, end: string | null, now: Date): string {
   const endTime = end ? new Date(end) : now
   const elapsedMs = Math.max(0, endTime.getTime() - new Date(start).getTime())

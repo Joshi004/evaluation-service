@@ -7,10 +7,9 @@ interface RunMetricCardsProps {
   metrics: MetricPerformance[]
 }
 
-// All of a run's own metrics, primary emphasised (docs/UI_REDESIGN_PLAN.md
-// §8.7, item 3) -- the old run page's plain metrics table, folded into
-// cards so the primary metric (already the verdict band's own headline)
-// still reads as the one that matters most among the rest.
+// All of a run's own metrics, primary emphasised: cards instead of a
+// plain table, so the primary metric (already the verdict band's own
+// headline) still reads as the one that matters most among the rest.
 export function RunMetricCards({ metrics }: RunMetricCardsProps) {
   if (metrics.length === 0) {
     return <p className="text-sm text-muted-foreground">No metrics yet.</p>

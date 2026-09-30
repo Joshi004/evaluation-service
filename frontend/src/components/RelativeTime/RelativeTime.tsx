@@ -8,8 +8,8 @@ interface RelativeTimeProps {
   className?: string
 }
 
-// §4.5's "Time" pattern: relative up to 7 days, then a short date, with
-// the full timestamp always one hover/focus away -- every screen
+// Relative up to 7 days, then a short date, with the full timestamp
+// always one hover/focus away -- every screen
 // showing when a run finished or a checkpoint was checked renders
 // through this instead of picking its own cutoff.
 export function RelativeTime({ timestamp, className }: RelativeTimeProps) {

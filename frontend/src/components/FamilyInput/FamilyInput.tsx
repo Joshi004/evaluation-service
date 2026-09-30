@@ -10,12 +10,12 @@ interface FamilyInputProps {
 
 const DATALIST_ID = 'family-input-options'
 
-// Registration step 2's family field (docs/UI_REDESIGN_PLAN.md §8.11):
-// a plain text input backed by a native <datalist> of every family
-// already on file, so typing a close variant of an existing spelling
-// ("qwen 3.5") surfaces a hint to use the winning one instead
-// (familyGroups.ts's own "one family rule everywhere") rather than
-// quietly minting a second, near-duplicate family.
+// Registration step 2's family field: a plain text input backed by a
+// native <datalist> of every family already on file, so typing a
+// close variant of an existing spelling ("qwen 3.5") surfaces a hint
+// to use the winning one instead (familyGroups.ts's own "one family
+// rule everywhere") rather than quietly minting a second,
+// near-duplicate family.
 export function FamilyInput({ value, onChange, checkpoints }: FamilyInputProps) {
   const groups = groupCheckpointsByFamily(checkpoints).filter((group) => group.key !== NO_FAMILY_KEY)
   const matchingFamily = findMatchingFamily(value, groups)

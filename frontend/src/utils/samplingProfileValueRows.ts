@@ -1,12 +1,11 @@
 // Reshapes a SamplingProfileSummary into the label/value rows a value
-// table renders. Promoted here from SamplingProfilesPage.helper.ts once
-// the old grid-wide SamplingProfilePicker (removed by Phase 8's
-// per-checkpoint override cards) needed the same rows for its read-only
-// display of the chosen profile (frontend-components.mdc: a second
-// consumer is what promotes page-local logic to src/utils/). Stays here
-// now that SamplingProfilesPage.tsx is its only consumer again --
-// nothing demotes a helper back once promoted, and a second consumer
-// may well return.
+// table renders. Lives in src/utils/ since a second consumer once
+// needed these same rows for a read-only display of the chosen profile
+// (frontend-components.mdc: a second consumer is what promotes
+// page-local logic to src/utils/). Stays here now that
+// SamplingProfilesPage.tsx is its only consumer again -- nothing
+// demotes a helper back once promoted, and a second consumer may well
+// return.
 import type { SamplingProfileSummary } from '../api/client'
 
 export interface SamplingProfileValueRow {
@@ -18,12 +17,10 @@ export interface SamplingProfileValueRow {
 // Every SamplingProfileConfig field's human label, keyed the same way
 // runConfigFieldRows.ts's samplingFieldRows labels the same fields --
 // one label set for e.g. "temperature" across the app, not two.
-// Relocated from the deleted StandardsPage.helper.ts (as
-// SAMPLING_OVERRIDE_LABELS) in Phase 12, docs/UI_REDESIGN_PLAN.md
-// §8.12, once the Benchmark detail page's own Protocol tab became a
-// second caller alongside DryRunPreview -- neither is a page about
-// sampling *profiles* specifically, so the name drops "override" for
-// the more accurate "field".
+// Shared by the Benchmark detail page's own Protocol tab and
+// DryRunPreview -- neither is a page about sampling *profiles*
+// specifically, so the name drops "override" for the more accurate
+// "field".
 export const SAMPLING_FIELD_LABELS: Record<string, string> = {
   temperature: 'Temperature',
   top_p: 'Top-p',

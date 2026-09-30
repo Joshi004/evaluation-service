@@ -6,19 +6,17 @@ interface IfevalRuleChecklistProps {
   rules: RuleCheck[]
 }
 
-// Layer 5's per-rule tick list (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md
-// Phase 7) -- the one IFEval/IFBench-specific renderer in the catalog.
-// Strict and loose side by side per rule: "distinguishes 'the model
-// broke the rule' from 'the model wrapped a correct answer badly'"
-// (docs/SCORE_DRILLDOWN_UI_PLAN.md Section 4, Layer 5).
+// The per-rule tick list -- the one IFEval/IFBench-specific renderer
+// in the catalog. Strict and loose side by side per rule --
+// distinguishes "the model broke the rule" from "the model wrapped a
+// correct answer badly."
 //
 // Labelled as recomputed diagnostic detail, next to SampleDetail's own
 // display of the harness's authoritative scores above it: this table
 // is expected to disagree with the stored score on a couple of
-// instructions per real IFEval run (the two random-letter samples,
-// decision 4) and that gap is never reconciled -- the caption says so
-// rather than presenting the recheck as if it were the score of
-// record.
+// instructions per real IFEval run (the two random-letter samples) and
+// that gap is never reconciled -- the caption says so rather than
+// presenting the recheck as if it were the score of record.
 export function IfevalRuleChecklist({ rules }: IfevalRuleChecklistProps) {
   if (rules.length === 0) {
     return null

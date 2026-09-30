@@ -1,9 +1,8 @@
 // Non-DOM logic for NewEvaluationWizard.tsx: the three-step contract
-// (Phase 10, docs/UI_REDESIGN_PLAN.md §8.10 and Appendix A's own
-// `step`, `models`, `benchmarks`, `from` URL params), the id -> row
-// lookups its children need, the batch name's own suggest-and-validate
-// rule, and the request objects sent to the preview and submit
-// endpoints.
+// (the `step`, `models`, `benchmarks`, `from` URL params), the id ->
+// row lookups its children need, the batch name's own
+// suggest-and-validate rule, and the request objects sent to the
+// preview and submit endpoints.
 import type { CheckpointListItem, CreateRunsRequest, RunListItem, StandardSummary } from '../../api/client'
 import type { RequestOverrides } from '../SubmitOverrides/SubmitOverrides.helper'
 
@@ -120,11 +119,8 @@ export function computeSubmitBlockReason(options: SubmitBlockOptions): string | 
   return null
 }
 
-// The exact CreateRunsRequest shape the original Submit page's own
-// handleSubmit built (docs/UI_REDESIGN_PLAN.md §8.10 acceptance
-// criteria: "the request the page would send has the same fields and
-// values as the old page's") -- kept as one pure function so the
-// wizard component itself never re-assembles this object inline.
+// The exact CreateRunsRequest shape -- kept as one pure function so
+// the wizard component itself never re-assembles this object inline.
 export function buildCreateRunsRequest(
   batchName: string,
   selectedCheckpointIds: number[],

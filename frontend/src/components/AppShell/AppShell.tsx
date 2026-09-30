@@ -11,10 +11,10 @@ import { useCompareTray } from '../../utils/useCompareTray'
 import { resolvePageTitle } from './AppShell.helper'
 import { useDocumentTitle } from '../../utils/useDocumentTitle'
 
-// Replaces App.tsx (Phase 2): a grouped sidebar + top bar around every
-// route, instead of nine equal top-nav links. Page width (Page vs
-// PageWide) is each route's own concern in routes.tsx, not this
-// component's -- AppShell only owns the chrome around <Outlet />.
+// A grouped sidebar + top bar around every route, instead of nine
+// equal top-nav links. Page width (Page vs PageWide) is each route's
+// own concern in routes.tsx, not this component's -- AppShell only
+// owns the chrome around <Outlet />.
 export function AppShell() {
   const location = useLocation()
   const pageTitle = resolvePageTitle(location.pathname)

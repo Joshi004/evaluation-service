@@ -14,9 +14,8 @@ interface CatalogPruneButtonProps {
 }
 
 // Prune's own confirmation (ground rule 14: never window.confirm),
-// following the RunCancelButton pattern (Phase 12,
-// docs/UI_REDESIGN_PLAN.md §8.12). `destructive`: unlike Reload, this
-// permanently removes rows. Disabled at zero candidates rather than
+// following the RunCancelButton pattern. `destructive`: unlike Reload,
+// this permanently removes rows. Disabled at zero candidates rather than
 // hidden, so "there is nothing to prune right now" stays visible
 // rather than the button disappearing without explanation.
 export function CatalogPruneButton({ resource, entries }: CatalogPruneButtonProps) {

@@ -22,16 +22,13 @@ interface FailureBreakdownProps {
   onRuleChange: (rule: string | null) => void
 }
 
-// Layer 3 (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md Phase 6): the
-// family and rule breakdown tables. Plain sorted tables with the raw
-// counts visible, not charts -- docs/SCORE_DRILLDOWN_UI_PLAN.md Section
-// 9 says a 25-row bar chart is less readable than the list and hides
-// the counts that make it checkable.
+// The family and rule breakdown tables. Plain sorted tables with the
+// raw counts visible, not charts -- a 25-row bar chart is less
+// readable than the list and hides the counts that make it checkable.
 //
-// Bare content, no card chrome or heading of its own (Phase 7,
-// docs/UI_REDESIGN_PLAN.md §8.7): the Samples tab's own "Breakdown"
-// disclosure supplies both, since that heading now doubles as the
-// toggle button's own label.
+// Bare content, no card chrome or heading of its own: the Samples
+// tab's own "Breakdown" disclosure supplies both, since that heading
+// now doubles as the toggle button's own label.
 export function FailureBreakdown({
   buckets,
   instructionLevel,
@@ -39,7 +36,7 @@ export function FailureBreakdown({
   activeRule,
   onRuleChange,
 }: FailureBreakdownProps) {
-  // GSM8K and GPQA-Diamond have no natural grouping (Phase 5) and must
+  // GSM8K and GPQA-Diamond have no natural grouping and must
   // render this message instead of an empty table.
   if (buckets.length === 0) {
     return (
@@ -57,9 +54,9 @@ export function FailureBreakdown({
   return (
     <div className="space-y-4">
       {/* A recheck that failed (or a benchmark it never ran for) still
-          produces buckets from `instruction_id_list` alone -- Phase 6
-          says show them with per-rule detail marked unavailable rather
-          than an empty table. */}
+          produces buckets from `instruction_id_list` alone -- show
+          them with per-rule detail marked unavailable rather than an
+          empty table. */}
       {noKnownOutcome && (
         <p className="text-xs text-warning">
           Per-rule detail is unavailable for this run — the recheck did not produce an outcome.

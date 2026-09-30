@@ -50,11 +50,10 @@ interface ModelSettingsRowProps {
   onDraftsChange: (drafts: SubmitOverrideDrafts) => void
 }
 
-// One model's Settings-step row (Phase 10, docs/UI_REDESIGN_PLAN.md
-// §8.10): a compact sampling/serving profile choice for the common
-// case, plus a "Customize" panel reusing the same override cards
-// Submit's own grid used to stack inline. The row's own two selects and
-// the panel's own "Base profile" selects are the same underlying
+// One model's Settings-step row: a compact sampling/serving profile
+// choice for the common case, plus a "Customize" panel reusing the
+// same override cards. The row's own two selects and the panel's own
+// "Base profile" selects are the same underlying
 // choice (`drafts.samplingProfileIdByCheckpointId`/
 // `servingProfileIdByCheckpointId`) rendered twice -- changing either
 // one is exactly the same edit.

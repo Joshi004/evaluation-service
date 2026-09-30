@@ -3,9 +3,9 @@
 // catalog-admin pieces (ManageCatalogButton, CatalogHealthBanner, the
 // restyled CatalogPanel) needs, so a page reaches for one object
 // instead of repeating its resource path, noun and list query key at
-// every call site (Phase 12, docs/UI_REDESIGN_PLAN.md §8.12). Mirrors
-// why load_catalog/catalog_status take a CatalogRepository rather than
-// three near-identical functions on the backend.
+// every call site. Mirrors why load_catalog/catalog_status take a
+// CatalogRepository rather than three near-identical functions on the
+// backend.
 import type { CatalogEntryState, CatalogEntryStatus } from '../api/client'
 import { queryKeys } from '../api/queries/queryKeys'
 

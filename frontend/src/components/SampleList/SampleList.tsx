@@ -17,19 +17,17 @@ interface SampleListProps {
   primaryMetricDisplayName: string
   showSubsetColumn: boolean
   selectedSampleKey: string | null
-  // Hides the Output and score columns once the panel is open
-  // (docs/UI_REDESIGN_PLAN.md §8.7, item 4) -- there is no room for
-  // them once the panel takes half the width, and the panel itself
-  // already shows both in full.
+  // Hides the Output and score columns once the panel is open -- there
+  // is no room for them once the panel takes half the width, and the
+  // panel itself already shows both in full.
   compact: boolean
 }
 
-// Layer 4's table (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md Phase 4):
-// renders whichever page of already-filtered samples the caller
-// fetched. Every row deep-links to /runs/:runId/samples/:sampleKey,
-// keeping the current filter query string, so a colleague following the
-// link lands on the same filtered view this row came from, not just the
-// bare sample.
+// This table renders whichever page of already-filtered samples the
+// caller fetched. Every row deep-links to
+// /runs/:runId/samples/:sampleKey, keeping the current filter query
+// string, so a colleague following the link lands on the same filtered
+// view this row came from, not just the bare sample.
 export function SampleList({
   runId,
   samples,
@@ -42,11 +40,10 @@ export function SampleList({
   const location = useLocation()
   const navigate = useNavigate()
 
-  // The whole row is clickable (§8.7's own acceptance), but the Key
-  // cell keeps a real <Link> too -- for keyboard focus, screen readers,
-  // and right-click/open-in-new-tab. A click that started on that link
-  // already navigated on its own; skip the row's own navigate so it
-  // isn't pushed to history twice.
+  // The whole row is clickable, but the Key cell keeps a real <Link> too --
+  // for keyboard focus, screen readers, and right-click/open-in-new-tab. A
+  // click that started on that link already navigated on its own; skip the
+  // row's own navigate so it isn't pushed to history twice.
   function handleRowClick(event: MouseEvent<HTMLTableRowElement>, sampleKey: string): void {
     if ((event.target as HTMLElement).closest('a')) {
       return

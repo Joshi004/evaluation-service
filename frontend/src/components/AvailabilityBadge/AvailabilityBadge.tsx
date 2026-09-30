@@ -7,9 +7,9 @@ interface AvailabilityBadgeProps {
 }
 
 // A checkpoint's availability as a coloured pill -- the checkpoints
-// page and the Submit grid (Phase 8) both need it to look identical,
-// built on the same Badge primitive StatusBadge uses, so the app has
-// one visual language for state.
+// page and the Submit grid both need it to look identical, built on
+// the same Badge primitive StatusBadge uses, so the app has one
+// visual language for state.
 export function AvailabilityBadge({ status }: AvailabilityBadgeProps) {
   const { label, tone } = availabilityStyle(status)
 

@@ -26,8 +26,8 @@ function countSuffix(count: number): string {
   return count > 0 ? ` (${count})` : ''
 }
 
-// §8.11's own toolbar: search, the family filter (options and labels
-// from familyGroups.ts, so this can never disagree with the section
+// This toolbar: search, the family filter (options and labels from
+// familyGroups.ts, so this can never disagree with the section
 // headings below it), a weights filter and the cards/table toggle.
 export function ModelsToolbar({
   view,

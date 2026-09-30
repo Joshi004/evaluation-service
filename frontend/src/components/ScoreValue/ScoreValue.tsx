@@ -11,12 +11,11 @@ interface ScoreValueProps {
   className?: string
 }
 
-// One score, formatted one way everywhere it appears (§4.5's
-// "Numbers" pattern): percent with one decimal by default, or the
-// metric's own display hint when the run carries one. Uncertainty is
-// part of the number (§3 rule 4) -- the margin of error renders
-// alongside the score whenever `interval` is given, not as a separate
-// lookup a caller has to remember to add.
+// One score, formatted one way everywhere it appears: percent with one
+// decimal by default, or the metric's own display hint when the run
+// carries one. Uncertainty is part of the number -- the margin of
+// error renders alongside the score whenever `interval` is given, not
+// as a separate lookup a caller has to remember to add.
 export function ScoreValue({
   value,
   interval = null,

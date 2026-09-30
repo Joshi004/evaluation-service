@@ -5,8 +5,8 @@ import { servingProfileDisplayName } from '../../utils/servingProfileDisplayName
 
 // Distinguishes reusing a persisted profile from minting a possibly-new
 // one. Only the server can say for certain whether a customisation
-// matches an existing hash (resolve-or-insert, R-D22), so this states
-// the possibility rather than a false certainty.
+// matches an existing hash (resolve-or-insert), so this states the
+// possibility rather than a false certainty.
 export function describeServingProfileSelection(
   selection: ServingProfileSelection,
   profiles: ServingProfileSummary[],

@@ -1,10 +1,9 @@
-// Non-DOM logic for ModelsPage.tsx (docs/UI_REDESIGN_PLAN.md §8.11):
-// the URL contract (every default here is a constant, the same
-// useUrlState-plus-a-resolver split RunsPage.helper.ts already uses),
-// filtering the loaded checkpoint list, and building each model's own
-// overview -- its evaluated/not-evaluated results, its lineage and its
-// run counts -- from data the page already has loaded, with no
-// per-model request.
+// Non-DOM logic for ModelsPage.tsx: the URL contract (every default
+// here is a constant, the same useUrlState-plus-a-resolver split
+// RunsPage.helper.ts already uses), filtering the loaded checkpoint
+// list, and building each model's own overview -- its
+// evaluated/not-evaluated results, its lineage and its run counts --
+// from data the page already has loaded, with no per-model request.
 import type { CheckpointListItem, RunListItem, StandardSummary } from '../api/client'
 import type { LeaderboardBoard } from '../utils/buildLeaderboard'
 import { NO_FAMILY_KEY } from '../utils/familyGroups'

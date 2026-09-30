@@ -11,13 +11,13 @@ interface SetupChipProps {
   className?: string
 }
 
-// §4.3's "Setup" (comparison_hash's UI label) as a chip -- the tooltip
-// spells out the resolved sampling profile behind the label
+// Renders "Setup" (comparison_hash's UI label) as a chip -- the
+// tooltip spells out the resolved sampling profile behind the label
 // ("Thinking on · T 1 · top-p 0.95 · 32k tokens") plus why setup
 // matters, so a reader never has to guess what two same-named columns
-// actually differ by. Never shows the raw hash as the primary label
-// (§4.3's own rule); an unlabelled profile falls through to
-// samplingProfileDisplayName's own hash fallback instead.
+// actually differ by. Never shows the raw hash as the primary label;
+// an unlabelled profile falls through to samplingProfileDisplayName's
+// own hash fallback instead.
 export function SetupChip({ samplingProfileLabel, samplingProfileHash, className }: SetupChipProps) {
   const samplingProfiles = useSamplingProfiles()
   const label = samplingProfileDisplayName(samplingProfileLabel, samplingProfileHash)

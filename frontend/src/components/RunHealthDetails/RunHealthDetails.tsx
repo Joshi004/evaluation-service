@@ -13,11 +13,11 @@ interface RunHealthDetailsProps {
   diagnostics: UseQueryResult<RunDiagnostics>
 }
 
-// The Overview tab's own health details (docs/UI_REDESIGN_PLAN.md §8.7,
-// item 3): truncation, empty answers, errored requests, latency
-// percentiles, tokens and throughput, as one KeyValueList -- the fuller
-// counterpart to RunHealthChips' glanceable ok/warn pills in the verdict
-// band above. Truncation and the performance figures come straight off
+// The Overview tab's own health details: truncation, empty answers,
+// errored requests, latency percentiles, tokens and throughput, as
+// one KeyValueList -- the fuller counterpart to RunHealthChips'
+// glanceable ok/warn pills in the verdict band above. Truncation and
+// the performance figures come straight off
 // the run itself; empty answers and errored requests need the
 // diagnostics file, so those two rows show a skeleton while it loads
 // rather than blocking the rest of the list.

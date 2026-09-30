@@ -1,8 +1,8 @@
 import { Skeleton } from '../Skeleton/Skeleton'
 
-// Shaped like ModelServerList's own header-plus-card-grid (§4.5:
-// "shaped like the final layout") -- three cards is enough to read as
-// "a list of servers" without matching any one real count.
+// Shaped like ModelServerList's own header-plus-card-grid -- three
+// cards is enough to read as "a list of servers" without matching any
+// one real count.
 export function ModelServersSkeleton() {
   return (
     <div className="space-y-3" aria-busy="true">

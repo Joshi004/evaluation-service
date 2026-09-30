@@ -19,9 +19,8 @@ export const CompareTrayContext = createContext<CompareTrayContextValue | null>(
 // Throws rather than returning a nullable value, so every consumer
 // (AddToCompareButton, CompareTray, the sidebar badge) can use the
 // result directly -- CompareTrayProvider is mounted once in main.tsx,
-// above every route (Phase 5, Appendix A's own contract), so a missing
-// provider means a wiring mistake, not a state worth handling
-// gracefully.
+// above every route, so a missing provider means a wiring mistake, not
+// a state worth handling gracefully.
 export function useCompareTray(): CompareTrayContextValue {
   const context = useContext(CompareTrayContext)
   if (context === null) {

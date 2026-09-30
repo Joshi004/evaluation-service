@@ -1,10 +1,10 @@
 // One colour per run in a comparison, assigned by position (baseline
 // first) rather than by anything about the run itself, so "Make
 // baseline" (which just reorders ?runs=) never recolours a run that
-// didn't move -- Phase 8, docs/UI_REDESIGN_PLAN.md §8.8. Shared by
-// CompareHeader (chip dots), CompareScoreMatrix (row dots and forest
-// whiskers) and CompareSampleDialog (column dots), so the same run
-// always reads as the same colour everywhere on the page.
+// didn't move. Shared by CompareHeader (chip dots), CompareScoreMatrix
+// (row dots and forest whiskers) and CompareSampleDialog (column
+// dots), so the same run always reads as the same colour everywhere on
+// the page.
 //
 // Written out literally, not built from a template string: Tailwind's
 // build-time scanner only recognises complete class names appearing as

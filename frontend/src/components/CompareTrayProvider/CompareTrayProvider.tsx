@@ -16,11 +16,11 @@ interface CompareTrayProviderProps {
 }
 
 // Mounted once in main.tsx, above <BrowserRouter> -- every route shares
-// one tray instead of each page holding its own state (Phase 5,
-// Appendix A). A tray restored from sessionStorage can point at a run
-// that was cancelled since, or (in development) predate a database
-// reset, so it is revalidated exactly once against the server's
-// current `done` list before anything treats it as trustworthy.
+// one tray instead of each page holding its own state. A tray restored
+// from sessionStorage can point at a run that was cancelled since, or
+// (in development) predate a database reset, so it is revalidated
+// exactly once against the server's current `done` list before
+// anything treats it as trustworthy.
 export function CompareTrayProvider({ children }: CompareTrayProviderProps) {
   const [pinnedRuns, setPinnedRuns] = useState<PinnedRun[]>(readPinnedRunsFromSession)
   const [needsRevalidation, setNeedsRevalidation] = useState(pinnedRuns.length > 0)

@@ -1,7 +1,6 @@
 // Non-DOM logic for BenchmarksPage.tsx: each card's own "has this been
 // run, and how much" facts, built from GET /leaderboard's rows grouped
-// by standard_id (docs/UI_REDESIGN_PLAN.md §8.12's own "Data sources"
-// section) -- no extra endpoint, since a leaderboard row already
+// by standard_id -- no extra endpoint, since a leaderboard row already
 // carries every field a card needs.
 import type { LeaderboardRow } from '../api/client'
 

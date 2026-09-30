@@ -1,10 +1,8 @@
 // Non-DOM logic for RunVerdictBand.tsx: turning a RunPerformanceSummary
-// into the display-ready strings the band renders. Moved from
-// RunHealthBand.helper.ts (Phase 7, docs/UI_REDESIGN_PLAN.md §8.7) --
-// the headline and confidence-interval formatting are unchanged; the
-// cost line is trimmed to total tokens and throughput now that the
-// mean/max per-request token figures live in the Overview tab's own
-// Health details instead (RunHealthDetails).
+// into the display-ready strings the band renders. The cost line is
+// trimmed to total tokens and throughput now that the mean/max
+// per-request token figures live in the Overview tab's own Health
+// details instead (RunHealthDetails).
 //
 // Kept out of the component body per
 // .cursor/rules/frontend-components.mdc -- "data should already be in
@@ -30,9 +28,7 @@ export function formatConfidenceInterval(
   return `95% CI ${lower}\u2013${upper}`
 }
 
-// Compact notation ("1.44M") for a large token total -- matches
-// docs/SCORE_DRILLDOWN_UI_PLAN.md Section 4's Layer 2 mock ("1.44M
-// output tokens").
+// Compact notation ("1.44M") for a large token total.
 function formatCompactCount(value: number): string {
   return new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 2 }).format(
     value,

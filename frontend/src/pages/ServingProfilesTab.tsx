@@ -18,10 +18,9 @@ interface ServingProfilesUrlParams {
 
 const SERVING_PROFILES_URL_DEFAULTS: ServingProfilesUrlParams = { profile: null }
 
-// The Serving tab of /profiles (Phase 12, docs/UI_REDESIGN_PLAN.md
-// §8.12): every serving profile, its own catalog toolbar and banner,
-// and the ?profile=-driven detail drawer (decision #3). No run count
-// here -- decision #8: RunListItem carries no serving profile field.
+// The Serving tab of /profiles: every serving profile, its own catalog
+// toolbar and banner, and the ?profile=-driven detail drawer. No run
+// count here -- RunListItem carries no serving profile field.
 export function ServingProfilesTab() {
   const profiles = useServingProfiles()
   const checkpoints = useCheckpoints()

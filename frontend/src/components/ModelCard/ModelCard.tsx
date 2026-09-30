@@ -18,8 +18,8 @@ interface ModelCardProps {
   board: LeaderboardBoard
 }
 
-// One model's card (docs/UI_REDESIGN_PLAN.md §8.11) -- the Models
-// list' own cards view (the default), grouped into family sections by
+// One model's card -- the Models list' own cards view (the default),
+// grouped into family sections by
 // the page. ModelsTable shows the same fields as table columns instead
 // for the same grouped list.
 export function ModelCard({ overview, allCheckpoints, board }: ModelCardProps) {

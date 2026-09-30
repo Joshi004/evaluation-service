@@ -24,10 +24,9 @@ interface ModelHeaderProps {
 }
 
 // The chip shows the family group's own chosen spelling, not this
-// checkpoint's raw `family` string -- the "one family rule everywhere"
-// decision (docs/UI_REDESIGN_PLAN.md §8.11) means this page can never
-// show a different spelling than the Models list' own section header
-// for the same group.
+// checkpoint's raw `family` string -- one family, one spelling,
+// everywhere, so this page can never show a different spelling than
+// the Models list' own section header for the same group.
 function resolveFamilyGroup(checkpoint: CheckpointDetail, allCheckpoints: CheckpointListItem[]): FamilyGroup | null {
   if (checkpoint.family === null) {
     return null
@@ -36,11 +35,11 @@ function resolveFamilyGroup(checkpoint: CheckpointDetail, allCheckpoints: Checkp
   return groupCheckpointsByFamily(allCheckpoints).find((group) => group.key === key) ?? null
 }
 
-// The model page's own header (docs/UI_REDESIGN_PLAN.md §8.11):
-// identity (name, family, weights, registration), then the actions
-// every tab needs regardless of which one is open -- ModelDetailPage
-// renders this once, above the <Outlet>, the same split
-// RunReportHeader already uses for the run report.
+// The model page's own header: identity (name, family, weights,
+// registration), then the actions every tab needs regardless of which
+// one is open -- ModelDetailPage renders this once, above the
+// <Outlet>, the same split RunReportHeader already uses for the run
+// report.
 export function ModelHeader({ checkpoint, allCheckpoints, standards, board }: ModelHeaderProps) {
   const notEvaluated = buildModelResults(board, standards, checkpoint.id).notEvaluated
   const isUnavailable = checkpoint.availability_status === 'unavailable'

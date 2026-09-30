@@ -27,9 +27,8 @@ import {
 
 // Which one item's cards to render -- a model gets its sampling and
 // serving cards, a benchmark gets its protocol card. New evaluation's
-// Settings step (docs/UI_REDESIGN_PLAN.md §8.10) opens one of these at
-// a time, in a `SidePanel` per row, rather than stacking every selected
-// item's cards on one page the way the original Submit page did.
+// Settings step opens one of these at a time, in a `SidePanel` per
+// row, rather than stacking every selected item's cards on one page.
 export type SubmitOverridesScope =
   | { kind: 'checkpoint'; checkpointId: number }
   | { kind: 'standard'; standardId: number }

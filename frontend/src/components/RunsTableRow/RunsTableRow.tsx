@@ -23,8 +23,7 @@ import { truncationDisplay } from './RunsTableRow.helper'
 interface RunsTableRowProps {
   run: RunListItem
   // Ticks every second while any run in view is active (owned by
-  // RunsPage, §8.9's own "Active rows tick every second") -- a single
-  // shared clock, not one `setInterval` per row.
+  // RunsPage) -- a single shared clock, not one `setInterval` per row.
   now: Date
   showBatchColumn: boolean
   batchDisambiguator?: string | null
@@ -48,11 +47,11 @@ function RunResultCell({ run }: { run: RunListItem }) {
   return <span className="text-sm text-muted-foreground">—</span>
 }
 
-// One row, shared by the grouped and flat views (§8.9's own table
-// spec): two lines per cell wherever there's identity plus context
-// (Run's status plus live phase, Model & benchmark's name plus setup,
-// Result's score plus truncation, Time's duration plus start), so the
-// table reads at a glance without ten single-purpose columns.
+// One row, shared by the grouped and flat views: two lines per cell
+// wherever there's identity plus context (Run's status plus live
+// phase, Model & benchmark's name plus setup, Result's score plus
+// truncation, Time's duration plus start), so the table reads at a
+// glance without ten single-purpose columns.
 export function RunsTableRow({ run, now, showBatchColumn, batchDisambiguator }: RunsTableRowProps) {
   const phaseLabel = runningPhaseLabel(run.status, run.endpoint_id)
   const active = isActiveRunStatus(run.status)

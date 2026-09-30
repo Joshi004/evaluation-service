@@ -19,16 +19,16 @@ interface TabNavProps {
   className?: string
 }
 
-// Tabs (Phase 1) switches content that already all sits on the page;
-// this switches between actual routes -- the run report's own tabs
-// (Phase 7) are the first caller, and Phases 11-12 reuse it for the
-// Model and Benchmark detail pages' own path-based tabs. Built on
-// NavLink rather than Radix's Tabs primitive, since a tab here is real
-// navigation (the browser's back button and a pasted URL both need to
-// land on the right one), not local component state; NavLink sets
-// `aria-current="page"` on the active tab itself, so no extra prop is
-// needed for that. Same visual language as Tabs (a border-bottom
-// indicator) so the two read as one pattern.
+// Tabs switches content that already all sits on the page; this
+// switches between actual routes -- the run report's own tabs are the
+// first caller, and the Model and Benchmark detail pages' own
+// path-based tabs reuse it too. Built on NavLink rather than Radix's
+// Tabs primitive, since a tab here is real navigation (the browser's
+// back button and a pasted URL both need to land on the right one),
+// not local component state; NavLink sets `aria-current="page"` on
+// the active tab itself, so no extra prop is needed for that. Same
+// visual language as Tabs (a border-bottom indicator) so the two read
+// as one pattern.
 export function TabNav({ items, className }: TabNavProps) {
   return (
     <nav aria-label="Tabs" className={cn('flex gap-1 border-b border-border', className)}>

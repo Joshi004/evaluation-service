@@ -38,10 +38,10 @@ interface StartModelServerDialogProps {
 const PENDING_TICK_INTERVAL_MS = 1000
 const IDLE_TICK_INTERVAL_MS = 60_000
 
-// docs/UI_REDESIGN_PLAN.md §8.13, item 2: pick a model, see exactly
-// what starting it costs, then either watch it start or close this and
-// get a toast later (Trap: a cold start can take minutes, so this must
-// survive the dialog closing -- see useStartEndpoint's own design).
+// Pick a model, see exactly what starting it costs, then either watch
+// it start or close this and get a toast later (Trap: a cold start can
+// take minutes, so this must survive the dialog closing -- see
+// useStartEndpoint's own design).
 export function StartModelServerDialog({
   open,
   onOpenChange,
@@ -158,8 +158,8 @@ export function StartModelServerDialog({
 
           {/* No inline error box here on failure -- InfrastructurePage's
               own toast (hook-level, describeStartFailure) is the one
-              failure message (plan decision #2); this just falls back
-              to the plain form, ready to retry. */}
+              failure message; this just falls back to the plain form,
+              ready to retry. */}
 
           <div className="flex justify-end gap-3">
             <Button variant="secondary" onClick={() => onOpenChange(false)}>

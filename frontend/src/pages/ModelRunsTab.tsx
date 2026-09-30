@@ -5,11 +5,9 @@ import { ScopedRunsList } from '../components/ScopedRunsList/ScopedRunsList'
 import { paths } from '../utils/paths'
 import { useModelPage } from './ModelDetailPage.helper'
 
-// The model page's Runs tab (docs/UI_REDESIGN_PLAN.md §8.11): this
-// model's own runs (already scoped server-side by ModelDetailPage's
-// own `useRuns({ checkpoint_id: id })`), rendered through the shared
-// ScopedRunsList (Phase 12, docs/UI_REDESIGN_PLAN.md §8.12) -- no
-// change in behaviour from before that extraction.
+// The model page's Runs tab: this model's own runs (already scoped
+// server-side by ModelDetailPage's own `useRuns({ checkpoint_id: id
+// })`), rendered through the shared ScopedRunsList.
 export function ModelRunsTab() {
   const { checkpoint, runs } = useModelPage()
 

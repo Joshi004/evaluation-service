@@ -1,9 +1,7 @@
 import { useLocalStorageState } from './useLocalStorageState'
 
 // One remembered display name, shared by every form field that asks a
-// person to type their own name (Phase 11, docs/UI_REDESIGN_PLAN.md
-// section 8.11's own decision: "one useRememberedName() hook shared by
-// registration and New evaluation"). New evaluation's submitted_by and
+// person to type their own name. New evaluation's submitted_by and
 // registration's registered_by both read and write this same value, so
 // entering it once fills both.
 //

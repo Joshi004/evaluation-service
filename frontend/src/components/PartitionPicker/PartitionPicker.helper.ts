@@ -1,8 +1,8 @@
 // Non-DOM logic for PartitionPicker.tsx: turning a ClusterPartitions
 // response into a flat list of <option> data. The query itself, and
 // the localStorage cache behind it, live in
-// src/api/queries/cluster.ts's useClusterPartitions (Phase 4) -- this
-// file keeps only the part that's specific to rendering the picker.
+// src/api/queries/cluster.ts's useClusterPartitions -- this file keeps
+// only the part that's specific to rendering the picker.
 import type { ClusterPartitions, SlurmPartition } from '../../api/client'
 
 export interface PartitionOption {

@@ -8,12 +8,11 @@ interface BreakdownPreviewProps {
   buckets: DiagnosticsBucket[]
 }
 
-// "Where the points went" (docs/UI_REDESIGN_PLAN.md §8.7, item 3 and
-// §4.4.3's sketch): the top 5 weakest buckets by points lost, each
-// linking into the Samples tab's own rule filter -- a short preview,
-// not the full breakdown table (that stays on the Samples tab, in
-// FailureBreakdown, collapsed by default). GSM8K and GPQA-Diamond have
-// no bucket breakdown at all (Phase 5's own gap), so this degrades to a
+// "Where the points went": the top 5 weakest buckets by points lost,
+// each linking into the Samples tab's own rule filter -- a short
+// preview, not the full breakdown table (that stays on the Samples
+// tab, in FailureBreakdown, collapsed by default). GSM8K and
+// GPQA-Diamond have no bucket breakdown at all, so this degrades to a
 // note and a plain link instead of an empty list.
 export function BreakdownPreview({ runId, buckets }: BreakdownPreviewProps) {
   const preview = previewBuckets(buckets)

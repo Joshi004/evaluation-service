@@ -7,18 +7,15 @@ export function isActiveRunStatus(status: string): boolean {
   return ACTIVE_STATUSES.has(status)
 }
 
-// The sidebar's own Runs badge (docs/UI_REDESIGN_PLAN.md §8.9, Appendix
-// A: "sidebar Runs badge shows the active count") and the Runs page's
-// own Active status chip both need "how many of these runs are still
-// going" -- one count, so the two can never disagree.
+// The sidebar's own Runs badge and the Runs page's own Active status
+// chip both need "how many of these runs are still going" -- one
+// count, so the two can never disagree.
 export function countActiveRuns(runs: { status: string }[]): number {
   return runs.filter((run) => isActiveRunStatus(run.status)).length
 }
 
-// The Runs page's own status chips (§8.9). Lifted here from
-// RunsPage.helper.ts (Phase 11, §8.11) once a model's own Runs tab
-// became a second caller that needs the same five counts for a
-// different run list -- one model's runs, with no other filters to
+// The Runs page's own status chips. These same five counts also cover
+// a different run list -- one model's runs, with no other filters to
 // combine with -- not just RunsPage's own filtered-by-everything-else
 // list.
 export const RUNS_STATUS_FILTER_VALUES = ['active', 'done', 'failed', 'cancelled', 'all'] as const

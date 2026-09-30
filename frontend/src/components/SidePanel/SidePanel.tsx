@@ -17,14 +17,14 @@ interface SidePanelProps {
   className?: string
 }
 
-// Dialog's right-docked sibling (Phase 10, docs/UI_REDESIGN_PLAN.md
-// §8.10): a wide form or detail view read naturally as a drawer --
-// New evaluation's own "Customize" panels are its first caller -- reads
-// on top of the page instead of taking over its centre. Built on the
-// same Radix Dialog primitive as Dialog.tsx (so it gets the same focus
-// trap, Escape-to-close and scroll lock for free), just positioned and
-// sized differently; reach for `Dialog` instead when the content is
-// short enough to read as a centred modal.
+// Dialog's right-docked sibling: a wide form or detail view read
+// naturally as a drawer -- New evaluation's own "Customize" panels are
+// its first caller -- reads on top of the page instead of taking over
+// its centre. Built on the same Radix Dialog primitive as Dialog.tsx
+// (so it gets the same focus trap, Escape-to-close and scroll lock for
+// free), just positioned and sized differently; reach for `Dialog`
+// instead when the content is short enough to read as a centred
+// modal.
 export function SidePanel({ open, onOpenChange, title, description, children, footer, className }: SidePanelProps) {
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>

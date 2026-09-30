@@ -16,10 +16,10 @@ interface CompareAddRunDialogProps {
   onConfirm: (runIds: number[]) => void
 }
 
-// §8.8 item 2: adding to an existing comparison, limited to the
-// baseline's own benchmark and to whatever slots are left under
-// MAX_COMPARE_RUNS. Selection resets every time the dialog opens, so a
-// cancelled add never leaks into the next one.
+// Adding to an existing comparison, limited to the baseline's own
+// benchmark and to whatever slots are left under MAX_COMPARE_RUNS.
+// Selection resets every time the dialog opens, so a cancelled add
+// never leaks into the next one.
 export function CompareAddRunDialog({
   open,
   onOpenChange,

@@ -21,10 +21,9 @@ interface ComparisonBucketTableProps {
   onLevelChange: (level: string) => void
 }
 
-// §8.8 item 5: bucket-delta table merged across every comparable
-// pair by (level, name) -- the old two-run table (Phase 9,
-// docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md), now with one Δ column
-// per non-baseline run instead of exactly one.
+// Bucket-delta table merged across every comparable pair by (level,
+// name) -- the old two-run table, now with one Δ column per
+// non-baseline run instead of exactly one.
 export function ComparisonBucketTable({ otherRuns, pairs, level, onLevelChange }: ComparisonBucketTableProps) {
   const [expanded, setExpanded] = useState(false)
   const bucketPairs = comparableBucketPairs(pairs)

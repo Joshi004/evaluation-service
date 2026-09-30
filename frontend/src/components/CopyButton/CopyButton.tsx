@@ -12,7 +12,7 @@ interface CopyButtonProps {
 
 // Copies `value` to the clipboard, flips its own icon to a checkmark
 // for a beat, and confirms with a toast -- the one way any detail page
-// offers to copy a full id, path or hash (§4.5's "long names" pattern).
+// offers to copy a full id, path or hash.
 export function CopyButton({ value, label = 'Copy', className }: CopyButtonProps) {
   const [justCopied, setJustCopied] = useState(false)
 

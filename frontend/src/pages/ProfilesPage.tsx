@@ -7,12 +7,12 @@ import { PageSkeleton } from '../components/PageSkeleton/PageSkeleton'
 import { TabNav } from '../components/TabNav/TabNav'
 import { paths } from '../utils/paths'
 
-// The Profiles layout page (Phase 12, docs/UI_REDESIGN_PLAN.md §8.12):
-// replaces the old separate Sampling and Serving profile pages with
-// one PageHeader and a Sampling/Serving TabNav, each tab's own count
-// read directly off its own catalog query. No outlet context, unlike
-// the Model and Benchmark detail pages -- neither tab needs anything
-// the other one already fetched, so there's nothing to share.
+// The Profiles layout page: replaces the old separate Sampling and
+// Serving profile pages with one PageHeader and a Sampling/Serving
+// TabNav, each tab's own count read directly off its own catalog
+// query. No outlet context, unlike the Model and Benchmark detail
+// pages -- neither tab needs anything the other one already fetched,
+// so there's nothing to share.
 export function ProfilesPage() {
   const samplingProfiles = useSamplingProfiles()
   const servingProfiles = useServingProfiles()

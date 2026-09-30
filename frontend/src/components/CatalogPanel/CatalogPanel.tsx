@@ -22,16 +22,14 @@ interface CatalogPanelProps {
 // as the catalog's own contents change.
 const STATE_LEGEND_ORDER: CatalogEntryState[] = ['loaded', 'new', 'conflicting', 'orphaned', 'ad_hoc', 'invalid']
 
-// The shared shell every catalog's own "Manage" drawer opens (S-D32):
-// the entry list from catalog-status, Reload, Prune, and per-row
-// Delete. One component, three usages (via ManageCatalogButton),
-// because three near-identical drawers would drift the way three
-// loaders would (docs/STANDARDS_AND_PROFILES_PHASES.md Phase 7).
-// Restyled onto tokens and primitives in Phase 12
-// (docs/UI_REDESIGN_PLAN.md §8.12): no more renderRowValues (browsing
-// a row's full field values now happens on its own detail page, not
-// here) and no more window.confirm (every mutation below opens
-// through its own ConfirmDialog button).
+// The shared shell every catalog's own "Manage" drawer opens: the
+// entry list from catalog-status, Reload, Prune, and per-row Delete.
+// One component, three usages (via ManageCatalogButton), because
+// three near-identical drawers would drift the way three loaders
+// would. Restyled onto tokens and primitives: no more renderRowValues
+// (browsing a row's full field values now happens on its own detail
+// page, not here) and no more window.confirm (every mutation below
+// opens through its own ConfirmDialog button).
 export function CatalogPanel({ resource }: CatalogPanelProps) {
   const status = useCatalogStatus(resource)
   const entries = status.data ? sortEntriesByAttentionFirst(status.data.entries) : []

@@ -18,10 +18,10 @@ interface ProfileDetailPanelSharedProps {
 }
 
 // A discriminated union rather than one loosely-typed props object --
-// `profile`'s own shape (and whether a run count exists at all,
-// decision #8) genuinely differs by kind, so each branch below reads
-// the exact fields that branch has, with tsc checking it rather than a
-// comment promising it.
+// `profile`'s own shape (and whether a run count exists at all)
+// genuinely differs by kind, so each branch below reads the exact
+// fields that branch has, with tsc checking it rather than a comment
+// promising it.
 type ProfileDetailPanelProps =
   | (ProfileDetailPanelSharedProps & {
       kind: 'sampling'
@@ -33,11 +33,10 @@ type ProfileDetailPanelProps =
       profile: ServingProfileSummary
     })
 
-// Shared by SamplingProfilesTab and ServingProfilesTab (Phase 12,
-// docs/UI_REDESIGN_PLAN.md §8.12): the fingerprint and every field for
-// one profile, plus who's using it. Selection lives in the URL
-// (decision #3) -- the caller owns the `?profile=` param and passes
-// `open`/`onOpenChange` through to it.
+// Shared by SamplingProfilesTab and ServingProfilesTab: the
+// fingerprint and every field for one profile, plus who's using it.
+// Selection lives in the URL -- the caller owns the `?profile=` param
+// and passes `open`/`onOpenChange` through to it.
 export function ProfileDetailPanel(props: ProfileDetailPanelProps) {
   const { open, onOpenChange, profile, defaultForModels } = props
   const name = profile.label ?? 'Custom'

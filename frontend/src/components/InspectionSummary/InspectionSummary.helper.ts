@@ -1,5 +1,5 @@
 // Non-DOM logic for InspectionSummary.tsx: turning a CheckpointInspection
-// (Phase 2 discovery) or a CheckpointInferredMetadata (Phase 8, an
+// (a fresh discovery) or a CheckpointInferredMetadata (an
 // already-registered checkpoint) into the same display-ready
 // label/value pairs. Kept as conversion functions separate from the
 // component so the component itself only ever receives
@@ -26,10 +26,10 @@ interface InferredMetadataFields {
   size_bytes: number | null
 }
 
-// "Not stated" rather than "—" (Phase 11, docs/UI_REDESIGN_PLAN.md
-// §8.11): null here means the server genuinely could not read this off
-// the checkpoint (R-D20), which reads as more than an empty dash in
-// both the Configuration tab and the registration wizard's own step 2.
+// "Not stated" rather than "—": null here means the server genuinely
+// could not read this off the checkpoint, which reads as more than an
+// empty dash in both the Configuration tab and the registration
+// wizard's own step 2.
 function formatNullable(value: string | number | null): string {
   return value === null ? 'Not stated' : String(value)
 }
@@ -71,7 +71,7 @@ export function inferredFieldsFromInspection(inspection: CheckpointInspection): 
 // The checkpoint-detail counterpart of inferredFieldsFromInspection --
 // same nine fields, read from the stored CheckpointInferredMetadata
 // (app/schemas/checkpoints.py) instead of a fresh inspection, for
-// ModelConfigTab's "What the checkpoint says" section (Phase 11).
+// ModelConfigTab's "What the checkpoint says" section.
 export function inferredFieldsFromCheckpoint(inferred: CheckpointInferredMetadata): InferredField[] {
   return inferredFields(inferred)
 }

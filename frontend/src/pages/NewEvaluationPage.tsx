@@ -13,8 +13,8 @@ import { indexById } from '../utils/indexById'
 import { paths } from '../utils/paths'
 import { buildPrefillKey, parseFromParam, resolvePrefill } from './NewEvaluationPage.helper'
 
-// New evaluation (Phase 10, docs/UI_REDESIGN_PLAN.md §8.10): resolves
-// the page-level concerns -- loading the four catalogs, resolving
+// New evaluation: resolves the page-level concerns -- loading the four
+// catalogs, resolving
 // `?models=&benchmarks=` or `?from=` into a starting selection, and the
 // full-page skeleton/error/empty states -- then hands a plain starting
 // selection to NewEvaluationWizard, which owns everything from there.
@@ -100,8 +100,7 @@ export function NewEvaluationPage() {
 
   // A failed from-run fetch degrades to "nothing to prefill from"
   // rather than blocking the whole page -- the submitter can still
-  // pick a model and benchmark by hand (docs/UI_REDESIGN_PLAN.md
-  // §8.10's own "skip what can't be prefilled" rule).
+  // pick a model and benchmark by hand.
   const fromRunFailed = fromRunId !== null && fromRunQuery.isError
   const prefill = resolvePrefill(
     modelsParam,

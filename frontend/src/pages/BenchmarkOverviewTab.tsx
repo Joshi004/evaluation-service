@@ -5,11 +5,10 @@ import { Table, TableCell, TableHeaderCell } from '../components/Table/Table'
 import { protocolSummary } from '../utils/protocolSummary'
 import { useBenchmarkPage } from './BenchmarkDetailPage.helper'
 
-// The Benchmark detail page's default tab (Phase 12,
-// docs/UI_REDESIGN_PLAN.md §8.12): what this benchmark measures and how
-// it's scored, then a slice of the leaderboard for this exact standard
-// version. The settings that change what gets measured live on the
-// Protocol tab instead (§3 rule 2, "results lead").
+// The Benchmark detail page's default tab: what this benchmark
+// measures and how it's scored, then a slice of the leaderboard for
+// this exact standard version. The settings that change what gets
+// measured live on the Protocol tab instead, since results lead.
 export function BenchmarkOverviewTab() {
   const { standard, board } = useBenchmarkPage()
 

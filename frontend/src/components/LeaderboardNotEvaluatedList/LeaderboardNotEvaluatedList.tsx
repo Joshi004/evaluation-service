@@ -9,9 +9,9 @@ interface LeaderboardNotEvaluatedListProps {
   models: ModelRow[]
 }
 
-// By-benchmark lens's own empty-cell equivalent (§8.6 item 4): every
-// filtered model with no result on the board's current setup, each
-// with a direct way to fill the gap.
+// By-benchmark lens's own empty-cell equivalent: every filtered model
+// with no result on the board's current setup, each with a direct way
+// to fill the gap.
 export function LeaderboardNotEvaluatedList({ standardId, models }: LeaderboardNotEvaluatedListProps) {
   if (models.length === 0) {
     return null

@@ -17,13 +17,12 @@ interface BenchmarkLeaderboardPreviewProps {
 
 const PREVIEW_ROW_COUNT = 5
 
-// The Benchmark Overview tab's own leaderboard slice (Phase 12,
-// docs/UI_REDESIGN_PLAN.md §8.12's "Data sources"): the board's column
-// for this benchmark, narrowed to setups on *this* standard version --
-// decision #1 means this page is only ever about one version, but a
-// column can mix e.g. ifeval/v1 and ifeval/v2 setups together -- then
-// the default setup's (most models, ties by most recent) top 5 rows,
-// via the same buildRankedRows the By-benchmark lens uses.
+// The Benchmark Overview tab's own leaderboard slice: the board's
+// column for this benchmark, narrowed to setups on *this* standard
+// version -- this page is only ever about one version, but a column
+// can mix e.g. ifeval/v1 and ifeval/v2 setups together -- then the
+// default setup's (most models, ties by most recent) top 5 rows, via
+// the same buildRankedRows the By-benchmark lens uses.
 export function BenchmarkLeaderboardPreview({ standard, board }: BenchmarkLeaderboardPreviewProps) {
   const column = board.columns.find((candidate) => candidate.benchmark === standard.benchmark)
   const setupsForThisStandard = column?.setups.filter((setup) => setup.standardId === standard.id) ?? []

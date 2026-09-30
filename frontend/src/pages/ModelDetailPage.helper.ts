@@ -35,9 +35,9 @@ export interface ModelPageTabItem {
   badge?: number
 }
 
-// "Results · Runs (count) · Configuration · Lineage" (docs/UI_REDESIGN_PLAN.md
-// §8.11's own architecture sketch) -- mirrors RunReportPage.helper.ts's
-// own buildRunReportTabs, one tab-strip builder per detail page.
+// "Results · Runs (count) · Configuration · Lineage" -- mirrors
+// RunReportPage.helper.ts's own buildRunReportTabs, one tab-strip
+// builder per detail page.
 export function buildModelPageTabs(modelId: number, runCount: number): ModelPageTabItem[] {
   return [
     { to: paths.model(modelId), label: 'Results', end: true },

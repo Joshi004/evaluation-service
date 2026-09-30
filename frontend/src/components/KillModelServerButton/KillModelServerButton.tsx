@@ -13,10 +13,9 @@ interface KillModelServerButtonProps {
   className?: string
 }
 
-// The model server card's own Kill (docs/UI_REDESIGN_PLAN.md §8.13,
-// item 1) -- mirrors RunCancelButton's own shape. Ground rule 14:
-// never `window.confirm`, which is exactly what the legacy
-// EndpointsPage this phase replaces used to call.
+// The model server card's own Kill -- mirrors RunCancelButton's own
+// shape. Ground rule 14: never `window.confirm`, which is exactly what
+// the legacy EndpointsPage used to call.
 export function KillModelServerButton({ endpoint, className }: KillModelServerButtonProps) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const killEndpoint = useKillEndpoint()

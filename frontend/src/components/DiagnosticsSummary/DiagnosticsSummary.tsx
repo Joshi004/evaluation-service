@@ -10,23 +10,20 @@ interface DiagnosticsSummaryProps {
   onTagChange: (tag: string | null) => void
 }
 
-// The written summary and tag chip row (docs/SCORE_DRILLDOWN_UI_PLAN.md
-// Section 6; docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md Phase 8):
-// deterministic sentences computed from thresholds over the same
-// counts the tag chips show, never an LLM call -- "a wrong summary
-// about wrongness is worse than no summary." Chips, not a pie chart,
-// because one sample can carry several tags.
+// The written summary and tag chip row: deterministic sentences
+// computed from thresholds over the same counts the tag chips show,
+// never an LLM call -- "a wrong summary about wrongness is worse than
+// no summary." Chips, not a pie chart, because one sample can carry
+// several tags.
 //
-// Bare content, no card chrome of its own (Phase 7,
-// docs/UI_REDESIGN_PLAN.md §8.7): the Samples tab and the Overview
-// tab's own "What the data says" panel each wrap this in their own
-// Card, so it composes into either without a nested double border.
-// `onTagChange` means two different things depending on which one --
-// the Samples tab wires it to its own URL filter (an in-place toggle);
-// the Overview tab wires it to a navigation into the Samples tab
-// instead (docs/UI_REDESIGN_PLAN.md §8.7, item 4: "tag chips that link
-// to filtered Samples") -- this component only ever calls it, never
-// cares which.
+// Bare content, no card chrome of its own: the Samples tab and the
+// Overview tab's own "What the data says" panel each wrap this in
+// their own Card, so it composes into either without a nested double
+// border. `onTagChange` means two different things depending on which
+// one -- the Samples tab wires it to its own URL filter (an in-place
+// toggle); the Overview tab wires it to a navigation into the Samples
+// tab instead -- this component only ever calls it, never cares
+// which.
 export function DiagnosticsSummary({ summary, activeTag, onTagChange }: DiagnosticsSummaryProps) {
   if (summary.narrative.length === 0 && summary.tag_counts.length === 0) {
     return null

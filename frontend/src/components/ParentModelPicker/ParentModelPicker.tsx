@@ -17,11 +17,11 @@ interface ParentModelPickerProps {
 
 const RADIO_GROUP_NAME = 'parent-model-picker'
 
-// Registration step 3's own lineage picker (docs/UI_REDESIGN_PLAN.md
-// §8.11): a single-select mirror of ModelPicker's own searchable,
-// family-grouped list, with "None / unknown" first and selected by
-// default -- most registrations have no known parent, so that option
-// should never require scrolling past a list of models to reach.
+// Registration step 3's own lineage picker: a single-select mirror of
+// ModelPicker's own searchable, family-grouped list, with "None /
+// unknown" first and selected by default -- most registrations have
+// no known parent, so that option should never require scrolling past
+// a list of models to reach.
 export function ParentModelPicker({ checkpoints, selectedParentId, onSelectedParentIdChange }: ParentModelPickerProps) {
   const [query, setQuery] = useState('')
   const groups = groupCheckpointsByFamily(filterCheckpointsByQuery(checkpoints, query))

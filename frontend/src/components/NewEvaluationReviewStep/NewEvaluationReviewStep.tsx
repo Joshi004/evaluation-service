@@ -15,8 +15,7 @@ interface NewEvaluationReviewStepProps {
   onBatchNameChange: (name: string) => void
   // null when the current name is fine to submit -- shown under the
   // field the same way any other inline form-validation message would
-  // be (§4.5's own "Feedback" pattern: "inline text for form
-  // validation").
+  // be.
   batchNameError: string | null
   submittedBy: string
   onSubmittedByChange: (value: string) => void
@@ -24,9 +23,9 @@ interface NewEvaluationReviewStepProps {
   onPartitionChange: (value: string | null) => void
 }
 
-// Step 3 of New evaluation (Phase 10, docs/UI_REDESIGN_PLAN.md §8.10):
-// problems and warnings, a compact list of what will be minted, the
-// batch's own name and submitter, and the cluster partition tucked
+// Step 3 of New evaluation: problems and warnings, a compact list of
+// what will be minted, the batch's own name and submitter, and the
+// cluster partition tucked
 // under Advanced since changing it can't change what gets measured.
 // This step is itself the confirmation for a costly action -- no extra
 // ConfirmDialog on top of it; NewEvaluationSummaryBar's own "Run

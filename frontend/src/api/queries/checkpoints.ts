@@ -22,8 +22,7 @@ export function useCheckpoints(): UseQueryResult<CheckpointListItem[]> {
 // `enabled: Number.isFinite(checkpointId)` guards a not-yet-parsed URL
 // id (`/models/abc`) -- ModelDetailPage reads `Number(params.modelId)`
 // before it has validated the param, so this hook must tolerate NaN
-// without firing a request for it (Phase 11, docs/UI_REDESIGN_PLAN.md
-// §8.11).
+// without firing a request for it.
 export function useCheckpoint(checkpointId: number): UseQueryResult<CheckpointDetail> {
   return useQuery({
     queryKey: queryKeys.checkpoint(checkpointId),
@@ -73,11 +72,11 @@ export function useCheckpointInspection(reference: string | null): UseQueryResul
   })
 }
 
-// The Configuration tab's own Check weights action (§3 rule 7: validate
-// is an always-confirmed operator tool, never run on mount). Updates
-// both the checkpoints list and this checkpoint's own cached detail in
-// place, so the header's weights badge reflects the result without a
-// second round trip.
+// The Configuration tab's own Check weights action -- validate is an
+// always-confirmed operator tool, never run on mount. Updates both the
+// checkpoints list and this checkpoint's own cached detail in place,
+// so the header's weights badge reflects the result without a second
+// round trip.
 export function useValidateCheckpoint(): UseMutationResult<CheckpointDetail, Error, number> {
   const queryClient = useQueryClient()
   return useMutation({

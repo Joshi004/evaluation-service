@@ -1,9 +1,8 @@
 import { Skeleton } from '../Skeleton/Skeleton'
 
-// Shaped like the Benchmarks list' own grouped card grid (§4.5: "shaped
-// like the final layout") -- two category groups, three cards each, is
-// enough to read as "a list of cards" without matching any one real
-// count.
+// Shaped like the Benchmarks list' own grouped card grid -- two
+// category groups, three cards each, is enough to read as "a list of
+// cards" without matching any one real count.
 export function BenchmarksSkeleton() {
   return (
     <div className="space-y-6" aria-busy="true">

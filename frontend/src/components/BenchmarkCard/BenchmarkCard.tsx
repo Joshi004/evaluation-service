@@ -18,11 +18,10 @@ interface BenchmarkCardProps {
   stats: BenchmarkCardStats | undefined
 }
 
-// One benchmark's own card on the Benchmarks list (Phase 12,
-// docs/UI_REDESIGN_PLAN.md §8.12): the whole card links to its detail
-// page -- unlike ModelCard, this card has exactly one destination, so
-// there's no second action competing for the click the way a model's
-// own "Compare with…" button does.
+// One benchmark's own card on the Benchmarks list: the whole card
+// links to its detail page -- unlike ModelCard, this card has exactly
+// one destination, so there's no second action competing for the
+// click the way a model's own "Compare with…" button does.
 export function BenchmarkCard({ standard, stats }: BenchmarkCardProps) {
   const version = benchmarkVersion(standard.label)
   const primaryMetric = standard.metrics.find((metric) => metric.is_primary)

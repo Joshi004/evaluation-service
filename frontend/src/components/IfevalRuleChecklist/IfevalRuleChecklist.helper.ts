@@ -1,8 +1,8 @@
 import type { RuleCheck } from '../../api/client'
 
-// `null` means the recheck never ran for this sample (Phase 7: "When
-// rule_results is null, show the scores and the rule list without
-// ticks") -- an em dash reads as "unknown", not as a third outcome.
+// `null` means the recheck never ran for this sample -- when that
+// happens, the scores and rule list show without ticks: an em dash
+// reads as "unknown", not as a third outcome.
 export function ruleOutcomeText(value: boolean | null): string {
   if (value === null) {
     return '\u2014'

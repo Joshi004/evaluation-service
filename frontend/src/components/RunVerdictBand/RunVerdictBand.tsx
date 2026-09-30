@@ -10,14 +10,11 @@ interface RunVerdictBandProps {
   diagnostics: UseQueryResult<RunDiagnostics>
 }
 
-// The run report's own verdict (docs/UI_REDESIGN_PLAN.md §8.7, item 2,
-// sketch §4.4.3): score first, then how it stands against peers and
-// history, then health at a glance -- replaces RunHealthBand's plain
-// cost/health prose with RunHealthChips' glanceable chips and adds the
-// rank and movement lines RunHealthBand never had. RunReportPage only
-// renders this for a `done` run -- an in-flight, failed or cancelled
-// run has no `performance` block to summarise yet, and gets its own
-// state-aware panel instead (RunOverviewTab).
+// The run report's own verdict: score first, then how it stands
+// against peers and history, then health at a glance. RunReportPage
+// only renders this for a `done` run -- an in-flight, failed or
+// cancelled run has no `performance` block to summarise yet, and gets
+// its own state-aware panel instead (RunOverviewTab).
 export function RunVerdictBand({ run, diagnostics }: RunVerdictBandProps) {
   const performance = run.performance
   if (performance === null) {

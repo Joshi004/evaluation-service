@@ -10,14 +10,14 @@ interface InspectionSummaryProps {
 }
 
 // Step 2 of the registration wizard, and the model page's own
-// Configuration tab (Phase 11): every field the server inferred from
-// the cluster, what -- if anything -- blocks registering it, and
-// anything else it could not read. Every field here is read-only: the
-// server re-reads the checkpoint at registration regardless of what
-// the form shows (R-D4), so nothing here is wired to an onChange. An
-// already-registered checkpoint has no missing requirements or
-// problems of its own (both only exist for a fresh inspection), so the
-// Configuration tab's own call simply passes empty arrays for both.
+// Configuration tab: every field the server inferred from the
+// cluster, what -- if anything -- blocks registering it, and anything
+// else it could not read. Every field here is read-only: the server
+// re-reads the checkpoint at registration regardless of what the form
+// shows, so nothing here is wired to an onChange. An already-registered
+// checkpoint has no missing requirements or problems of its own (both
+// only exist for a fresh inspection), so the Configuration tab's own
+// call simply passes empty arrays for both.
 export function InspectionSummary({ fields, missingRequirements, problems, sourceConfig }: InspectionSummaryProps) {
   return (
     <div>

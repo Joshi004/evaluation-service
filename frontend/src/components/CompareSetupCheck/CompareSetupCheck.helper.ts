@@ -15,7 +15,7 @@ export interface SetupDifference {
 
 // Checked in the order a reader would want it explained: which model,
 // then what protocol/sampling/serving actually differs. `comparison_hash`
-// only covers the protocol and sampling profile (§4.3), so "Model" and
+// only covers the protocol and sampling profile, so "Model" and
 // "Serving profile" can differ even when the setup itself matches --
 // this function reports every one of the four regardless.
 export function setupDifferences(baseline: RunDetail, other: RunDetail): SetupDifference[] {
@@ -90,10 +90,10 @@ function engineOptionDiffRows(runs: RunDetail[]): FieldDiffRow[] {
     .filter((row) => row.anyDiffers)
 }
 
-// "Show differences" own table (§8.8 item 3): every resolved field
-// across every run, kept only where at least one run's value differs
-// from the baseline's -- built from the same row lists RunConfigTab
-// already uses, so this never disagrees with the Configuration tab.
+// "Show differences" own table: every resolved field across every run,
+// kept only where at least one run's value differs from the
+// baseline's -- built from the same row lists RunConfigTab already
+// uses, so this never disagrees with the Configuration tab.
 export function buildSetupDiffTable(runs: RunDetail[]): FieldDiffRow[] {
   return [
     ...buildFieldDiffRows(runs, (run) => standardFieldRows(run.standard)),

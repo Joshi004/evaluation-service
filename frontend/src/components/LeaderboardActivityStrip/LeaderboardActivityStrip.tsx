@@ -4,9 +4,9 @@ import { useRuns } from '../../api/queries/runs'
 import { paths } from '../../utils/paths'
 import { describeRecentActivity, summarizeRecentActivity } from './LeaderboardActivityStrip.helper'
 
-// §8.6 item 7: a slim link to Runs, shown only when there is something
-// worth interrupting the front door for -- silent otherwise, so a
-// quiet catalog stays quiet.
+// A slim link to Runs, shown only when there is something worth
+// interrupting the front door for -- silent otherwise, so a quiet
+// catalog stays quiet.
 export function LeaderboardActivityStrip() {
   const runs = useRuns()
   if (!runs.data) {

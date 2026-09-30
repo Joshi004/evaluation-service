@@ -25,8 +25,8 @@ interface ModelServerListProps {
 // the same reasoning for elapsed-time cells).
 const CARD_TICK_INTERVAL_MS = 30_000
 
-// docs/UI_REDESIGN_PLAN.md §8.13, item 1: every live model server as a
-// card, with the section's own totals and live indicator above them.
+// Every live model server as a card, with its own totals and live
+// indicator above them.
 export function ModelServerList({ endpoints, onStartClick }: ModelServerListProps) {
   const now = useNow(CARD_TICK_INTERVAL_MS)
 

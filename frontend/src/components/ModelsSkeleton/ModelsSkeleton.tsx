@@ -1,8 +1,8 @@
 import { Skeleton } from '../Skeleton/Skeleton'
 
-// Shaped like the final layout (§4.5: never the text "Loading…") --
-// the toolbar row, then a grid of card-height blocks standing in for
-// the default cards view (docs/UI_REDESIGN_PLAN.md §8.11).
+// Shaped like the final layout (never the text "Loading…") -- the
+// toolbar row, then a grid of card-height blocks standing in for the
+// default cards view.
 export function ModelsSkeleton() {
   return (
     <div className="space-y-4" aria-busy="true">

@@ -21,10 +21,7 @@ export function visibleFlipSamples(samples: FlipSample[], expanded: boolean): Fl
   return expanded || samples.length <= COLLAPSED_FLIP_ROWS ? samples : samples.slice(0, COLLAPSED_FLIP_ROWS)
 }
 
-// True once either flip list carries more than one distinct subset --
-// moved from ComparePage.helper.ts (Phase 9) to here (Phase 8,
-// docs/UI_REDESIGN_PLAN.md §8.8) once CompareFlippedSamples became
-// this function's only caller.
+// True once either flip list carries more than one distinct subset.
 export function hasMultipleSubsets(failToPass: FlipSample[], passToFail: FlipSample[]): boolean {
   const subsets = new Set([...failToPass, ...passToFail].map((sample) => sample.subset))
   return subsets.size > 1

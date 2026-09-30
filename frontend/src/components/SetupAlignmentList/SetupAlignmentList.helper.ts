@@ -1,11 +1,10 @@
 // Non-DOM logic for SetupAlignmentList.tsx: joining a preview's own
 // pairs against its resolved-sampling entries and the leaderboard's
-// existing rows to answer "will this line up?" per pair (Phase 10,
-// docs/UI_REDESIGN_PLAN.md §8.10) -- derived entirely from data the
-// preview and the leaderboard already return, never computed by
-// re-deriving a comparison_hash in the frontend (S-D5's hash is a
-// backend concept; this only ever compares hashes it was already
-// handed).
+// existing rows to answer "will this line up?" per pair -- derived
+// entirely from data the preview and the leaderboard already return,
+// never computed by re-deriving a comparison_hash in the frontend (the
+// hash is a backend concept; this only ever compares hashes it was
+// already handed).
 import type { LeaderboardRow, RunPreview, SamplingProfileSummary } from '../../api/client'
 
 export interface SetupAlignmentRow {

@@ -14,11 +14,10 @@ import { isNotFoundError } from '../utils/isNotFoundError'
 import { paths } from '../utils/paths'
 import { buildRunReportTabs, type RunReportContext } from './RunReportPage.helper'
 
-// The run report (docs/UI_REDESIGN_PLAN.md §8.7): replaces
-// RunDetailPage, RunDiagnosticsPage and RunSamplePage with one page --
-// a state-aware verdict, then tabs for Samples, Configuration and Logs,
-// all sharing this one already-loaded run through the outlet context
-// (RunReportPage.helper.ts's useRunReport). Diagnostics is fetched once
+// The run report: a state-aware verdict, then tabs for Samples,
+// Configuration and Logs, all sharing this one already-loaded run
+// through the outlet context (RunReportPage.helper.ts's
+// useRunReport). Diagnostics is fetched once
 // here too (only once the run is `done` -- the endpoint 409s otherwise)
 // so both the verdict band's health chips and the Samples tab badge
 // read the same query instead of each triggering their own.

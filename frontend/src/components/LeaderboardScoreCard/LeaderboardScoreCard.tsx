@@ -21,11 +21,11 @@ interface LeaderboardScoreCardProps {
   cell: ScoreCellData
 }
 
-// The Overview cell's hover/focus card content (§4.4.2's sketch): score
-// with its interval and sample count, a passed/failed count, every
-// field that tells the setup apart, and the four actions the sketch
-// lists. Renders inside HoverCard, which supplies the hover/focus/Tab
-// behaviour -- this component only renders content.
+// The Overview cell's hover/focus card content: score with its
+// interval and sample count, a passed/failed count, every field that
+// tells the setup apart, and four actions. Renders inside HoverCard,
+// which supplies the hover/focus/Tab behaviour -- this component only
+// renders content.
 export function LeaderboardScoreCard({ column, model, setup, cell }: LeaderboardScoreCardProps) {
   // `round(score * samples)` is only valid for a pass-rate primary
   // metric -- the same assumption behind the Wilson interval itself

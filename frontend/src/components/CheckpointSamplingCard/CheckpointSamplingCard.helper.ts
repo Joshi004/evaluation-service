@@ -7,12 +7,11 @@ import { standardDisplayName } from '../../utils/standardDisplayName'
 // GET /sampling-profiles returns ad-hoc rows too (label === null) --
 // this card offers a submit-time choice of a *named* profile plus,
 // when `profileChoice` already points at an unlabelled one (Re-run
-// prefill from a run that used an ad-hoc profile -- Phase 10,
-// docs/UI_REDESIGN_PLAN.md §8.10's own `from` handling), that one row
-// too, so the select always has an option matching its own current
-// value. Mirrors the old grid-wide SamplingProfilePicker's same
-// named-only rule (SamplingProfilePicker.helper.ts) for every profile
-// but the chosen one.
+// prefill from a run that used an ad-hoc profile), that one row too,
+// so the select always has an option matching its own current value.
+// Mirrors the old grid-wide SamplingProfilePicker's same named-only
+// rule (SamplingProfilePicker.helper.ts) for every profile but the
+// chosen one.
 export function samplingProfileOptions(
   profileChoice: number | null,
   samplingProfiles: SamplingProfileSummary[],
@@ -37,9 +36,9 @@ export function samplingProfileOptionLabel(profile: SamplingProfileSummary): str
 
 // This checkpoint's base sampling profile: whichever one this card's
 // picker explicitly chose, or the checkpoint's own registered default
-// otherwise (S-D9). Null only while `/sampling-profiles` is still
-// loading -- default_sampling_profile_id is a NOT NULL foreign key, so
-// a fully loaded list always has an entry for it.
+// otherwise. Null only while `/sampling-profiles` is still loading --
+// default_sampling_profile_id is a NOT NULL foreign key, so a fully
+// loaded list always has an entry for it.
 export function resolveBaseSamplingProfile(
   checkpoint: CheckpointListItem,
   profileChoice: number | null,
@@ -67,9 +66,8 @@ function samplingProfileOptionLabelFromParts(label: string | null, hash: string)
 // card's own value unless the caller overrides it too
 // (`merge_sampling_config`, app/services/runs/submit.py, applies the
 // mandate after the base profile and before the user's own override).
-// Empty for every standard in the catalog today -- Phase 3 moved
-// sampling off `standard` almost entirely -- but kept correct rather
-// than assumed permanently empty.
+// Empty for every standard in the catalog today, but kept correct
+// rather than assumed permanently empty.
 export function samplingMandateNotesByField(standards: StandardSummary[]): Map<string, string> {
   const messagesByField = new Map<string, string[]>()
   for (const standard of standards) {

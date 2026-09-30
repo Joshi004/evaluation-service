@@ -13,7 +13,7 @@ interface RegistrationSummaryProps {
 // from the request the Register button is about to send, so this panel
 // can never show something different from what actually gets
 // submitted. `candidateDisplayName` stands in for `request.reference`
-// -- the frontend never renders a path (R-D32).
+// -- the frontend never renders a path.
 export function RegistrationSummary({
   request,
   candidateDisplayName,

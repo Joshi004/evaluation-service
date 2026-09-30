@@ -23,10 +23,10 @@ interface ModelsTableProps {
 // Name, Weights, Latest scores, Lineage, Last evaluated, Runs.
 const COLUMN_COUNT = 6
 
-// The table view's own grouped rows (docs/UI_REDESIGN_PLAN.md §8.11) --
-// one <tbody> per family group with its own header row, mirroring
-// RunsTable's own batch-grouped sections so the app has one visual
-// language for "a table with sections", not two.
+// The table view's own grouped rows: one <tbody> per family group with
+// its own header row, mirroring RunsTable's own batch-grouped sections
+// so the app has one visual language for "a table with sections", not
+// two.
 export function ModelsTable({ groups, overviewByCheckpointId, allCheckpoints, board }: ModelsTableProps) {
   return (
     <Table>

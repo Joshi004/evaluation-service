@@ -12,17 +12,16 @@ interface NewEvaluationSummaryBarProps {
   primaryDisabled: boolean
   primaryLoading: boolean
   // Shown next to the primary button whenever it's disabled -- "one
-  // primary action per screen" (§3 principle 1) still needs to say why
-  // that action isn't available yet, not just grey it out.
+  // primary action per screen" still needs to say why that action
+  // isn't available yet, not just grey it out.
   blockReason: string | null
 }
 
-// The wizard's own sticky footer (Phase 10, docs/UI_REDESIGN_PLAN.md
-// §8.10, sketch §4.4.6): "N models × M benchmarks = R runs · G GPUs" on
-// the left, Back/Continue or Run evaluation on the right, docked to the
-// bottom of the page's own scroll area so it's reachable without
-// scrolling past the step's content -- above the compare tray, which
-// docks to the bottom of the whole app shell instead.
+// The wizard's own sticky footer: "N models × M benchmarks = R runs · G
+// GPUs" on the left, Back/Continue or Run evaluation on the right,
+// docked to the bottom of the page's own scroll area so it's reachable
+// without scrolling past the step's content -- above the compare tray,
+// which docks to the bottom of the whole app shell instead.
 export function NewEvaluationSummaryBar({
   modelCount,
   benchmarkCount,

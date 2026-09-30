@@ -1,6 +1,5 @@
-// Reshapes a LeaderboardBoard (buildLeaderboard.ts) around one model
-// (Phase 11, docs/UI_REDESIGN_PLAN.md section 8.11's own decision:
-// "Ranks are Leaderboard ranks, by construction"). The Model page never
+// Reshapes a LeaderboardBoard (buildLeaderboard.ts) around one model --
+// ranks are Leaderboard ranks, by construction. The Model page never
 // re-derives a rank or a leader flag -- it reads the same board the
 // Leaderboard itself renders, so the two can never disagree about who
 // is ahead on a given setup.

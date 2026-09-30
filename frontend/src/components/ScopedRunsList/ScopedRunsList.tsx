@@ -39,11 +39,10 @@ interface ScopedRunsListProps {
 }
 
 // A flat RunsTable of one already-scoped run list, narrowed by a
-// `?status=` filter in the URL (Phase 12, docs/UI_REDESIGN_PLAN.md
-// §8.12) -- extracted from ModelRunsTab.tsx once the Benchmark detail
-// page's own Runs tab became a second caller that needs the identical
-// shape for a different scope. RunsTable itself is reused unchanged,
-// per its own module comment.
+// `?status=` filter in the URL -- shared by ModelRunsTab.tsx and the
+// Benchmark detail page's own Runs tab, which need the identical shape
+// for different scopes. RunsTable itself is reused unchanged, per its
+// own module comment.
 export function ScopedRunsList({ runs, openInRunsHref, emptyState }: ScopedRunsListProps) {
   const [searchParams, setUrlParams] = useUrlState<ScopedRunsUrlParams>(SCOPED_RUNS_URL_DEFAULTS)
   const status = readEnumParam(searchParams, 'status', RUNS_STATUS_FILTER_VALUES, 'all')

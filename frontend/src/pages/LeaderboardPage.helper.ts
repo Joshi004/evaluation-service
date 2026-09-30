@@ -1,8 +1,8 @@
-// Non-DOM logic for LeaderboardPage.tsx (docs/UI_REDESIGN_PLAN.md §8.6):
-// resolving the URL into a typed view (with data-dependent defaults --
-// "the benchmark with the most results", "the setup with the most
-// models" -- omitted from the URL per §4.5), filtering, the one sort
-// comparator with missing values always last, and the CSV export rows.
+// Non-DOM logic for LeaderboardPage.tsx: resolving the URL into a
+// typed view (with data-dependent defaults -- "the benchmark with the
+// most results", "the setup with the most models" -- omitted from the
+// URL), filtering, the one sort comparator with missing values always
+// last, and the CSV export rows.
 //
 // This page does not reuse utils/useUrlState.ts's generic hook: that
 // hook needs every param's default known statically (it is one value,
@@ -65,9 +65,9 @@ function totalResultsFor(column: BenchmarkColumn): number {
   return column.setups.reduce((sum, setup) => sum + setup.modelCount, 0)
 }
 
-// "The benchmark with the most results" (§8.6 item 3's default-sort
-// rule) among whichever columns are actually visible -- Overview's own
-// Benchmarks filter can hide the very column that would otherwise win.
+// "The benchmark with the most results" among whichever columns are
+// actually visible -- Overview's own Benchmarks filter can hide the
+// very column that would otherwise win.
 function defaultSortBenchmark(visibleColumns: BenchmarkColumn[]): string {
   if (visibleColumns.length === 0) {
     return ''
@@ -122,8 +122,8 @@ export interface ResolvedLeaderboardView {
   heatEnabled: boolean
   setupOverrides: Record<string, string>
   // Which benchmark is highlighted: the sorted column in Overview, the
-  // board on display in By-benchmark (§8.6 item 3's own "switching
-  // lens keeps the same benchmark in focus" design).
+  // board on display in By-benchmark -- switching lens keeps the same
+  // benchmark in focus.
   sortBenchmark: string
   dir: SortDirection
   // Overview-only (the Benchmarks filter does not apply to
@@ -143,9 +143,9 @@ export function resolveLeaderboardView(params: URLSearchParams, board: Leaderboa
   const setupOverrides = readSetupOverrides(params)
 
   const visibleColumns = filterColumnsByBenchSelection(board.columns, benchFilter)
-  // By-benchmark ignores the Benchmarks filter (§8.6's URL contract:
-  // `bench` is Overview-only) -- its own board selector can name any
-  // benchmark, not just a visible Overview column.
+  // By-benchmark ignores the Benchmarks filter (`bench` is
+  // Overview-only) -- its own board selector can name any benchmark,
+  // not just a visible Overview column.
   const columnsForSort = lens === 'overview' ? visibleColumns : board.columns
 
   const sortParam = readStringParam(params, 'sort')
@@ -230,8 +230,7 @@ function scoreFor(column: BenchmarkColumn | undefined, setupOverrides: Record<st
 // The Overview table's row order once a header has been clicked:
 // best-first (or reversed) by the sorted column's score, with every
 // "not evaluated on this setup" row pushed to the bottom regardless of
-// direction (§8.6 item 3: "missing values always last") rather than
-// sorting as if a missing score were zero.
+// direction, rather than sorting as if a missing score were zero.
 export function compareModelRowsForSort(
   a: ModelRow,
   b: ModelRow,
@@ -311,10 +310,10 @@ export function buildLeaderboardCsvText(rows: LeaderboardCsvRow[]): string {
   return [CSV_HEADER.join(','), ...rows.map(csvRowToLine)].join('\r\n')
 }
 
-// Exactly what is on screen (§8.6 item 8): the same model filter, the
-// same lens, and -- in Overview -- the same Benchmarks filter and
-// Setups mode a reader is currently looking at. "Run it" and "not
-// evaluated" cells have no score to export, so they contribute no row.
+// Exactly what is on screen: the same model filter, the same lens,
+// and -- in Overview -- the same Benchmarks filter and Setups mode a
+// reader is currently looking at. "Run it" and "not evaluated" cells
+// have no score to export, so they contribute no row.
 export function buildLeaderboardCsvRows(board: LeaderboardBoard, view: ResolvedLeaderboardView): LeaderboardCsvRow[] {
   const visibleModels = filterModels(board.models, view.q, view.familyFilter)
   const columnsToExport = view.lens === 'overview' ? view.visibleColumns : view.sortColumn ? [view.sortColumn] : []
@@ -355,7 +354,7 @@ export function buildLeaderboardCsvRows(board: LeaderboardBoard, view: ResolvedL
 // within the same tick -- utils/useUrlState.ts's own module comment).
 // `null` deletes the key -- every call site passes that once a value
 // equals whatever resolveLeaderboardView just resolved as the default,
-// which is what keeps defaults out of the URL (§4.5).
+// which is what keeps defaults out of the URL.
 export function applyLeaderboardParamChanges(
   previous: URLSearchParams,
   changes: Record<string, string | null>,

@@ -54,8 +54,8 @@ export function resolveBucketLevel(requestedLevel: string | null, availableLevel
 // (backend/app/services/diagnostics/buckets.py's
 // sample_buckets_by_detail_field); "family"/"rule" (IFEval/IFBench)
 // tally instructions -- label the unit so a row is never read as
-// samples that add up to the total (Phase 7's own pitfall, still true
-// once merged across runs).
+// samples that add up to the total, still true once merged across
+// runs.
 export function bucketUnitLabel(level: string): string {
   return level === SAMPLE_COUNTED_LEVEL ? 'samples' : 'instructions'
 }

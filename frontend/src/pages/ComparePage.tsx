@@ -28,12 +28,11 @@ import {
   type ProblemRun,
 } from './ComparePage.helper'
 
-// Phase 8 (docs/UI_REDESIGN_PLAN.md §8.8): N-way compare on one
-// benchmark, driven entirely by the canonical ?runs= URL -- 2-4 run
-// ids, first = baseline. Replaces the old exactly-two ?left=&right=
-// page; FlipList and ComparisonBucketTable's own join logic are kept,
-// restyled and now merged across every non-baseline run instead of
-// rendered for a single pair.
+// N-way compare on one benchmark, driven entirely by the canonical
+// ?runs= URL -- 2-4 run ids, first = baseline. Replaces the old
+// exactly-two ?left=&right= page; FlipList and ComparisonBucketTable's
+// own join logic are kept, restyled and now merged across every
+// non-baseline run instead of rendered for a single pair.
 export function ComparePage() {
   const [searchParams] = useSearchParams()
   const redirectTo = resolveCompareRedirect(searchParams)
@@ -109,8 +108,8 @@ function ComparisonView({ runIds }: ComparisonViewProps) {
   function handleAddRunConfirm(newRunIds: number[]): void {
     navigate(paths.compare([...runIds, ...newRunIds]))
   }
-  // flips/level are filter-like edits (replace, §4.5); opening/closing
-  // the sample dialog is real navigation (push) -- the same split
+  // flips/level are filter-like edits (replace); opening/closing the
+  // sample dialog is real navigation (push) -- the same split
   // RunSamplesTab's own openSample/updateFilters already draws.
   function handleFlipsChange(runId: number): void {
     setSearchParams(

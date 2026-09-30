@@ -6,10 +6,10 @@ interface TableProps extends HTMLAttributes<HTMLTableElement> {
 }
 
 // Table/TableHeaderCell/TableCell replace the table-header class
-// string that was hand-copied onto 12 different pages (§2.3) with one
-// shared definition. Styling only -- sorting, density and sticky
-// columns are each page's own concern (§4.5), not something a shared
-// primitive should guess at generically.
+// string that was hand-copied onto 12 different pages with one shared
+// definition. Styling only -- sorting, density and sticky columns are
+// each page's own concern, not something a shared primitive should
+// guess at generically.
 export function Table({ className, children, ...rest }: TableProps) {
   return (
     <div className="overflow-x-auto">

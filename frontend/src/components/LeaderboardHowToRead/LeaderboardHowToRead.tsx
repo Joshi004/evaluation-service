@@ -3,9 +3,8 @@ import { TERM_HINTS } from '../../utils/labels'
 import { Button } from '../Button/Button'
 import { Popover } from '../Popover/Popover'
 
-// §8.6 item 11: replaces the old jargon paragraph that used to sit
-// under the page title. Reuses §4.3's own term hints (utils/labels.ts)
-// rather than re-writing the same sentences a second time here.
+// Reuses term hints (utils/labels.ts) rather than re-writing the same
+// sentences a second time here.
 export function LeaderboardHowToRead() {
   return (
     <Popover

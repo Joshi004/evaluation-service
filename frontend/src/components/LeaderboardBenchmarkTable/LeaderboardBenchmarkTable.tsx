@@ -28,7 +28,7 @@ import { buildNotEvaluatedModels } from './LeaderboardBenchmarkTable.helper'
 
 interface LeaderboardBenchmarkTableProps {
   // Unfiltered, for the Benchmark selector -- this lens ignores the
-  // Overview-only Benchmarks filter (§8.6's URL contract).
+  // Overview-only Benchmarks filter.
   allColumns: BenchmarkColumn[]
   // Already filtered by search and Family.
   filteredModels: ModelRow[]
@@ -37,10 +37,10 @@ interface LeaderboardBenchmarkTableProps {
   onSetupChange: (benchmark: string, comparisonHash: string) => void
 }
 
-// §8.6 item 4: a ranked board for exactly one benchmark and setup --
-// the depth complement to Overview's breadth. `view.sortColumn` is the
-// benchmark on display; the same URL field Overview uses to pick its
-// sorted column, so switching lenses keeps the same benchmark in focus.
+// A ranked board for exactly one benchmark and setup -- the depth
+// complement to Overview's breadth. `view.sortColumn` is the benchmark
+// on display; the same URL field Overview uses to pick its sorted
+// column, so switching lenses keeps the same benchmark in focus.
 export function LeaderboardBenchmarkTable({
   allColumns,
   filteredModels,

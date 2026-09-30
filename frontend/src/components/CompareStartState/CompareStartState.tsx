@@ -19,10 +19,10 @@ interface CompareStartStateProps {
   presetRunIds: number[]
 }
 
-// §8.8 item 8: pick a benchmark, then 2-4 finished runs -- what
-// ComparePage renders whenever fewer than MIN_COMPARE_RUNS usable run
-// ids are in the URL (a bare /compare, a single preset id, or too few
-// usable runs left after ComparisonView's own checks).
+// Pick a benchmark, then 2-4 finished runs -- what ComparePage renders
+// whenever fewer than MIN_COMPARE_RUNS usable run ids are in the URL (a
+// bare /compare, a single preset id, or too few usable runs left after
+// ComparisonView's own checks).
 export function CompareStartState({ presetRunIds }: CompareStartStateProps) {
   const doneRuns = useRuns({ status: 'done' })
   const standards = useStandards()

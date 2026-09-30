@@ -9,12 +9,12 @@ import { useRunReport } from './RunReportPage.helper'
 
 const LOG_SOURCE_OPTIONS: { value: LogSource; label: string }[] = [
   { value: 'harness', label: 'Harness' },
-  // §4.3 vocabulary: `endpoint` -> "Model server" in user-facing copy.
+  // `endpoint` -> "Model server" in user-facing copy.
   { value: 'endpoint', label: 'Model server' },
 ]
 
-// The Logs tab (docs/UI_REDESIGN_PLAN.md §8.7, item 6): LogStream
-// restyled, with a source toggle and Follow/Wrap controls on top.
+// The Logs tab: LogStream restyled, with a source toggle and
+// Follow/Wrap controls on top.
 export function RunLogsTab() {
   const { run } = useRunReport()
   const [source, setSource] = useState<LogSource>('harness')

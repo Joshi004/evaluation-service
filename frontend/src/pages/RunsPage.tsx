@@ -29,8 +29,8 @@ import {
   type RunsViewMode,
 } from './RunsPage.helper'
 
-// The page people leave open (docs/UI_REDESIGN_PLAN.md §8.9): what is
-// running, what finished with what score, and why a failure failed --
+// The page people leave open: what is running, what finished with what
+// score, and why a failure failed --
 // grouped by batch by default, with status chips, filters and a live
 // indicator, all round-tripping through the URL. useRuns itself backs
 // off to a 30s poll once nothing in the whole service is active, rather

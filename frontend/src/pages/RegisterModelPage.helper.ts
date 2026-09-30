@@ -17,10 +17,10 @@ export type WizardStep = 1 | 2 | 3 | 4
 
 export const WIZARD_STEPS: WizardStep[] = [1, 2, 3, 4]
 
-// Stepper's own step shape needs a string key (Phase 11,
-// docs/UI_REDESIGN_PLAN.md §8.11) -- the wizard's own step state stays
-// the numeric WizardStep everywhere else, converted only at the
-// Stepper boundary (String(step) in, Number(key) as WizardStep out).
+// Stepper's own step shape needs a string key -- the wizard's own
+// step state stays the numeric WizardStep everywhere else, converted
+// only at the Stepper boundary (String(step) in, Number(key) as
+// WizardStep out).
 export const REGISTRATION_STEPS: StepperStep[] = [
   { key: '1', label: 'Choose checkpoint' },
   { key: '2', label: 'Review details' },
@@ -120,9 +120,9 @@ export function buildRegisterRequest(context: RegisterRequestContext): RegisterC
   }
 }
 
-// The Stepper's own reachability rule (docs/UI_REDESIGN_PLAN.md §8.11):
-// "earlier steps are always clickable; a later step is clickable only
-// when every gate before it passes." Checked from step 1 regardless of
+// The Stepper's own reachability rule: "earlier steps are always
+// clickable; a later step is clickable only when every gate before it
+// passes." Checked from step 1 regardless of
 // which step the wizard is currently on -- going back and clearing a
 // field that an earlier step's gate depends on (e.g. the name, at step
 // 2) must immediately close off any later step again, not just the one
@@ -139,8 +139,7 @@ export interface RegistrationErrorDescription {
   detail: string
 }
 
-// A plain message per status (docs/UI_REDESIGN_PLAN.md §8.11's own
-// "Errors" decision), mirroring register_checkpoint's own
+// A plain message per status, mirroring register_checkpoint's own
 // exception-to-status mapping (backend/app/api/v1/checkpoints.py): 409
 // a name/path/lineage conflict, 400 a candidate the server can't serve
 // (or a malformed path), 404 a parent or serving profile that no

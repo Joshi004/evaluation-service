@@ -4,8 +4,7 @@ import { queryKeys } from './queryKeys'
 
 // Polls every 30s -- the top bar's status pill is on screen everywhere,
 // so a slower interval than the old per-page connectivity widget's 10s
-// is still enough to read as "live" (docs/UI_REDESIGN_PLAN.md Phase 2
-// spec item 2).
+// is still enough to read as "live".
 export function useHealth(): UseQueryResult<HealthResponse> {
   return useQuery({
     queryKey: queryKeys.health(),

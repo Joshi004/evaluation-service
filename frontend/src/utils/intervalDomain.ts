@@ -2,10 +2,7 @@
 // the widest interval so the end caps are never drawn flush against
 // the SVG's own edge -- what makes a row of whiskers genuinely a
 // forest plot (every row directly comparable) rather than each row
-// independently zoomed to its own interval. Promoted from
-// components/LeaderboardBenchmarkTable/LeaderboardBenchmarkTable.helper.ts
-// (Phase 6) to src/utils/ once Compare's own forest plot (Phase 8,
-// docs/UI_REDESIGN_PLAN.md §8.8) became a second caller.
+// independently zoomed to its own interval.
 import type { ConfidenceInterval } from '../api/client'
 
 // Deliberately narrower than ScoreCellData (the Leaderboard's own

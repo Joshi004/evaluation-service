@@ -19,8 +19,7 @@ export interface ModelServerStatusStyle {
   // or never opened a tunnel looks identical to one still in progress
   // -- there is no status column, only `url IS NOT NULL` -- so it
   // stays listed, looking like this, until its row's own time limit
-  // runs out (backend fix: Phase 13's own plan, "Follow-ups"). Kill
-  // clears it immediately either way.
+  // runs out. Kill clears it immediately either way.
   tooltip: string | null
 }
 

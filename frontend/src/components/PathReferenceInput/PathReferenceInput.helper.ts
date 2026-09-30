@@ -1,5 +1,5 @@
 // Non-DOM logic for PathReferenceInput.tsx: a cheap client-side mirror
-// of the server's own `validate_reference` syntax checks (R-D10), so an
+// of the server's own `validate_reference` syntax checks, so an
 // obviously malformed path is caught before a round trip. The server
 // re-validates regardless -- this is UX, not a security boundary.
 import type { CheckpointCandidate } from '../../api/client'

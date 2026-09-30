@@ -29,12 +29,12 @@ interface SamplePanelProps {
   navigationNote: string | null
 }
 
-// The Samples tab's own master-detail panel (docs/UI_REDESIGN_PLAN.md
-// §8.7, item 4): one sample, fully explained, without ever leaving the
-// list. Prev/Next (and the tab's own `j`/`k` shortcuts) move between
-// samples by changing the :sampleKey route param, which just remounts
-// this component's own useRunSample query for the new key -- no state
-// here needs to be reset by hand.
+// The Samples tab's own master-detail panel: one sample, fully
+// explained, without ever leaving the list. Prev/Next (and the tab's
+// own `j`/`k` shortcuts) move between samples by changing the
+// :sampleKey route param, which just remounts this component's own
+// useRunSample query for the new key -- no state here needs to be
+// reset by hand.
 export function SamplePanel({
   runId,
   sampleKey,
@@ -63,9 +63,9 @@ export function SamplePanel({
   return (
     <section aria-labelledby="sample-panel-heading" className="rounded-lg border border-border bg-card p-4">
       {/* Only meaningful below the xl breakpoint, where the list is
-          hidden while the panel is open (§4.4.3's "full-screen route
-          below that" -- the same route just renders full width there
-          instead of a separate one). */}
+          hidden while the panel is open -- below that breakpoint, the
+          same route just renders full width there instead of a
+          separate one. */}
       <Link
         to={{ pathname: paths.runSamples(runId), search: location.search }}
         className="mb-3 inline-block text-sm text-primary hover:underline xl:hidden"

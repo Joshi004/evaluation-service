@@ -1,9 +1,8 @@
 // A typed layer over React Router's useSearchParams for the filter,
 // sort, tab and lens state a colleague should be able to restore by
-// copying the address bar (§4.5's "URL state" pattern, §3 rule 9).
-// Pure readers first -- they take a plain URLSearchParams, so a
-// non-hook helper (e.g. a page's own parseFilters) can use the same
-// parsing the hook below does.
+// copying the address bar. Pure readers first -- they take a plain
+// URLSearchParams, so a non-hook helper (e.g. a page's own
+// parseFilters) can use the same parsing the hook below does.
 import { useSearchParams } from 'react-router'
 
 export function readStringParam(params: URLSearchParams, key: string): string | null {
@@ -44,9 +43,9 @@ export function readNumberListParam(params: URLSearchParams, key: string): numbe
     .filter((item) => Number.isFinite(item))
 }
 
-// A single numeric id param (e.g. Runs' own `?model=3`, `?batch=6` --
-// docs/UI_REDESIGN_PLAN.md §8.9) -- `null` for absent or malformed
-// rather than `NaN`, so a caller can `??` straight into "no filter".
+// A single numeric id param (e.g. Runs' own `?model=3`, `?batch=6`) --
+// `null` for absent or malformed rather than `NaN`, so a caller can
+// `??` straight into "no filter".
 export function readNumberParam(params: URLSearchParams, key: string): number | null {
   const value = params.get(key)
   if (value === null) {
@@ -60,9 +59,9 @@ export type UrlParamValue = string | number | boolean | string[] | number[] | nu
 
 export interface SetUrlParamsOptions {
   // Defaults to a `replace` navigation (filter edits shouldn't each get
-  // their own back-button stop, §4.5's own "replace for filter edits,
-  // push for navigation" rule) -- pass `push: true` for a change that
-  // genuinely is a navigation.
+  // their own back-button stop -- "replace for filter edits, push for
+  // navigation") -- pass `push: true` for a change that genuinely is a
+  // navigation.
   push?: boolean
 }
 
@@ -83,11 +82,10 @@ function serializeUrlParamValue(value: UrlParamValue): string {
 // `defaults` is the value each key takes when its param is entirely
 // absent -- passing that same value back to the returned setter drops
 // the param instead of writing it out, so a freshly loaded page stays
-// a clean URL (§4.5: "defaults omitted"). Callers should make one call
-// per user event: React Router does not queue multiple
-// setSearchParams calls made within the same tick, so batching two
-// filter changes into one `changes` object is the way to apply them
-// together, not two sequential calls.
+// a clean URL. Callers should make one call per user event: React
+// Router does not queue multiple setSearchParams calls made within
+// the same tick, so batching two filter changes into one `changes`
+// object is the way to apply them together, not two sequential calls.
 export function useUrlState<T extends Record<string, UrlParamValue>>(
   defaults: T,
 ): [URLSearchParams, (changes: Partial<T>, options?: SetUrlParamsOptions) => void] {

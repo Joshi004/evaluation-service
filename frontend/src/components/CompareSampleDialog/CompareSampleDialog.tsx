@@ -23,11 +23,10 @@ interface CompareSampleDialogProps {
   onClose: () => void
 }
 
-// §8.8 item 7: the prompt once, then one column per run -- how a
-// flipped sample (or any sample opened from a flip row) is read now,
-// replacing the page-to-page navigation FlipList used before this
-// phase. Driven entirely by the URL's own &sample=; Esc or the
-// overlay maps straight to onClose, which removes that param.
+// The prompt once, then one column per run -- how a flipped sample (or
+// any sample opened from a flip row) is read now. Driven entirely by
+// the URL's own &sample=; Esc or the overlay maps straight to
+// onClose, which removes that param.
 export function CompareSampleDialog({ runs, sampleKey, onClose }: CompareSampleDialogProps) {
   const sampleQueries = useSampleAcrossRuns(runs.map((run) => run.id), sampleKey)
   const sharedPrompt = resolveSharedPrompt(sampleQueries)

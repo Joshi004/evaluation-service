@@ -9,19 +9,17 @@ import {
 
 interface SampleDetailProps {
   sample: DiagnosticsSampleDetail
-  // Compare's side-by-side dialog (Phase 8, docs/UI_REDESIGN_PLAN.md
-  // §8.8) shows the prompt once, above every run's own column, since
-  // a flipped sample's prompt is identical across runs (verified
-  // against sample 1000 on runs 9, 13 and 15) -- each column then
-  // renders this with `showPrompt={false}` so the prompt isn't
-  // repeated once per run.
+  // Compare's side-by-side dialog shows the prompt once, above every
+  // run's own column, since a flipped sample's prompt is identical
+  // across runs (verified against sample 1000 on runs 9, 13 and 15) --
+  // each column then renders this with `showPrompt={false}` so the
+  // prompt isn't repeated once per run.
   showPrompt?: boolean
 }
 
-// Layer 5's shared shell (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md
-// Phase 7): the prompt, the answer with its token/latency metadata,
-// the collapsed thinking block, and -- only for a benchmark with no
-// rule checklist -- the generic target/extracted-prediction
+// The shared shell: the prompt, the answer with its token/latency
+// metadata, the collapsed thinking block, and -- only for a benchmark
+// with no rule checklist -- the generic target/extracted-prediction
 // comparison. Works for every benchmark in the catalog; the per-rule
 // checklist itself is a separate sibling (IfevalRuleChecklist),
 // rendered by the caller only when sample.rules.length > 0.
@@ -66,8 +64,7 @@ export function SampleDetail({ sample, showPrompt = true }: SampleDetailProps) {
         {/* whitespace-pre-wrap and font-mono keep a leading blank line
             visible rather than collapsed by normal HTML whitespace
             rules -- run-13 key 181's own leading "\n\n" is the reason
-            this page needs to render text verbatim at all
-            (docs/SCORE_DRILLDOWN_UI_PLAN.md Section 7). */}
+            this page needs to render text verbatim at all. */}
         <p className="mt-1 rounded-lg border border-border bg-muted p-3 font-mono text-sm whitespace-pre-wrap text-foreground">
           {text.answer}
         </p>

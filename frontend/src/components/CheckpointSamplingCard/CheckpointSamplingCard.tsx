@@ -19,7 +19,7 @@ interface CheckpointSamplingCardProps {
   samplingProfiles: SamplingProfileSummary[]
   samplingProfilesById: Map<number, SamplingProfileSummary>
   selectedStandards: StandardSummary[]
-  // null = "use this checkpoint's own registered default" (S-D9's
+  // null = "use this checkpoint's own registered default" (the same
   // fallback, narrowed here to one checkpoint instead of the whole
   // grid).
   profileChoice: number | null
@@ -43,8 +43,8 @@ const ENABLE_THINKING_OPTIONS = [
 // SamplingOverrides fields, each defaulting to that base profile's own
 // value. Picking a different base profile updates every field's
 // placeholder at once. Rendered inside its Settings row's own
-// "Customize" side panel (Phase 10, docs/UI_REDESIGN_PLAN.md §8.10) --
-// the checkpoint's own name is the panel's title, not repeated here.
+// "Customize" side panel -- the checkpoint's own name is the panel's
+// title, not repeated here.
 export function CheckpointSamplingCard({
   checkpoint,
   samplingProfiles,

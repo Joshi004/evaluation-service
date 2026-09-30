@@ -19,9 +19,9 @@ function formatMandateValue(value: unknown): string {
 }
 
 // `standard.sampling_overrides` is a sparse subset of the nine sampling
-// fields (S-D4's second merge layer) -- only the fields a benchmark's
-// own published definition actually mandates appear here at all, so
-// most standards resolve to an empty array here.
+// fields (the second merge layer) -- only the fields a benchmark's own
+// published definition actually mandates appear here at all, so most
+// standards resolve to an empty array here.
 export function buildSamplingMandateRows(standard: StandardSummary): SamplingMandateRow[] {
   return Object.entries(standard.sampling_overrides).map(([field, value]) => ({
     field,

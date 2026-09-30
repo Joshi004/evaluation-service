@@ -20,12 +20,12 @@ interface ModelResultsTableProps {
   evaluated: ModelEvaluatedResult[]
 }
 
-// The Results tab's own benchmark x setup table (docs/UI_REDESIGN_PLAN.md
-// section 8.11): one row per (benchmark, setup) this model has a done
-// result on -- chosen over a benchmark x sampling-profile matrix
-// because a sampling label is not the same setup across benchmarks
-// (section 4.3), so a shared column would imply a comparability that
-// doesn't exist. Rank is read straight from the already-built board
+// The Results tab's own benchmark x setup table: one row per
+// (benchmark, setup) this model has a done result on -- chosen over a
+// benchmark x sampling-profile matrix because a sampling label is not
+// the same setup across benchmarks, so a shared column would imply a
+// comparability that doesn't exist. Rank is read straight from the
+// already-built board
 // (cell.rank, cell.withinLeaderMargin), never re-derived, the same
 // "Leaderboard ranks by construction" rule ModelScorecard follows.
 export function ModelResultsTable({ checkpointId, modelName, evaluated }: ModelResultsTableProps) {

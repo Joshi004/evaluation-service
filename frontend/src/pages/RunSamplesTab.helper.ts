@@ -81,13 +81,12 @@ export type SampleStep =
 // Where Prev/Next (or `j`/`k`) should land next, from the *currently
 // loaded page's* own items -- `'other-page'` tells the caller which
 // page to fetch and which end of it to open, keeping the URL's own
-// `offset` in sync with whichever page the panel actually lands on (a
-// pitfall named in docs/UI_REDESIGN_PLAN.md §8.7: "keep paging
-// semantics ... when Prev/Next crosses a page boundary"). `'unavailable'`
-// covers both "no more results in that direction" and "the open sample
-// isn't even on this page" (a filter changed while the panel stayed
-// open) -- the caller tells the two apart by checking whether
-// `sampleKey` itself appears in `items`.
+// `offset` in sync with whichever page the panel actually lands on --
+// paging semantics must stay correct when Prev/Next crosses a page
+// boundary. `'unavailable'` covers both "no more results in that
+// direction" and "the open sample isn't even on this page" (a filter
+// changed while the panel stayed open) -- the caller tells the two
+// apart by checking whether `sampleKey` itself appears in `items`.
 export function resolveSampleStep(
   direction: 'next' | 'previous',
   items: DiagnosticsSample[],

@@ -17,15 +17,15 @@ interface RunGroupCancelButtonProps {
   className?: string
 }
 
-// "Cancel batch" (docs/UI_REDESIGN_PLAN.md §8.9, item 2) -- modelled on
-// RunCancelButton (Phase 7), but for every non-terminal run in one
-// batch at once. The backend's own cancel_run_group
-// (services/runs/worker.py) skips a run that races to a terminal state
-// between listing and cancelling rather than failing the whole
-// request, so the toast reads the response's own `cancelled_run_ids`
-// count rather than assuming it matches `cancellableCount` -- a batch
-// that finishes on its own between render and click cancels nothing,
-// which is reported as information, not an error.
+// "Cancel batch" -- modelled on RunCancelButton, but for every
+// non-terminal run in one batch at once. The backend's own
+// cancel_run_group (services/runs/worker.py) skips a run that races to
+// a terminal state between listing and cancelling rather than failing
+// the whole request, so the toast reads the response's own
+// `cancelled_run_ids` count rather than assuming it matches
+// `cancellableCount` -- a batch that finishes on its own between
+// render and click cancels nothing, which is reported as information,
+// not an error.
 export function RunGroupCancelButton({
   runGroupId,
   runGroupName,

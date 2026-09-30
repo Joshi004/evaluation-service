@@ -23,11 +23,11 @@ interface StepperProps {
 }
 
 // A horizontal step indicator for a flow whose steps live in page
-// state, not routes (Phase 10, docs/UI_REDESIGN_PLAN.md §8.10's own
-// three-step Choose/Settings/Review -- Phase 11's registration wizard
-// is its next caller). Reach for `TabNav` instead once each step is
-// its own route: that primitive already handles the URL side this one
-// deliberately doesn't.
+// state, not routes (New evaluation's own three-step
+// Choose/Settings/Review -- the registration wizard is another
+// caller). Reach for `TabNav` instead once each step is its own route:
+// that primitive already handles the URL side this one deliberately
+// doesn't.
 export function Stepper({ steps, currentStepKey, isStepReachable, onStepClick, className }: StepperProps) {
   const activeIndex = currentStepIndex(steps, currentStepKey)
 

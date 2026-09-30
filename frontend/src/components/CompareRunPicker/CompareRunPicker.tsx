@@ -15,19 +15,18 @@ interface CompareRunPickerProps {
   runs: RunListItem[]
   selectedRunIds: number[]
   maxSelectable: number
-  // The start state's own "first pick = baseline" rule (§8.8 item 8)
-  // -- false in the Add run dialog, where none of these picks becomes
-  // the baseline (that's already fixed before this dialog opens).
+  // The start state's own "first pick = baseline" rule -- false in
+  // the Add run dialog, where none of these picks becomes the
+  // baseline (that's already fixed before this dialog opens).
   labelFirstSelectedAsBaseline: boolean
   onToggle: (runId: number) => void
 }
 
 // Shared list body for both the compare page's own start state (a
 // fresh 2-4 selection) and its Add run dialog (adding to an existing
-// comparison) -- docs/UI_REDESIGN_PLAN.md §8.8. `runs` arrives already
-// filtered to the right benchmark (and, for Add run, with runs already
-// in the comparison excluded); this component only searches, sorts
-// and reports toggles.
+// comparison). `runs` arrives already filtered to the right benchmark
+// (and, for Add run, with runs already in the comparison excluded);
+// this component only searches, sorts and reports toggles.
 export function CompareRunPicker({
   runs,
   selectedRunIds,

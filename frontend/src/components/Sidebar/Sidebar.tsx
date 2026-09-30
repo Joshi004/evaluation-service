@@ -10,14 +10,13 @@ interface SidebarProps {
   isDrawerOpen: boolean
   onCloseDrawer: () => void
   // Keyed by a nav item's own `to` path. AppShell fills in Compare's
-  // count from useCompareTray() (Phase 5) and Runs' active count from
-  // countActiveRuns (Phase 9) -- this is the slot Phase 2 reserved for
-  // both.
+  // count from useCompareTray() and Runs' active count from
+  // countActiveRuns -- a single shared slot for both.
   badgeCountsByPath?: Record<string, number>
 }
 
 // A small Lucide glyph doubles as the brand mark rather than a
-// hand-drawn inline SVG -- one icon set (§4.6), no extra asset, and
+// hand-drawn inline SVG -- one icon set, no extra asset, and
 // `currentColor`-based like every other Lucide icon here, so no raw
 // colour value is needed to tint it.
 function BrandMark() {
@@ -105,11 +104,11 @@ function NavGroupList({ responsive, badgeCountsByPath }: { responsive: boolean; 
   )
 }
 
-// §4.2's sidebar. Three responsive tiers, purely from Tailwind's stock
-// breakpoints (no custom config needed): expanded (>=1280px, icons +
-// labels), rail (768-1279px, icons only, hidden below md instead
-// entirely), and an off-canvas drawer below 768px -- the only tier
-// needing React state, owned by AppShell and passed down here.
+// Three responsive tiers, purely from Tailwind's stock breakpoints (no
+// custom config needed): expanded (>=1280px, icons + labels), rail
+// (768-1279px, icons only, hidden below md instead entirely), and an
+// off-canvas drawer below 768px -- the only tier needing React state,
+// owned by AppShell and passed down here.
 export function Sidebar({ isDrawerOpen, onCloseDrawer, badgeCountsByPath = {} }: SidebarProps) {
   return (
     <>

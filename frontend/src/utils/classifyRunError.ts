@@ -1,9 +1,9 @@
 // Turns a run's raw error string into a plain-language title plus an
-// optional hint of what to check next -- §8.4's own wording: "Do not
-// guess a root cause the message does not state." Every pattern below
-// is something the harness's own message actually says, not an
-// inference; an error this frontend doesn't recognise yet gets the
-// generic title with its raw text still attached, never dropped.
+// optional hint of what to check next -- never guessing a root cause
+// the message doesn't state. Every pattern below is something the
+// harness's own message actually says, not an inference; an error
+// this frontend doesn't recognise yet gets the generic title with its
+// raw text still attached, never dropped.
 export interface RunErrorClassification {
   title: string
   hint: string | null

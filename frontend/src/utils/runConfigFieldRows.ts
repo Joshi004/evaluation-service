@@ -1,9 +1,8 @@
 // Reshapes a run's resolved standard, sampling and serving profiles
-// into the label/value rows a grouped card renders. Promoted from
-// pages/RunConfigTab.helper.ts (Phase 7) to src/utils/ once Compare's
-// own setup check (Phase 8, docs/UI_REDESIGN_PLAN.md §8.8) became a
-// second caller -- per .cursor/rules/frontend-components.mdc, "once a
-// second component needs the same logic, promote it to src/utils/".
+// into the label/value rows a grouped card renders. Lives in
+// src/utils/ since Compare's own setup check became a second caller --
+// per .cursor/rules/frontend-components.mdc, "once a second component
+// needs the same logic, promote it to src/utils/".
 
 import type { RunSamplingDetail, RunStandardDetail, ServingProfileSummary } from '../api/client'
 import { THINK_HANDLING_LABELS } from './labels'
@@ -30,8 +29,8 @@ export function displayOrDash(value: string | number | boolean | null): string {
 // The fields a human needs to know exactly what ran, from the resolved
 // standard -- task/dataset shape plus think_handling. prompt_template,
 // few_shot_prompt_template and extraction are left out: all three are
-// better suited to the Benchmarks page's own raw-YAML view (Phase 12)
-// than to a run's configuration summary.
+// better suited to the Benchmarks page's own raw-YAML view than to a
+// run's configuration summary.
 export function standardFieldRows(standard: RunStandardDetail): FieldRow[] {
   return [
     { label: 'Benchmark', value: standard.benchmark },
@@ -90,11 +89,10 @@ export function servingFieldRows(serving: ServingProfileSummary): FieldRow[] {
 }
 
 // engine_options' keys vary per profile -- it's an escape hatch for
-// uncommon engine flags (R-D6) -- so its entries are listed on their
-// own rather than forced into servingFieldRows' fixed field set.
-// Relocated from the deleted ServingProfilesPage.helper.ts in Phase 12
-// (docs/UI_REDESIGN_PLAN.md §8.12), next to servingFieldRows since
-// RunConfigTab.tsx already renders the two side by side.
+// uncommon engine flags -- so its entries are listed on their own
+// rather than forced into servingFieldRows' fixed field set. It sits
+// next to servingFieldRows since RunConfigTab.tsx already renders the
+// two side by side.
 export function engineOptionEntries(profile: ServingProfileSummary): [string, string | number | boolean][] {
   return Object.entries(profile.engine_options)
 }

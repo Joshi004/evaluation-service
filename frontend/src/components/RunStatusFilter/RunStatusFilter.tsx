@@ -19,11 +19,9 @@ function statusOptionLabel(label: string, count: number): ReactNode {
   )
 }
 
-// The status SegmentedControl with counts (docs/UI_REDESIGN_PLAN.md
-// §8.9's own toolbar chips), lifted out of RunsToolbar (Phase 11,
-// §8.11) once the Model page's own Runs tab became a second caller
-// that needs the identical five-way status control for a different
-// run list.
+// The status SegmentedControl with counts, shared between RunsToolbar
+// and the Model page's own Runs tab -- both need the identical
+// five-way status control for a different run list.
 export function RunStatusFilter({ value, counts, onChange, className }: RunStatusFilterProps) {
   return (
     <SegmentedControl

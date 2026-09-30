@@ -21,7 +21,7 @@ export type ServingProfileChoice =
 // value before it can be submitted (buildConfigFromDraft below returns
 // null until it does). engine_options is carried through opaquely
 // rather than rendered as editable inputs -- it is an escape hatch for
-// uncommon engine flags (R-D6) that this wizard does not expose.
+// uncommon engine flags that this wizard does not expose.
 export interface ServingProfileDraft {
   engine: string
   engine_version: string

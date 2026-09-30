@@ -11,14 +11,14 @@ interface IntervalWhiskerProps {
   // than five unrelated line segments.
   domainMin: number
   domainMax: number
-  // Defaults to 96 (the By-benchmark lens's own row-height whisker,
-  // Phase 6) -- Compare's forest plot (Phase 8) asks for a wider one
-  // so 2-4 rows' worth of overlapping intervals stay legible.
+  // Defaults to 96 (the By-benchmark lens's own row-height whisker) --
+  // Compare's forest plot asks for a wider one so 2-4 rows' worth of
+  // overlapping intervals stay legible.
   width?: number
   // One complete colour utility (`text-foreground`, `text-series-2`, …)
-  // -- there is no tailwind-merge in this project (see D2), so this
-  // component never supplies its own default that a caller would need
-  // to override.
+  // -- there is no tailwind-merge in this project, so this component
+  // never supplies its own default that a caller would need to
+  // override.
   className?: string
 }
 

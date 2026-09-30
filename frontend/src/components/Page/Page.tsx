@@ -5,12 +5,11 @@ interface PageProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode
 }
 
-// Page anatomy (§4.5): PageHeader -> optional tab bar -> content, once a
-// page is rewritten to follow it -- none of today's 13 pages do yet (they
-// each render their own inline heading), so neither wrapper below enforces
-// a particular child shape. `space-y-6` only affects direct children, and
-// every existing page returns a single root element, so it has no effect
-// until a later phase's rewrite returns multiple top-level sections.
+// Page anatomy: PageHeader -> optional tab bar -> content. Neither
+// wrapper below enforces a particular child shape. `space-y-6` only
+// affects direct children, and every existing page returns a single
+// root element, so it has no effect until a future rewrite returns
+// multiple top-level sections.
 //
 // Page is the default: max ~1200px, for forms and text-heavy pages.
 // routes.tsx wraps every one of today's routes in this, so all 13 keep

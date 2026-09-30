@@ -18,10 +18,9 @@ interface CatalogDeleteButtonProps {
 }
 
 // Delete's own confirmation (ground rule 14: never window.confirm),
-// following the RunCancelButton pattern (Phase 12,
-// docs/UI_REDESIGN_PLAN.md §8.12). Keeps the pre-Phase-12 wording
-// exactly: "Delete {noun} {name}? Catalog rows are immutable; this
-// cannot be undone."
+// following the RunCancelButton pattern. Keeps the wording exactly:
+// "Delete {noun} {name}? Catalog rows are immutable; this cannot be
+// undone."
 export function CatalogDeleteButton({ resource, rowId, name, deletable }: CatalogDeleteButtonProps) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const deleteCatalogRow = useDeleteCatalogRow(resource)

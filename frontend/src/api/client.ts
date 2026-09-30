@@ -32,9 +32,9 @@ export interface ClusterPartitions {
   partitions: SlurmPartition[]
 }
 
-// Independent of registration (R-D1): a checkpoint stays listed even if
-// the weights behind it later vanish -- 'unknown' is the honest state
-// for a row nobody has checked yet.
+// Independent of registration: a checkpoint stays listed even if the
+// weights behind it later vanish -- 'unknown' is the honest state for
+// a row nobody has checked yet.
 export type CheckpointAvailabilityStatus = 'unknown' | 'available' | 'unavailable' | 'incomplete'
 
 // Field names match the JSON wire format (snake_case, same as the
@@ -46,8 +46,8 @@ export interface CheckpointListItem {
   path: string
   parent_checkpoint_id: number | null
   // Joined in from serving_profile -- label is null for an ad-hoc
-  // customisation (R-D16), in which case hash is what identifies it.
-  // See utils/servingProfileDisplayName.ts for the label-or-hash rule.
+  // customisation, in which case hash is what identifies it. See
+  // utils/servingProfileDisplayName.ts for the label-or-hash rule.
   serving_profile_label: string | null
   serving_profile_hash: string
   // The id itself -- Submit's per-checkpoint serving card looks this
@@ -56,8 +56,7 @@ export interface CheckpointListItem {
   // default_sampling_profile_id exists below.
   default_serving_profile_id: number
   // Joined in from sampling_profile, same reasoning -- named with the
-  // default_ prefix (unlike serving_profile_label/_hash above) because
-  // docs/STANDARDS_AND_PROFILES_PHASES.md Phase 2 names it explicitly.
+  // default_ prefix (unlike serving_profile_label/_hash above).
   default_sampling_profile_label: string | null
   default_sampling_profile_hash: string
   // The id itself -- Submit's per-checkpoint sampling card looks this
@@ -72,7 +71,7 @@ export interface CheckpointListItem {
 
 // What inspection read off the cluster at registration -- see
 // app/schemas/checkpoints.py's CheckpointInferredMetadata. Every field
-// is nullable: null means "we could not read this," not "empty" (R-D20).
+// is nullable: null means "we could not read this," not "empty".
 // source_config is `Record<string, unknown> | null`, not `any` (R-T24)
 // -- its shape genuinely varies by model family.
 export interface CheckpointInferredMetadata {
@@ -101,7 +100,7 @@ export interface CheckpointRunSummary {
 
 // GET /api/v1/checkpoints/{id} -- see app/schemas/checkpoints.py's
 // CheckpointDetail. Fetched by useCheckpoint when the model detail
-// page (ModelDetailPage, Phase 11) loads, not on the /models list.
+// page (ModelDetailPage) loads, not on the /models list.
 export interface CheckpointDetail extends CheckpointListItem {
   generation_config: Record<string, unknown> | null
   registered_by: string | null
@@ -109,13 +108,12 @@ export interface CheckpointDetail extends CheckpointListItem {
   runs: CheckpointRunSummary[]
 }
 
-// Serving-profile wire shapes (docs/CHECKPOINT_REGISTRATION_PHASES.md
-// Section 0.5, Phases 3 and 5). ServingProfileConfig is the eleven-field
+// Serving-profile wire shapes. ServingProfileConfig is the eleven-field
 // hashable config a customisation submits -- identical to
 // ServingProfile.as_hashable_dict()'s key set. engine_options is an
-// escape hatch for uncommon engine flags (R-D6); the registration
-// wizard doesn't expose it for editing, so a customisation carries it
-// through unchanged from whichever profile it started from.
+// escape hatch for uncommon engine flags; the registration wizard
+// doesn't expose it for editing, so a customisation carries it through
+// unchanged from whichever profile it started from.
 export interface ServingProfileConfig {
   engine: string
   engine_version: string
@@ -131,8 +129,8 @@ export interface ServingProfileConfig {
 }
 
 // A persisted profile row -- every ServingProfileConfig field plus
-// identity. label is null for an ad-hoc customisation (R-D16), in which
-// case hash is what identifies it (see utils/servingProfileDisplayName.ts).
+// identity. label is null for an ad-hoc customisation, in which case
+// hash is what identifies it (see utils/servingProfileDisplayName.ts).
 // Carries the full config, not just the fields a table would show at a
 // glance, so a "customise" form can seed its draft from whichever
 // summary is currently selected without silently resetting the fields
@@ -154,8 +152,7 @@ export interface ServingProfileRecommendation {
   reason: string
 }
 
-// Sampling-profile wire shapes (docs/STANDARDS_AND_PROFILES_PHASES.md
-// Section 0.5, Phase 2). SamplingProfileConfig is the nine-field
+// Sampling-profile wire shapes. SamplingProfileConfig is the nine-field
 // hashable config -- identical to SamplingProfile.as_hashable_dict()'s
 // key set.
 export interface SamplingProfileConfig {
@@ -171,8 +168,8 @@ export interface SamplingProfileConfig {
 }
 
 // A persisted profile row -- every SamplingProfileConfig field plus
-// identity. label is null for an ad-hoc customisation (Phase 3+), in
-// which case hash is what identifies it -- mirrors ServingProfileSummary.
+// identity. label is null for an ad-hoc customisation, in which case
+// hash is what identifies it -- mirrors ServingProfileSummary.
 export interface SamplingProfileSummary extends SamplingProfileConfig {
   id: number
   hash: string
@@ -189,9 +186,9 @@ export interface SamplingProfileRecommendation {
 }
 
 // One directory on the cluster that looks evaluable -- not yet a
-// database row (Phase 2). `already_registered` is set server-side by
-// comparing `reference` against every registered checkpoint's path, so
-// the frontend never has to do that matching itself (R-D32).
+// database row. `already_registered` is set server-side by comparing
+// `reference` against every registered checkpoint's path, so the
+// frontend never has to do that matching itself.
 export interface CheckpointCandidate {
   reference: string
   display_name: string
@@ -199,13 +196,12 @@ export interface CheckpointCandidate {
   modified_at: string | null
 }
 
-// Everything readable about one candidate (Phase 2). A partial
-// inspection is still a success (R-D15): an unreadable optional file
-// shows up as a line in `problems` with its field left null, not as a
-// thrown error -- `readable` is false only when config.json itself
-// couldn't be read. source_config/generation_config are
-// `Record<string, unknown> | null`, not `any` (R-T24) -- their shape
-// genuinely varies by model family.
+// Everything readable about one candidate. A partial inspection is
+// still a success: an unreadable optional file shows up as a line in
+// `problems` with its field left null, not as a thrown error --
+// `readable` is false only when config.json itself couldn't be read.
+// source_config/generation_config are `Record<string, unknown> | null`,
+// not `any` (R-T24) -- their shape genuinely varies by model family.
 export interface CheckpointInspection {
   reference: string
   display_name: string
@@ -242,8 +238,8 @@ export type ServingProfileSelection =
 // POST /api/v1/checkpoints' body. Deliberately excludes model_type,
 // architecture, context_length, and every other inferred field -- the
 // server re-reads a fresh inspection itself and writes those columns
-// from its own reading (R-D4), so the wizard's job is to confirm, name,
-// and choose what genuinely can't be inferred.
+// from its own reading, so the wizard's job is to confirm, name, and
+// choose what genuinely can't be inferred.
 export interface RegisterCheckpointRequest {
   reference: string
   name: string
@@ -251,8 +247,8 @@ export interface RegisterCheckpointRequest {
   parent_checkpoint_id?: number | null
   serving_profile: ServingProfileSelection
   // Optional, unlike serving_profile: omitted means "the checkpoint's
-  // recommended default," computed server-side (S-D9). No picker
-  // exists yet to set this from the wizard (Phase 7).
+  // recommended default," computed server-side. No picker exists yet
+  // to set this from the wizard.
   sampling_profile_id?: number | null
   registered_by?: string | null
 }
@@ -278,16 +274,14 @@ export interface EndpointListItem {
 
 // One (checkpoint, comparison_hash) pair with its most recent finished
 // primary metric -- see app/schemas/leaderboard.py. `comparison_hash` is
-// what the leaderboard actually groups by (docs/STANDARDS_AND_PROFILES_PHASES.md
-// Phase 3, S-D5): two rows only collapse to one cell if they share both
-// the standard and the resolved sampling profile, not just the
-// standard. Pivoting these into a grid is LeaderboardPage.helper.ts's
-// job, not this type's.
+// what the leaderboard actually groups by: two rows only collapse to
+// one cell if they share both the standard and the resolved sampling
+// profile, not just the standard. Pivoting these into a grid is
+// LeaderboardPage.helper.ts's job, not this type's.
 export interface LeaderboardRow {
   checkpoint_id: number
   // The specific eval_run this row's metric came from -- what lets a
-  // leaderboard cell link straight to its run page
-  // (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md Phase 1).
+  // leaderboard cell link straight to its run page.
   eval_run_id: number
   standard_id: number
   benchmark: string
@@ -297,7 +291,7 @@ export interface LeaderboardRow {
   sampling_profile_label: string | null
   // label is null for an ad-hoc sampling profile -- the hash is what
   // still tells two such columns for the same benchmark apart once the
-  // pivot keys on comparison_hash (Phase 8).
+  // pivot keys on comparison_hash.
   sampling_profile_hash: string
   // The serving profile this row's own eval_run actually ran against --
   // not hashed into comparison_hash (quantization-free serving can't
@@ -317,12 +311,11 @@ export interface LeaderboardRow {
   finished_at: string
 }
 
-// Catalog status wire shapes (docs/STANDARDS_AND_PROFILES_PHASES.md
-// Section 0.5 and Phase 6's app/schemas/catalog.py) -- shared by all
-// three catalogs (standards, sampling profiles, serving profiles).
-// `state` mirrors that schema's CatalogEntryState exactly; `detail`
-// already carries Phase 6's deletion blockers folded in by
-// annotate_deletability, so the frontend never computes them itself.
+// Catalog status wire shapes -- see app/schemas/catalog.py -- shared
+// by all three catalogs (standards, sampling profiles, serving
+// profiles). `state` mirrors that schema's CatalogEntryState exactly;
+// `detail` already carries the deletion blockers annotate_deletability
+// folds in, so the frontend never computes them itself.
 export type CatalogEntryState = 'loaded' | 'new' | 'conflicting' | 'orphaned' | 'ad_hoc' | 'invalid'
 
 // One line of a GET /{resource}/catalog-status report -- a YAML file, a
@@ -349,18 +342,16 @@ export interface CatalogStatus {
 }
 
 // POST /{resource}/prune's response -- every id actually removed, not a
-// bare count, so the caller can show exactly what went (S-D31).
+// bare count, so the caller can show exactly what went.
 export interface CatalogPruneResult {
   deleted_ids: number[]
 }
 
 // A sampling field whose value is recorded but has no effect under a
-// given framework -- e.g. a non-zero min_p under evalscope (decision
-// D4). Computed by the backend, not stored. Renamed from
-// RecipeFieldWarning in docs/STANDARDS_AND_PROFILES_PHASES.md Phase 3:
-// every warning it carries is about a sampling field, whichever table
-// (standard or sampling profile) the value it's warning about came
-// from.
+// given framework -- e.g. a non-zero min_p under evalscope. Computed
+// by the backend, not stored. Every warning it carries is about a
+// sampling field, whichever table (standard or sampling profile) the
+// value it's warning about came from.
 export interface SamplingFieldWarning {
   field: string
   message: string
@@ -410,21 +401,21 @@ export interface StandardSummary {
   sample_limit: number | null
   think_handling: string
   // What this standard's own published definition mandates about
-  // sampling (S-D4's second merge layer) -- most standards mandate
-  // nothing, so this is `{}` far more often than not. A sparse subset
-  // of SamplingProfileConfig's nine keys, validated against that same
-  // field set at load time (S-D22).
+  // sampling (the second layer of the sampling merge) -- most
+  // standards mandate nothing, so this is `{}` far more often than
+  // not. A sparse subset of SamplingProfileConfig's nine keys,
+  // validated against that same field set at load time.
   sampling_overrides: Record<string, unknown>
   // Which samples run -- hashed, so a standard like tau2_retail is
-  // distinguished from tau2_telecom by this field alone (Phase 4).
+  // distinguished from tau2_telecom by this field alone.
   subsets: string[]
-  // Operational, not hashed (S-D7): throughput and per-request timeout,
-  // never part of what the standard measures.
+  // Operational, not hashed: throughput and per-request timeout, never
+  // part of what the standard measures.
   eval_batch_size: number
   request_timeout_seconds: number
-  // Presentation only, not hashed (S-D7) -- null for a standard loaded
-  // before docs/UI_REDESIGN_PLAN.md Phase 3's YAML update, until the
-  // next catalog reload backfills it.
+  // Presentation only, not hashed -- null for a standard loaded before
+  // the YAML update that added this field, until the next catalog
+  // reload backfills it.
   display_name: string | null
   description: string | null
   category: string | null
@@ -440,7 +431,7 @@ export interface StandardSummary {
 //
 // comparison_hash/sampling_profile_label/sampling_profile_hash are the
 // same "Setup" a leaderboard cell shows (the (standard, resolved
-// sampling profile) pair, S-D5); primary_metric_* mirror a leaderboard
+// sampling profile) pair); primary_metric_* mirror a leaderboard
 // cell's own score, interval and sample count. All four primary_metric_*
 // fields are null for a queued, running, failed or cancelled run, which
 // has no metric rows yet.
@@ -494,9 +485,8 @@ export interface RunListFilters {
 // backend's `exclude_unset=True`), while a key present with `null` is
 // itself an override -- dataset_revision, split and sample_limit are
 // legitimately nullable. Only include a key here once the caller has
-// actually set it. Narrowed in docs/STANDARDS_AND_PROFILES_PHASES.md
-// Phase 3 to the fields that stayed on `standard` once sampling moved
-// to SamplingOverrides below.
+// actually set it. Limited to the fields that stayed on `standard`
+// once sampling moved to SamplingOverrides below.
 export interface StandardOverrides {
   benchmark?: string | null
   framework?: string | null
@@ -516,10 +506,10 @@ export interface StandardOverrides {
 
 // A user override of a resolved sampling profile's fields -- see
 // app/schemas/runs.py's SamplingOverrides, the third and last layer of
-// S-D4's merge (the checkpoint's own default or an explicitly picked
-// sampling_profile_id, then the standard's sampling_overrides, then
-// this). Mirrors StandardOverrides' same optional/nullable discipline,
-// over SamplingProfileConfig's nine fields.
+// the sampling merge (the checkpoint's own default or an explicitly
+// picked sampling_profile_id, then the standard's sampling_overrides,
+// then this). Mirrors StandardOverrides' same optional/nullable
+// discipline, over SamplingProfileConfig's nine fields.
 export interface SamplingOverrides {
   temperature?: number | null
   top_p?: number | null
@@ -559,9 +549,8 @@ export interface ServingOverrides {
 // to that standard alone, and a sampling override or an explicit
 // profile choice belongs to that checkpoint alone. A checkpoint id
 // absent from sampling_profile_id_by_checkpoint_id falls back to that
-// checkpoint's own default_sampling_profile_id (S-D9). Keys must be a
-// subset of standard_ids / checkpoint_ids respectively, or the backend
-// 422s.
+// checkpoint's own default_sampling_profile_id. Keys must be a subset
+// of standard_ids / checkpoint_ids respectively, or the backend 422s.
 export interface CreateRunsRequest {
   name: string
   checkpoint_ids: number[]
@@ -635,9 +624,8 @@ export interface RunPreviewPair {
   errors: CompatibilityFinding[]
   warnings: CompatibilityFinding[]
   // What this pair's run would actually be grouped under on the
-  // leaderboard (S-D5) -- shown before the run, not only discovered on
-  // the leaderboard afterwards (docs/STANDARDS_AND_PROFILES_PHASES.md
-  // Phase 8).
+  // leaderboard -- shown before the run, not only discovered on the
+  // leaderboard afterwards.
   comparison_hash: string
 }
 
@@ -782,8 +770,7 @@ export interface Throughput {
 
 // RunDetail.performance -- null for a queued, running, failed or
 // cancelled run (no results_json yet). Computed entirely from data
-// already in Postgres (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md Phase
-// 1); rendered by RunHealthBand.
+// already in Postgres; rendered by RunHealthBand.
 export interface RunPerformanceSummary {
   n_samples: number | null
   primary_metric_name: string | null
@@ -813,7 +800,7 @@ export interface RunEndpointSummary {
 // The fully resolved standard a run actually used -- the same fields as
 // StandardSummary minus source_yaml (which only exists for a reviewed
 // standard, not an ad-hoc override) and warnings (moved to
-// RunSamplingDetail below -- a D4 warning is about a sampling field,
+// RunSamplingDetail below -- each warning is about a sampling field,
 // and the run's resolved sampling profile, not this standard's bare
 // sampling_overrides, is the complete picture of what the run actually
 // asked the model to do).
@@ -845,10 +832,10 @@ export interface RunStandardDetail {
 }
 
 // The fully resolved sampling profile a run actually used -- every
-// field that can change how the model was asked to speak, plus decision
-// D4's per-field warnings computed against the run's standard's
-// framework (the same warnings the Standards page and the Submit
-// preview also use, so a run's own page never disagrees with either).
+// field that can change how the model was asked to speak, plus
+// per-field warnings computed against the run's standard's framework
+// (the same warnings the Standards page and the Submit preview also
+// use, so a run's own page never disagrees with either).
 export interface RunSamplingDetail {
   id: number
   hash: string
@@ -869,8 +856,8 @@ export interface RunSamplingDetail {
 // carries comparison_hash) plus what a human reads to actually
 // understand what happened: the resolved standard, sampling profile and
 // serving profile, the endpoint it ran against (or null if it never got
-// one -- Phase 5's known cancel-before-endpoint gap), its output
-// directory, and its metric rows. `serving` is the run's own recorded
+// one -- a known cancel-before-endpoint gap), its output directory,
+// and its metric rows. `serving` is the run's own recorded
 // profile (S-T12), not necessarily the checkpoint's current default --
 // reuses ServingProfileSummary rather than a fourth resolved-detail
 // type, since nothing about a serving profile's shape changes for the
@@ -890,11 +877,10 @@ export interface RunDetail extends RunListItem {
   performance: RunPerformanceSummary | null
 }
 
-// --- Phase 3 of docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md: the
-// diagnostics API -------------------------------------------------------
+// --- The diagnostics API -------------------------------------------------
 //
 // Everything below mirrors app/schemas/diagnostics.py field for field.
-// Layer 4 (RunDiagnosticsPage, Phase 4) is the first page to read these.
+// Layer 4 (RunDiagnosticsPage) is the first page to read these.
 
 // One of DiagnosticsSummary.metrics -- mirrors DiagnosticsMetric.
 // `passed` is null for a macro-averaged metric (e.g. IFEval's
@@ -926,14 +912,14 @@ export interface DiagnosticsHealth {
   output_tokens: OutputTokens | null
 }
 
-// Mirrors DiagnosticsInstructionLevel (Phase 5). Reconciles the
-// harness's own macro-averaged instruction-level score against the
-// pooled (micro) view a bucket breakdown necessarily is -- `null` for
-// a benchmark with no instruction-level metrics at all (GSM8K,
-// GPQA-Diamond, MMLU-Pro). `recheck_passed` is `null` when the recheck
-// never ran for this run, and is expected to differ from
-// `micro_passed` by a couple of samples even when it did (decision
-// 4's two random-letter samples, never reconciled).
+// Mirrors DiagnosticsInstructionLevel. Reconciles the harness's own
+// macro-averaged instruction-level score against the pooled (micro)
+// view a bucket breakdown necessarily is -- `null` for a benchmark
+// with no instruction-level metrics at all (GSM8K, GPQA-Diamond,
+// MMLU-Pro). `recheck_passed` is `null` when the recheck never ran for
+// this run, and is expected to differ from `micro_passed` by a couple
+// of samples even when it did (two random-letter samples, never
+// reconciled).
 export interface DiagnosticsInstructionLevel {
   macro_metric_name: string
   macro_value: number
@@ -943,17 +929,17 @@ export interface DiagnosticsInstructionLevel {
   recheck_passed: number | null
 }
 
-// Mirrors DiagnosticsTagCount (Phase 8) -- how many failing samples
-// carry each tag, sorted by count descending then tag name ascending.
+// Mirrors DiagnosticsTagCount -- how many failing samples carry each
+// tag, sorted by count descending then tag name ascending.
 export interface DiagnosticsTagCount {
   tag: string
   n_samples: number
 }
 
-// Mirrors DiagnosticsSummary. `tag_counts`/`narrative` are Phase 8's
-// failure tags and deterministic written summary -- `narrative` still
-// carries one "All N samples passed." sentence even for a run with no
-// failures, so it is never empty once a Phase 8 build has run.
+// Mirrors DiagnosticsSummary. `tag_counts`/`narrative` are the failure
+// tags and deterministic written summary -- `narrative` still carries
+// one "All N samples passed." sentence even for a run with no
+// failures, so it is never empty.
 export interface DiagnosticsSummary {
   n_samples: number
   primary_metric_name: string
@@ -978,9 +964,9 @@ export interface DiagnosticsSource {
   reviews_files: string[]
 }
 
-// One row of Layer 3's breakdown table -- mirrors DiagnosticsBucket
-// (Phase 5). `level` distinguishes which table a row belongs to
-// ("family" or "rule" for IFEval/IFBench; "subject" for MMLU-Pro).
+// One row of Layer 3's breakdown table -- mirrors DiagnosticsBucket.
+// `level` distinguishes which table a row belongs to ("family" or
+// "rule" for IFEval/IFBench; "subject" for MMLU-Pro).
 // `passed`/`pass_rate` are `null` when the only thing known is which
 // instructions exist in this bucket, not how many passed -- a failed
 // recheck still produces buckets from `instruction_id_list` alone,
@@ -1033,11 +1019,10 @@ export interface SamplePage {
   items: DiagnosticsSample[]
 }
 
-// --- Phase 7 of docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md: the sample
-// detail page ---------------------------------------------------------
+// --- The sample detail page ---------------------------------------------
 //
 // Mirrors app/schemas/diagnostics.py field for field, same as the
-// Phase 3 block above.
+// diagnostics API section above.
 
 // Mirrors RuleCheck. `strict`/`loose` are null when the sample's own
 // rule_results was never filled in (a recheck that failed, or a
@@ -1072,10 +1057,9 @@ export interface DiagnosticsSampleDetail extends DiagnosticsSample {
   rules: RuleCheck[]
 }
 
-// --- Phase 9 of docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md: the compare
-// page ------------------------------------------------------------------
+// --- The compare page -----------------------------------------------
 //
-// Mirrors app/schemas/diagnostics.py's own Phase 9 block field for field.
+// Mirrors app/schemas/diagnostics.py's own compare block field for field.
 
 // One run's own identity and primary score, as shown on its own score
 // card. Mirrors ComparisonSide -- confidence_interval reuses the same
@@ -1173,10 +1157,10 @@ function extractErrorDetail(body: unknown): string | null {
   return null
 }
 
-// A plain Error carries no status, so a "clear not-found state"
-// (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md Phase 7) would otherwise
-// mean string-matching FastAPI's own detail text (e.g. "Run or sample
-// not found"). Every existing apiFetch caller is unaffected --
+// A plain Error carries no status, so a "clear not-found state" would
+// otherwise mean string-matching FastAPI's own detail text (e.g. "Run
+// or sample not found"). Every existing apiFetch caller is unaffected
+// --
 // ApiError extends Error, and String(error) still renders the same
 // message it always has.
 export class ApiError extends Error {

@@ -8,11 +8,11 @@ interface AvailabilityStyle {
 }
 
 // Tone only, kept here -- the label itself comes from utils/labels.ts
-// (§4.3's vocabulary table, Phase 4) so every screen showing weights
-// status uses the same word ('Missing', not the old literal
-// 'Unavailable'). A separate map from StatusBadge/RunStatusChip's own
-// tones -- feeding 'unavailable' through that map would hit its
-// raw-string fallback instead of a tone that means something here.
+// so every screen showing weights status uses the same word
+// ('Missing', not the old literal 'Unavailable'). A separate map from
+// StatusBadge/RunStatusChip's own tones -- feeding 'unavailable'
+// through that map would hit its raw-string fallback instead of a
+// tone that means something here.
 const AVAILABILITY_TONES: Record<CheckpointAvailabilityStatus, BadgeTone> = {
   unknown: 'neutral',
   available: 'success',

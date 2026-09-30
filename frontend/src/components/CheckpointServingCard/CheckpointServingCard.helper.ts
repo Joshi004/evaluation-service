@@ -33,9 +33,9 @@ export function servingProfileOptionLabel(profile: ServingProfileSummary): strin
 
 // This checkpoint's base serving profile: whichever one this card's
 // picker explicitly chose, or the checkpoint's own registered default
-// otherwise (mirrors resolveBaseSamplingProfile's same S-D9 fallback,
-// one axis over). Null only while `/serving-profiles` is still loading
-// -- default_serving_profile_id is a NOT NULL foreign key, so a fully
+// otherwise (mirrors resolveBaseSamplingProfile's same fallback, one
+// axis over). Null only while `/serving-profiles` is still loading --
+// default_serving_profile_id is a NOT NULL foreign key, so a fully
 // loaded list always has an entry for it.
 export function resolveBaseServingProfile(
   checkpoint: CheckpointListItem,

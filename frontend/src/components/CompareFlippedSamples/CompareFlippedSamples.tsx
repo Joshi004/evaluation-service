@@ -19,9 +19,9 @@ interface CompareFlippedSamplesProps {
   onOpenSample: (sampleKey: string) => void
 }
 
-// §8.8 item 6: which samples flipped between the baseline and one
-// other run at a time -- a run selector when there is more than one
-// non-baseline run, hidden entirely when there is only one pair.
+// Which samples flipped between the baseline and one other run at a
+// time -- a run selector when there is more than one non-baseline
+// run, hidden entirely when there is only one pair.
 export function CompareFlippedSamples({
   baseline,
   otherRuns,

@@ -3,8 +3,7 @@ import { resolveSetupForBenchmark } from '../../pages/LeaderboardPage.helper'
 import type { BenchmarkColumn, SetupOption } from '../../utils/buildLeaderboard'
 
 // One leaf column in Like-for-like mode (the column's own resolved
-// setup); one per setup in All-setups mode (§8.6 item 3: "expands a
-// benchmark into one sub-column per setup").
+// setup); one per setup in All-setups mode.
 export function leafSetupsForColumn(
   column: BenchmarkColumn,
   mode: LeaderboardSetupsMode,

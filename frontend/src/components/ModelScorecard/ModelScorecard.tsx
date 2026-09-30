@@ -14,11 +14,10 @@ interface ModelScorecardProps {
   notEvaluated: ModelNotEvaluatedResult[]
 }
 
-// The Results tab's own scorecard (docs/UI_REDESIGN_PLAN.md section
-// 8.11): one card per (benchmark, setup) this model has a done result
-// on, plus a muted card per catalog benchmark it doesn't -- "Not
-// evaluated" is never a silent gap, it's always paired with a way to
-// close it.
+// The Results tab's own scorecard: one card per (benchmark, setup)
+// this model has a done result on, plus a muted card per catalog
+// benchmark it doesn't -- "Not evaluated" is never a silent gap, it's
+// always paired with a way to close it.
 export function ModelScorecard({ checkpointId, evaluated, notEvaluated }: ModelScorecardProps) {
   if (evaluated.length === 0 && notEvaluated.length === 0) {
     return null

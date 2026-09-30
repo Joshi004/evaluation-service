@@ -1,6 +1,6 @@
 import { Skeleton } from '../Skeleton/Skeleton'
 
-// Shaped like the final layout (§4.5: never the text "Loading…") -- the
+// Shaped like the final layout, never the text "Loading…" -- the
 // toolbar's two rows, then a few batch-header-plus-rows groups standing
 // in for the table.
 export function RunsSkeleton() {

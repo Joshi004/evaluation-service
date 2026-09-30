@@ -10,12 +10,10 @@ export function tagChipLabel(tagCount: DiagnosticsTagCount): string {
   return `${tagLabel(tagCount.tag)} (${tagCount.n_samples})`
 }
 
-// "Tags overlap, so they don't add up to 79 failures." --
-// docs/UI_REDESIGN_PLAN.md §8.7's own pitfall about these chips:
-// "present them as filters, never as a partition ... that implies they
-// add up." One sample can carry several tags (a near miss that's also
-// cosmetic), so the counts across chips can exceed the total failed
-// count.
+// "Tags overlap, so they don't add up to 79 failures." -- these chips
+// are filters, never a partition that implies they add up. One sample
+// can carry several tags (a near miss that's also cosmetic), so the
+// counts across chips can exceed the total failed count.
 export function tagOverlapCaption(failed: number): string {
   return `Tags overlap, so they don't add up to ${failed} failure${failed === 1 ? '' : 's'}.`
 }

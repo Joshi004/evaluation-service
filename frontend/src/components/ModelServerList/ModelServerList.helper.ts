@@ -1,7 +1,7 @@
 // Non-DOM logic for ModelServerList.tsx: totalling GPU usage across
-// every live endpoint (moved from the deleted EndpointsPage.helper.ts)
-// and the section header's own caption, which carries the same counts
-// in words next to LiveIndicator's dot (§4.5: never colour alone).
+// every live endpoint and the section header's own caption, which
+// carries the same counts in words next to LiveIndicator's dot --
+// never colour alone.
 import type { EndpointListItem } from '../../api/client'
 
 export function sumGpus(endpoints: EndpointListItem[]): number {

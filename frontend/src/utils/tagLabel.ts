@@ -1,5 +1,4 @@
-// Display labels for Phase 8's failure tags
-// (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md Phase 8) -- shared between
+// Display labels for the failure tags -- shared between
 // DiagnosticsSummary's clickable tag chips and SampleList's per-row
 // tag badges, so a tag reads the same word in both places. Data, not
 // per-tag branching: an unrecognized tag id falls back to the raw id

@@ -50,7 +50,7 @@ const VIEW_MODE_OPTIONS = [
   { value: 'flat', label: 'Flat list' },
 ]
 
-// §8.9's own toolbar: status chips with their counts and the live
+// The toolbar: status chips with their counts and the live
 // indicator on one row, then search, the four dropdown filters, the
 // batch chip, Clear filters and the By batch / Flat list toggle on a
 // second -- every control here always applies (unlike the Leaderboard's

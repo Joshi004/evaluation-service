@@ -23,11 +23,11 @@ export interface ServingProfileRow {
 }
 
 // Labelled profiles first (alphabetically by label), a custom
-// (unlabelled) profile last -- decision #2's own example, an ad-hoc
-// sampling row from a customised submit, is exactly what this puts at
-// the bottom. Two custom profiles (rare in practice) fall back to
-// comparing hashes, just so the order is deterministic rather than
-// whatever order the API happened to return them in.
+// (unlabelled) profile last -- an ad-hoc sampling row from a
+// customised submit is exactly what this puts at the bottom. Two
+// custom profiles (rare in practice) fall back to comparing hashes,
+// just so the order is deterministic rather than whatever order the
+// API happened to return them in.
 function compareProfileNames(aLabel: string | null, aHash: string, bLabel: string | null, bHash: string): number {
   if (aLabel === null && bLabel !== null) {
     return 1
@@ -60,8 +60,8 @@ export function buildSamplingProfileRows(
 }
 
 // No run count here -- RunListItem carries no serving profile field at
-// all (decision #8), so "used by" for serving can only ever be how many
-// models default to it.
+// all, so "used by" for serving can only ever be how many models
+// default to it.
 export function buildServingProfileRows(
   profiles: ServingProfileSummary[],
   checkpoints: CheckpointListItem[],
@@ -78,9 +78,9 @@ export function buildServingProfileRows(
 }
 
 // "Default for 3 models · 2 runs" (a labelled profile with both), just
-// "3 runs" (a custom profile that's nobody's default, per decision #2's
-// own example) or "Not currently used" (neither) -- runsCount omitted
-// entirely drops that half for serving, which has no run count to show.
+// "3 runs" (a custom profile that's nobody's default) or "Not
+// currently used" (neither) -- runsCount omitted entirely drops that
+// half for serving, which has no run count to show.
 export function formatUsedBy(modelsCount: number, runsCount?: number): string {
   const parts: string[] = []
   if (modelsCount > 0) {

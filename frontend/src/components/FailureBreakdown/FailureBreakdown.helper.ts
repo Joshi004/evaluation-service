@@ -1,7 +1,6 @@
-// Non-DOM logic for FailureBreakdown.tsx: grouping Layer 3's buckets by
-// level, the labels and formatted text each row needs, and the
-// micro/macro reconciliation note (docs/SCORE_DRILLDOWN_EXECUTION_PHASES.md
-// Phase 6). Kept out of the component body per
+// Non-DOM logic for FailureBreakdown.tsx: grouping buckets by level,
+// the labels and formatted text each row needs, and the micro/macro
+// reconciliation note. Kept out of the component body per
 // .cursor/rules/frontend-components.mdc.
 
 import type {
@@ -96,11 +95,11 @@ export function hasNoKnownOutcome(buckets: DiagnosticsBucket[]): boolean {
   return buckets.length > 0 && buckets.every((bucket) => bucket.passed === null)
 }
 
-// The micro-vs-macro explanation (docs/SCORE_DRILLDOWN_UI_PLAN.md
-// Section 4, "Layer 3": "if we show 89.8% underneath a headline of
-// 91.0% with no explanation, someone will file a bug"). Returns []
-// when this benchmark has no instruction-level metrics at all (GSM8K,
-// GPQA-Diamond, MMLU-Pro) -- there is nothing to reconcile.
+// The micro-vs-macro explanation -- if we show 89.8% underneath a
+// headline of 91.0% with no explanation, someone will file a bug.
+// Returns [] when this benchmark has no instruction-level metrics at
+// all (GSM8K, GPQA-Diamond, MMLU-Pro) -- there is nothing to
+// reconcile.
 export function buildMicroMacroNote(
   instructionLevel: DiagnosticsInstructionLevel | null,
   metrics: DiagnosticsMetric[],
@@ -121,11 +120,11 @@ export function buildMicroMacroNote(
       'a 1-rule question the same as a 3-rule one.',
   ]
 
-  // The rows below come from Phase 5's recheck over the saved answers,
-  // not from the stored harness scores `micro_passed` pools -- decision
-  // 4 never reconciles the couple of samples where the two disagree
-  // (751 vs 749 on run-13), so staying silent here would read as the
-  // table being wrong rather than a documented, expected gap.
+  // The rows below come from the recheck over the saved answers, not
+  // from the stored harness scores `micro_passed` pools -- the couple
+  // of samples where the two disagree (751 vs 749 on run-13) are never
+  // reconciled, so staying silent here would read as the table being
+  // wrong rather than a documented, expected gap.
   if (
     instructionLevel.recheck_passed !== null &&
     instructionLevel.recheck_passed !== instructionLevel.micro_passed

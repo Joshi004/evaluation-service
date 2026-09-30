@@ -46,11 +46,10 @@ function countSuffix(count: number): string {
   return count > 0 ? ` (${count})` : ''
 }
 
-// §8.6 item 2's toolbar. Controls that don't apply to the current lens
-// are hidden rather than disabled (Benchmarks, Setups mode and heat
-// tint are Overview-only -- this phase's own plan) so the row still
-// fits on one line at 1024px; density and heat share one "Display"
-// popover for the same reason.
+// Controls that don't apply to the current lens are hidden rather
+// than disabled (Benchmarks, Setups mode and heat tint are
+// Overview-only) so the row still fits on one line at 1024px; density
+// and heat share one "Display" popover for the same reason.
 export function LeaderboardToolbar({
   view,
   familyOptions,

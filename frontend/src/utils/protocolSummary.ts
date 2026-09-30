@@ -1,11 +1,10 @@
 // "Full dataset · 0-shot · 4 repeats" -- the one-line summary of a
 // benchmark's evaluation shape, shown on its Choose-step card and its
-// Settings-step row (Phase 10, docs/UI_REDESIGN_PLAN.md §8.10) so a
-// reader sees what "the recommended settings" actually are without
-// opening Customize protocol. Only the three fields that change what
-// gets measured are surfaced; think_handling and any per-field
-// sampling mandate stay in that panel, the same split
-// CheckpointSamplingCard.tsx's own mandate notes already draw.
+// Settings-step row so a reader sees what "the recommended settings"
+// actually are without opening Customize protocol. Only the three
+// fields that change what gets measured are surfaced; think_handling
+// and any per-field sampling mandate stay in that panel, the same
+// split CheckpointSamplingCard.tsx's own mandate notes already draw.
 import type { StandardSummary } from '../api/client'
 
 // sample_limit's own resolved default can legitimately be null -- the
@@ -15,10 +14,10 @@ import type { StandardSummary } from '../api/client'
 // display summary, so the two stay separate rather than one reaching
 // across into the other's component folder). `scoredSampleCount` --
 // how many samples an actual run against this standard scored -- lets
-// a caller with a real result in hand (the Benchmarks list card, Phase
-// 12 §8.12) show that real count instead of "Full dataset" once one
-// exists; omitted entirely (BenchmarkPicker's own Choose-step card,
-// which has no run yet), the text stays exactly what it always said.
+// a caller with a real result in hand (the Benchmarks list card) show
+// that real count instead of "Full dataset" once one exists; omitted
+// entirely (BenchmarkPicker's own Choose-step card, which has no run
+// yet), the text stays exactly what it always said.
 function formatSampleLimit(sampleLimit: number | null, scoredSampleCount?: number | null): string {
   if (sampleLimit !== null) {
     return `${sampleLimit} samples`

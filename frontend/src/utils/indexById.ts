@@ -1,6 +1,6 @@
 // One row list -> one id -> row lookup. New evaluation's own wizard and
-// page (Phase 10, docs/UI_REDESIGN_PLAN.md §8.10) each needed this for
-// checkpoints, standards, sampling profiles and serving profiles alike
+// page each needed this for checkpoints, standards, sampling profiles
+// and serving profiles alike
 // -- four near-identical functions collapsed into the one generic shape
 // they all shared, once a fourth call site made the duplication obvious
 // (frontend-components.mdc's own "promote once a second component needs

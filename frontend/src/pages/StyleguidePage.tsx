@@ -69,10 +69,9 @@ const SERIES_SWATCH_CLASSES = [
 
 const HEAT_SWATCH_CLASSES = ['bg-heat-1', 'bg-heat-2', 'bg-heat-3', 'bg-heat-4', 'bg-heat-5']
 
-// Real values from the running stack's data (docs/UI_REDESIGN_PLAN.md
-// §2.4) -- the same runs the redesign plan's own acceptance criteria
-// reference, so this page's Helpers section doubles as a live check of
-// Phase 4's formatting and classification examples.
+// Real values from the running stack's data, so this page's Helpers
+// section doubles as a live check of the formatting and classification
+// examples below.
 const RUN_13_INTERVAL: ConfidenceInterval = { lower: 0.8217496511368982, upper: 0.8812585245424298 }
 const RUN_15_INTERVAL: ConfidenceInterval = { lower: 0.8177707308088564, upper: 0.8778896193054617 }
 const RUN_9_INTERVAL: ConfidenceInterval = { lower: 0.5888376499705013, upper: 0.6699249638459293 }
@@ -88,9 +87,9 @@ const MINUTE_MS = 60_000
 const RUN_8_ERROR =
   "FileNotFoundError: [Errno 2] No such file or directory: '/data/evalsvc/runs/run-8/reports/Qwen3.5-0.8B-Think-MOPD-mixv2-RL-v11c-s810/ifeval.json'"
 
-// Run 8's own real shape (docs/UI_REDESIGN_PLAN.md §2.4) -- RunFailureReason
-// only reads `id` and `error`, but its prop is the full RunListItem, so
-// this fills the rest in with that run's other real values.
+// Run 8's own real shape -- RunFailureReason only reads `id` and `error`,
+// but its prop is the full RunListItem, so this fills the rest in with
+// that run's other real values.
 const RUN_8_EXAMPLE: RunListItem = {
   id: 8,
   run_group_id: 3,
@@ -154,9 +153,9 @@ function preventRealNavigation(event: ReactMouseEvent): void {
 }
 
 // Dev-only design-system reference (registered in routes.tsx only when
-// import.meta.env.DEV). Shows every Phase 1 primitive so a change to a
-// token or a primitive's class list is visible in one place, in either
-// theme, without hunting through real pages for an example of each.
+// import.meta.env.DEV). Shows every primitive so a change to a token or a
+// primitive's class list is visible in one place, in either theme, without
+// hunting through real pages for an example of each.
 // Longer than the usual ~200-line component guideline on purpose: an
 // exhaustive catalogue is this page's entire job.
 export function StyleguidePage() {
@@ -177,7 +176,7 @@ export function StyleguidePage() {
       <div className="mx-auto max-w-5xl space-y-10">
         <PageHeader
           title="Styleguide"
-          description="Every Phase 1 primitive, for a visual check against the tokens in index.css."
+          description="Every primitive, for a visual check against the tokens in index.css."
           actions={
             <Button variant="secondary" onClick={() => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))}>
               Switch to {theme === 'dark' ? 'light' : 'dark'} theme
@@ -241,10 +240,9 @@ export function StyleguidePage() {
           </div>
         </Section>
 
-        {/* Phase 10 (docs/UI_REDESIGN_PLAN.md §8.10): SidePanel is
-            Dialog's right-docked sibling for a wide form read as a
-            drawer (New evaluation's own "Customize" panels); Stepper is
-            a horizontal step indicator for a flow whose steps live in
+        {/* SidePanel is Dialog's right-docked sibling for a wide form read
+            as a drawer (New evaluation's own "Customize" panels); Stepper
+            is a horizontal step indicator for a flow whose steps live in
             page state, not routes (New evaluation's own
             Choose/Settings/Review). */}
         <Section title="SidePanel & Stepper">
@@ -290,8 +288,7 @@ export function StyleguidePage() {
             <p className="text-sm text-foreground">Dialog body content goes here.</p>
           </Dialog>
 
-          {/* Phase 8 (docs/UI_REDESIGN_PLAN.md §8.8): `size="lg"` is
-              Compare's own Add run picker; `size="xl"` is its
+          {/* `size="lg"` is Compare's own Add run picker; `size="xl"` is its
               side-by-side sample view, wide enough for 2-4 answer
               columns. `size` defaults to 'md' (the dialog above). */}
           <Button variant="secondary" onClick={() => setLgDialogOpen(true)}>
@@ -338,10 +335,9 @@ export function StyleguidePage() {
           />
         </Section>
 
-        {/* Phase 6 (docs/UI_REDESIGN_PLAN.md §8.6): the Leaderboard's own
-            four new primitives, checked here first per the phase's own
-            plan -- HoverCard's focus/hover handling in particular is
-            "the riskiest piece" and easiest to verify in isolation. */}
+        {/* The Leaderboard's own four new primitives, checked here first --
+            HoverCard's focus/hover handling in particular is "the riskiest
+            piece" and easiest to verify in isolation. */}
         <Section title="HoverCard, MultiSelectMenu, IntervalWhisker, CopyLinkButton">
           <HoverCard trigger={<Button variant="secondary">Hover or focus me</Button>}>
             <p className="text-sm text-foreground">85.4% · 462 of 541 passed</p>
@@ -379,7 +375,7 @@ export function StyleguidePage() {
             className="text-foreground"
           />
 
-          {/* Phase 8's own forest plot draws these at 240px, wide
+          {/* The forest plot draws these at 240px, wide
               enough for 2-4 overlapping intervals to stay legible on
               one shared axis (default is 96px, above). */}
           <IntervalWhisker
@@ -476,18 +472,16 @@ export function StyleguidePage() {
           </Table>
         </Section>
 
-        {/* Phase 11 (docs/UI_REDESIGN_PLAN.md §8.11): a collapsible,
-            copyable "raw JSON, verbatim" view -- shared by
+        {/* A collapsible, copyable "raw JSON, verbatim" view -- shared by
             InspectionSummary's own config.json disclosure and a
             model's own Configuration tab (generation_config). */}
         <Section title="JsonDetails">
           <JsonDetails summary="config.json (verbatim)" value={{ model_type: 'qwen3', torch_dtype: 'bfloat16' }} />
         </Section>
 
-        {/* Phase 12 (docs/UI_REDESIGN_PLAN.md §8.12): CodeBlock is the
-            <pre>+CopyButton shell JsonDetails above now composes, for
-            plain text rather than JSON (a benchmark's own prompt
-            template, its source YAML); Callout generalises the
+        {/* CodeBlock is the <pre>+CopyButton shell JsonDetails above now
+            composes, for plain text rather than JSON (a benchmark's own
+            prompt template, its source YAML); Callout generalises the
             tinted-box-with-icon pattern InspectionSummary.tsx and
             DryRunPreview.tsx already hand-roll, first used for real by
             the Catalog health banner below. */}
@@ -504,9 +498,9 @@ export function StyleguidePage() {
           </div>
         </Section>
 
-        {/* Phase 4 (docs/UI_REDESIGN_PLAN.md §8.4, item 6/7): the seven
-            domain display components every later phase composes from,
-            each shown against real data from the running stack. */}
+        {/* The seven domain display components the rest of the app
+            composes from, each shown against real data from the
+            running stack. */}
         <Section title="Domain components">
           <div className="flex w-full flex-col gap-4">
             <div className="flex flex-wrap items-center gap-4">
@@ -544,9 +538,9 @@ export function StyleguidePage() {
           </div>
         </Section>
 
-        {/* Phase 9 (docs/UI_REDESIGN_PLAN.md §8.9): today's data has no
-            active run and no batch with a mixed-status spread, so these
-            three states can only be seen here, not on the real page. */}
+        {/* Today's data has no active run and no batch with a
+            mixed-status spread, so these three states can only be seen
+            here, not on the real page. */}
         <Section title="Runs activity">
           <div className="flex w-full flex-col gap-4">
             <div className="flex flex-wrap items-center gap-6">
@@ -568,11 +562,10 @@ export function StyleguidePage() {
           </div>
         </Section>
 
-        {/* Phase 13 (docs/UI_REDESIGN_PLAN.md §8.13): the model server
-            card's own time-to-live meter, against the five shapes
-            computeTimeToLive branches on -- a live card grid only ever
-            shows whichever one today's real cluster state happens to
-            produce, so the rest are only reachable here. No
+        {/* The model server card's own time-to-live meter, against the
+            five shapes computeTimeToLive branches on -- a live card grid
+            only ever shows whichever one today's real cluster state
+            happens to produce, so the rest are only reachable here. No
             ModelServerCard/Kill button here: Kill is a real mutation,
             out of place on a page every dev session loads. */}
         <Section title="TimeToLiveBar">
@@ -616,10 +609,9 @@ export function StyleguidePage() {
           </div>
         </Section>
 
-        {/* Live output of the Phase 4 helper functions against the
-            plan's own acceptance examples (§8.4) -- a change to one of
-            these that breaks an example is visible here, not just in a
-            page that happens to call it. */}
+        {/* Live output of the helper functions against real example
+            inputs -- a change to one of these that breaks an example is
+            visible here, not just in a page that happens to call it. */}
         <Section title="Helpers">
           <KeyValueList
             className="w-full max-w-2xl"

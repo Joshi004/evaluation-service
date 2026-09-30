@@ -1,7 +1,7 @@
 // Non-DOM logic for Dialog.tsx: one complete width class per size --
-// there is no tailwind-merge in this project (D2), so a caller can
-// never layer a second width utility on top of this component's own
-// without one silently losing to the other.
+// there is no tailwind-merge in this project, so a caller can never
+// layer a second width utility on top of this component's own without
+// one silently losing to the other.
 import { cn } from '../../utils/cn'
 
 export type DialogSize = 'md' | 'lg' | 'xl'
@@ -9,8 +9,7 @@ export type DialogSize = 'md' | 'lg' | 'xl'
 // 'md' matches the width every dialog used before `size` existed
 // (ConfirmDialog and every plain form dialog keep this default).
 // 'lg' is Compare's own Add run picker; 'xl' is its side-by-side
-// sample view, wide enough for 2-4 answer columns side by side
-// (docs/UI_REDESIGN_PLAN.md §8.8).
+// sample view, wide enough for 2-4 answer columns side by side.
 const SIZE_MAX_WIDTH_CLASSES: Record<DialogSize, string> = {
   md: 'max-w-md',
   lg: 'max-w-2xl',

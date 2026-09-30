@@ -12,10 +12,10 @@ interface CheckWeightsButtonProps {
   className?: string
 }
 
-// The Configuration tab's own "re-check the weights" action
-// (docs/UI_REDESIGN_PLAN.md §8.11) -- guarded by a ConfirmDialog
-// because §3 rule 7 lists validate among the always-confirmed operator
-// tools (it re-reads the checkpoint's files on the cluster over SSH).
+// The Configuration tab's own "re-check the weights" action --
+// guarded by a ConfirmDialog because validate is among the
+// always-confirmed operator tools (it re-reads the checkpoint's files
+// on the cluster over SSH).
 // useValidateCheckpoint's own onSuccess already writes the refreshed
 // CheckpointDetail straight into this checkpoint's query cache, so the
 // header's availability badge updates in place without this component

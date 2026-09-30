@@ -16,8 +16,8 @@ interface PartitionPickerProps {
 }
 
 // New evaluation's own partition picker (per-run SLURM partition
-// selection, an Advanced setting -- docs/UI_REDESIGN_PLAN.md §4.3):
-// shows the cluster's real partition list -- including a hidden,
+// selection, an Advanced setting): shows the cluster's real partition
+// list -- including a hidden,
 // lower-priority one like `background` that never appears in SLURM's
 // own unqualified listing commands. useClusterPartitions never fetches
 // on its own (ground rule 15); Refresh below is what calls the

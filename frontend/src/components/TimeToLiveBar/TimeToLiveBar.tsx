@@ -11,12 +11,11 @@ interface TimeToLiveBarProps {
   className?: string
 }
 
-// A model server card's own "how much longer does this have" meter
-// (docs/UI_REDESIGN_PLAN.md §8.13, item 1's "time-to-live bar from
-// created_at/expires_at"): full right after a start, empty as
-// `expires_at` approaches. The caption always spells out the same
-// meaning in words (§4.5: never colour alone), and stands in for the
-// bar entirely when the dates can't be parsed.
+// A model server card's own "how much longer does this have" meter:
+// full right after a start, empty as `expires_at` approaches. The
+// caption always spells out the same meaning in words -- never colour
+// alone -- and stands in for the bar entirely when the dates can't be
+// parsed.
 export function TimeToLiveBar({ createdAt, expiresAt, now, className }: TimeToLiveBarProps) {
   const { fractionLeft, label, endingSoon } = computeTimeToLive(createdAt, expiresAt, now)
 

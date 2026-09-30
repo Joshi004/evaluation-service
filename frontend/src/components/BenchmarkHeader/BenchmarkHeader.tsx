@@ -13,11 +13,10 @@ interface BenchmarkHeaderProps {
   standard: StandardSummary
 }
 
-// The Benchmark detail page's own header (Phase 12,
-// docs/UI_REDESIGN_PLAN.md §8.12): identity (display name, version,
-// category, fingerprint, loaded-when), then the actions every tab
-// needs regardless of which one is open -- mirrors ModelHeader's own
-// split, rendered once above the <Outlet>.
+// The Benchmark detail page's own header: identity (display name,
+// version, category, fingerprint, loaded-when), then the actions
+// every tab needs regardless of which one is open -- mirrors
+// ModelHeader's own split, rendered once above the <Outlet>.
 export function BenchmarkHeader({ standard }: BenchmarkHeaderProps) {
   const version = benchmarkVersion(standard.label)
 

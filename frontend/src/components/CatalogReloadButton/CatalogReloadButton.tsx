@@ -11,11 +11,10 @@ interface CatalogReloadButtonProps {
 }
 
 // Reload's own confirmation (ground rule 14: never window.confirm),
-// following the RunCancelButton pattern (Phase 12,
-// docs/UI_REDESIGN_PLAN.md §8.12). Not `destructive` -- reload only
-// ever skips unchanged files and adds new rows or refreshes a row's
-// own unhashed fields in place (resource.reloadDescription); it never
-// removes anything, unlike Prune and Delete below.
+// following the RunCancelButton pattern. Not `destructive` -- reload
+// only ever skips unchanged files and adds new rows or refreshes a
+// row's own unhashed fields in place (resource.reloadDescription); it
+// never removes anything, unlike Prune and Delete below.
 export function CatalogReloadButton({ resource }: CatalogReloadButtonProps) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const reloadCatalog = useReloadCatalog(resource)

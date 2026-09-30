@@ -3,10 +3,9 @@
 // Leaderboard's column order, kept as its own small function here
 // rather than reused directly since it sorts BenchmarkColumn (a
 // pivoted leaderboard row), not StandardSummary (the catalog row this
-// file's own callers read). Promoted from BenchmarkPicker.helper.ts
-// (Phase 12, docs/UI_REDESIGN_PLAN.md §8.12) once the Benchmarks list
-// page became a second caller that needs the same grouping over the
-// same catalog rows.
+// file's own callers read). Lives here rather than in a single
+// component's helper because both BenchmarkPicker and the Benchmarks
+// list page need the same grouping over the same catalog rows.
 import type { StandardSummary } from '../api/client'
 
 export interface StandardCategoryGroup {

@@ -16,9 +16,9 @@ interface CompareWithModelButtonProps {
   size?: ButtonSize
 }
 
-// Phase 11's own "Compare with..." entry point (docs/UI_REDESIGN_PLAN.md
-// §8.11), used by both a Models-list card/row and the model page's own
-// header: a dialog listing every other model, parent first, with the
+// The "Compare with..." entry point, used by both a Models-list
+// card/row and the model page's own header: a dialog listing every
+// other model, parent first, with the
 // setups both models share. Picking a setup picks both the other model
 // and the comparison in one click, straight to
 // /compare?runs=<this model's run>,<other model's run> (findSharedSetups'

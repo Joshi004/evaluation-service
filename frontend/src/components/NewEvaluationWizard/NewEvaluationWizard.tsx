@@ -56,13 +56,13 @@ interface NewEvaluationWizardProps {
 
 const CHOOSE_BOTH_AXES_REASON = 'Choose at least one model and one benchmark.'
 
-// The whole New evaluation flow (Phase 10, docs/UI_REDESIGN_PLAN.md
-// §8.10): owns the grid selection, every override draft, the batch's
-// own name and submitter, and the partition, then renders whichever
-// step's content the URL's own `?step=` names. Mounted fresh (a new
-// React `key`) per distinct prefill -- NewEvaluationPage's own job, not
-// this component's -- so `initialCheckpointIds` etc. are only ever read
-// once, on mount, the same way `useState(initial)` always works.
+// The whole New evaluation flow: owns the grid selection, every
+// override draft, the batch's own name and submitter, and the
+// partition, then renders whichever step's content the URL's own
+// `?step=` names. Mounted fresh (a new React `key`) per distinct
+// prefill -- NewEvaluationPage's own job, not this component's -- so
+// `initialCheckpointIds` etc. are only ever read once, on mount, the
+// same way `useState(initial)` always works.
 export function NewEvaluationWizard({
   checkpoints,
   standards,
@@ -104,9 +104,9 @@ export function NewEvaluationWizard({
         next.set('step', stepKey)
         return next
       },
-      // Pushed, not replaced (§8.10's own URL contract): each step is
-      // its own history entry, so the browser's own Back button moves
-      // between them the same way the in-page Back button does.
+      // Pushed, not replaced: each step is its own history entry, so
+      // the browser's own Back button moves between them the same way
+      // the in-page Back button does.
       { replace: false },
     )
   }

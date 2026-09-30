@@ -62,11 +62,10 @@ export function resolveRankStanding(
   return { kind: 'ranked', rank: own.rank, total: ranked.length, comparedRank }
 }
 
-// "#1 of 2 on this setup, within margin of #2" -- the acceptance
-// criteria's own exact wording (docs/UI_REDESIGN_PLAN.md §8.7). `null`
-// for 'unavailable' and 'superseded': the component renders those two
-// cases itself (the latter as a link to the superseding run), not as
-// plain text from here.
+// "#1 of 2 on this setup, within margin of #2" -- used verbatim, not
+// reworded. `null` for 'unavailable' and 'superseded': the component
+// renders those two cases itself (the latter as a link to the
+// superseding run), not as plain text from here.
 export function rankStandingText(standing: RankStanding): string | null {
   switch (standing.kind) {
     case 'unavailable':

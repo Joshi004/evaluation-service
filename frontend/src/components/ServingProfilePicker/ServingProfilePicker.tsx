@@ -48,7 +48,7 @@ function DraftField({ label, value, onValueChange, type = 'text', step, placehol
 // Step 3 of the registration wizard: accept the recommendation, pick a
 // different existing profile, or customise. Whichever is active, the
 // component reports a complete ServingProfileChoice to the parent
-// rather than owning any of this state itself (R-D31's controlled-input
+// rather than owning any of this state itself (the controlled-input
 // idiom) -- the parent is what assembles the final
 // RegisterCheckpointRequest.
 export function ServingProfilePicker({ recommendation, profiles, choice, onChoiceChange }: ServingProfilePickerProps) {

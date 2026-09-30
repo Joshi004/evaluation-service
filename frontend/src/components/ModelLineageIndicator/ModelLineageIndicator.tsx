@@ -9,12 +9,11 @@ interface ModelLineageIndicatorProps {
   className?: string
 }
 
-// "from X" and "N children" (docs/UI_REDESIGN_PLAN.md §8.11), each with
-// a tooltip -- the Models list' own glance at lineage; the model page's
-// own Lineage tab is where the full parent/child detail and the
-// parent-comparison delta table actually live. Renders nothing for a
-// model with no parent and no children, the common case today (no
-// checkpoint yet names a parent -- the plan's own "Starting point").
+// "from X" and "N children", each with a tooltip -- the Models list'
+// own glance at lineage; the model page's own Lineage tab is where the
+// full parent/child detail and the parent-comparison delta table
+// actually live. Renders nothing for a model with no parent and no
+// children, the common case today (no checkpoint yet names a parent).
 export function ModelLineageIndicator({ lineage, className }: ModelLineageIndicatorProps) {
   if (lineage.parent === null && !lineage.parentMissing && lineage.children.length === 0) {
     return null

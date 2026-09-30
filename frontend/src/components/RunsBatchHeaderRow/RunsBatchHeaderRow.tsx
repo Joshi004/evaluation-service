@@ -11,13 +11,12 @@ interface RunsBatchHeaderRowProps {
   onToggle: () => void
 }
 
-// One batch's own header (docs/UI_REDESIGN_PLAN.md §8.9, item 2) -- a
-// single <th scope="rowgroup"> spanning every column, opening that
-// batch's own <tbody>. Every number here reads `batch.allRunsInBatch`
-// (built from the *unfiltered* run list, RunsTable.helper.ts), not
-// whichever of its rows the current filters happen to show, since
-// Cancel batch and the progress bar both describe the whole batch
-// regardless of what's on screen underneath.
+// One batch's own header -- a single <th scope="rowgroup"> spanning
+// every column, opening that batch's own <tbody>. Every number here
+// reads `batch.allRunsInBatch` (built from the *unfiltered* run list,
+// RunsTable.helper.ts), not whichever of its rows the current filters
+// happen to show, since Cancel batch and the progress bar both
+// describe the whole batch regardless of what's on screen underneath.
 export function RunsBatchHeaderRow({ batch, columnCount, expanded, onToggle }: RunsBatchHeaderRowProps) {
   const totalRunCount = batch.allRunsInBatch.length
   const runsCountText =

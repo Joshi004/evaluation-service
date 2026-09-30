@@ -21,11 +21,11 @@ interface RunReportHeaderProps {
   run: RunDetail
 }
 
-// The run report's own header (docs/UI_REDESIGN_PLAN.md §8.7, item 1):
-// identity (model, benchmark, setup, batch), state (status, timing,
-// submitted by) and the actions every run needs regardless of which tab
-// is open, so switching tabs never re-mounts or re-fetches any of this
-// -- RunReportPage renders it once, above the <Outlet>.
+// The run report's own header: identity (model, benchmark, setup,
+// batch), state (status, timing, submitted by) and the actions every
+// run needs regardless of which tab is open, so switching tabs never
+// re-mounts or re-fetches any of this -- RunReportPage renders it
+// once, above the <Outlet>.
 export function RunReportHeader({ run }: RunReportHeaderProps) {
   const timing = timingLabel(run)
   const now = new Date()

@@ -1,7 +1,7 @@
 import { Skeleton } from '../Skeleton/Skeleton'
 
-// Shaped like the final layout (§4.5: never the text "Loading…") --
-// a breadcrumb-height line, the header's two identity/meta rows, the
+// Shaped like the final layout, never just the text "Loading…" -- a
+// breadcrumb-height line, the header's two identity/meta rows, the
 // verdict band's own height, and a tab strip.
 export function RunReportSkeleton() {
   return (

@@ -1,7 +1,7 @@
 import { Skeleton } from '../Skeleton/Skeleton'
 
-// Shaped like the final layout (§4.5: never the text "Loading…") --
-// a toolbar-height row, a header-height bar, then a handful of
+// Shaped like the final layout, never the text "Loading…" -- a
+// toolbar-height row, a header-height bar, then a handful of
 // row-height bars standing in for the matrix.
 export function LeaderboardSkeleton() {
   return (

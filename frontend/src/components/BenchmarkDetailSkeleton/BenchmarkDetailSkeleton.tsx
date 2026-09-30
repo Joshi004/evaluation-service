@@ -1,6 +1,6 @@
 import { Skeleton } from '../Skeleton/Skeleton'
 
-// Shaped like the final layout (§4.5: never the text "Loading…") --
+// Shaped like the final layout, never just the text "Loading…" --
 // mirrors ModelDetailSkeleton's own reasoning for the Benchmark detail
 // page: a breadcrumb-height line, the header's title and two meta
 // lines, a tab strip, then a content placeholder.

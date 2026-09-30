@@ -10,9 +10,9 @@ interface PageHeaderProps {
 }
 
 // The top of every page: an optional breadcrumb, the title stating the
-// question this page answers (§3 principle 1), a one-line description,
-// and a slot for the page's primary action(s). A tab bar, when a page
-// has one, goes directly below this (§4.5's page anatomy).
+// question this page answers, a one-line description, and a slot for
+// the page's primary action(s). A tab bar, when a page has one, goes
+// directly below this.
 export function PageHeader({ breadcrumb, title, description, actions, className }: PageHeaderProps) {
   return (
     <div className={cn('flex items-start justify-between gap-4', className)}>

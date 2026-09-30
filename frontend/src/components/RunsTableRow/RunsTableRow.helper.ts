@@ -1,6 +1,6 @@
 // Non-DOM logic for RunsTableRow.tsx: the Result column's own
-// truncation line (docs/UI_REDESIGN_PLAN.md §8.9, item 3: "a second
-// line reads '0.0% truncated', in the warning tone when above zero").
+// truncation line -- a second line reads '0.0% truncated', in the
+// warning tone when above zero.
 
 import { formatFractionAsPercent } from '../../utils/formatFractionAsPercent'
 

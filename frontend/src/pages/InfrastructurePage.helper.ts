@@ -1,6 +1,5 @@
 // Non-DOM logic for InfrastructurePage.tsx: the useStartEndpoint
-// failure toast's own message (docs/UI_REDESIGN_PLAN.md §8.13's
-// InfrastructurePage bullet). An ApiError carries the backend's own
+// failure toast's own message. An ApiError carries the backend's own
 // detail (apiFetch's own extractErrorDetail); anything else -- a
 // dropped connection, a timeout on a cold start that can genuinely
 // take minutes -- means the request never got a real answer, so the

@@ -9,13 +9,11 @@ interface CalloutProps {
   className?: string
 }
 
-// The one tinted-box-with-icon primitive (Phase 12, docs/UI_REDESIGN_PLAN.md
-// §8.12) -- generalises the hand-rolled bg-warning-soft/bg-danger-soft
-// boxes InspectionSummary.tsx and DryRunPreview.tsx already style
-// themselves (both left as-is for now; moving them onto this is a
-// follow-up, not part of this phase). The Catalog health banner is
-// its first real caller: a warning Callout with a Review action that
-// opens the Manage catalog drawer.
+// The one tinted-box-with-icon primitive -- generalises the hand-rolled
+// bg-warning-soft/bg-danger-soft boxes InspectionSummary.tsx and
+// DryRunPreview.tsx already style themselves. The Catalog health
+// banner is its first real caller: a warning Callout with a Review
+// action that opens the Manage catalog drawer.
 export function Callout({ tone, title, children, actions, className }: CalloutProps) {
   const Icon = CALLOUT_ICONS[tone]
   return (

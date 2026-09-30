@@ -29,13 +29,12 @@ import {
   type ModelsWeightsFilter,
 } from './ModelsPage.helper'
 
-// The registry (docs/UI_REDESIGN_PLAN.md §8.11): every registered
-// model, grouped by family, with a glance at its latest results,
-// lineage and run counts -- replaces the old checkpoints list's plain
-// per-family tables. Results and ranks come from the exact same
-// buildLeaderboard board the Leaderboard itself renders (this phase's
-// own "ranks are Leaderboard ranks by construction" decision), never a
-// second computation that could disagree with it.
+// The registry: every registered model, grouped by family, with a
+// glance at its latest results, lineage and run counts. Results and
+// ranks come from the exact same buildLeaderboard board the
+// Leaderboard itself renders -- ranks are Leaderboard ranks by
+// construction, never a second computation that could disagree with
+// it.
 export function ModelsPage() {
   const checkpoints = useCheckpoints()
   const leaderboard = useLeaderboard()

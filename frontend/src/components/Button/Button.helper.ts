@@ -16,9 +16,8 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
 // Labelled (Button) and icon-only (IconButton) sizing are kept as two
 // separate maps rather than one shared size class: `px-4` (label
 // padding) and `w-9` (icon square) both touch horizontal sizing, and
-// with no tailwind-merge in this project (see D2 in the redesign plan)
-// two conflicting utilities in one class string have no reliable way
-// to resolve which one wins.
+// with no tailwind-merge in this project, two conflicting utilities in
+// one class string have no reliable way to resolve which one wins.
 export const BUTTON_LABEL_SIZE: Record<ButtonSize, string> = {
   sm: 'h-8 px-3 text-xs gap-1.5',
   md: 'h-9 px-4 text-sm gap-2',

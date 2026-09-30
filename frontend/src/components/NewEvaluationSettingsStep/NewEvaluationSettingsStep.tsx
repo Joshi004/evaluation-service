@@ -27,11 +27,11 @@ interface NewEvaluationSettingsStepProps {
   leaderboardQuery: UseQueryResult<LeaderboardRow[]>
 }
 
-// Step 2 of New evaluation (Phase 10, docs/UI_REDESIGN_PLAN.md §8.10):
-// a row per selected model, a row per selected benchmark, then one
-// shared answer to "will this line up with the leaderboard?" below
-// both -- the recommended defaults need no reading; a row's own
-// "Customize" panel is where a submitter goes to change something.
+// Step 2 of New evaluation: a row per selected model, a row per
+// selected benchmark, then one shared answer to "will this line up
+// with the leaderboard?" below both -- the recommended defaults need
+// no reading; a row's own "Customize" panel is where a submitter goes
+// to change something.
 export function NewEvaluationSettingsStep({
   selectedCheckpoints,
   selectedStandards,

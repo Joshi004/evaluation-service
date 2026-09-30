@@ -5,12 +5,11 @@ import { standardFieldRows } from '../utils/runConfigFieldRows'
 import { buildSamplingMandateRows } from './BenchmarkProtocolTab.helper'
 import { useBenchmarkPage } from './BenchmarkDetailPage.helper'
 
-// The Benchmark detail page's Protocol tab (Phase 12,
-// docs/UI_REDESIGN_PLAN.md §8.12): everything standardFieldRows itself
-// leaves out of a run's own Configuration tab -- prompt/few-shot
-// templates, extraction and the raw source file -- because there it's
-// "better suited to the Benchmarks page's own raw-YAML view" (that
-// function's own comment); this tab is that view.
+// The Benchmark detail page's Protocol tab: everything
+// standardFieldRows itself leaves out of a run's own Configuration tab
+// -- prompt/few-shot templates, extraction and the raw source file --
+// because there it's "better suited to the Benchmarks page's own
+// raw-YAML view" (that function's own comment); this tab is that view.
 export function BenchmarkProtocolTab() {
   const { standard } = useBenchmarkPage()
   const mandateRows = buildSamplingMandateRows(standard)
@@ -82,7 +81,7 @@ export function BenchmarkProtocolTab() {
           {/* A native <details> here, not a Card-nested Callout or a
           third collapsible primitive -- CatalogPanel's own "What these
           states mean" legend already established this exact pattern
-          for a collapsible section in this codebase (Phase 12). */}
+          for a collapsible section in this codebase. */}
           <details>
             <summary className="cursor-pointer text-sm font-medium text-foreground">Source file</summary>
             <div className="mt-3">

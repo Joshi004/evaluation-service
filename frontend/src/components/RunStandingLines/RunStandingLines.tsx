@@ -18,13 +18,11 @@ interface RunStandingLinesProps {
 }
 
 // The two context lines a verdict needs to read as more than a bare
-// number (§3 rule 4, "uncertainty is part of the number", extended here
-// to context as well): how this run ranks among its peers on this setup
-// right now, and how it moved against its own model's previous result
-// on the same setup. Each degrades independently -- a run with no peers
-// still gets a movement line, and vice versa (docs/UI_REDESIGN_PLAN.md
-// §8.7's own acceptance criterion: "degrade gracefully when there is no
-// peer or previous run").
+// number -- the same "uncertainty is part of the number" principle,
+// extended here to context as well: how this run ranks among its peers
+// on this setup right now, and how it moved against its own model's
+// previous result on the same setup. Each degrades independently -- a
+// run with no peers still gets a movement line, and vice versa.
 export function RunStandingLines({ run }: RunStandingLinesProps) {
   return (
     <div className="space-y-0.5 text-sm text-muted-foreground">

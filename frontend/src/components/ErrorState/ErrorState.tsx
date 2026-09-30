@@ -8,10 +8,9 @@ interface ErrorStateProps {
   onRetry?: () => void
 }
 
-// The one way a data-driven view reports a load failure (§4.5): a
-// plain message, a Retry action when the caller can re-run the
-// request, and the raw error tucked behind a disclosure instead of
-// dumped inline.
+// The one way a data-driven view reports a load failure: a plain
+// message, a Retry action when the caller can re-run the request, and
+// the raw error tucked behind a disclosure instead of dumped inline.
 export function ErrorState({ message, details, onRetry }: ErrorStateProps) {
   const [showDetails, setShowDetails] = useState(false)
 

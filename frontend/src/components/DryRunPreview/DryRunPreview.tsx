@@ -57,7 +57,7 @@ function FindingGroupItem({ finding, textClassName }: FindingGroupItemProps) {
 // cards the original Submit page showed here (every merge layer, not
 // just the answer) moved to the Settings step's own setup-alignment
 // line, which is where "will this line up with the leaderboard?" now
-// lives (docs/UI_REDESIGN_PLAN.md §8.10).
+// lives.
 export function DryRunPreview({ preview, isLoading, isError, error, onRetry, createdItems }: DryRunPreviewProps) {
   if (isLoading) {
     return (

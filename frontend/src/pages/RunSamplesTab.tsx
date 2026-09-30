@@ -31,12 +31,12 @@ import {
   type SampleStep,
 } from './RunSamplesTab.helper'
 
-// The Samples tab (docs/UI_REDESIGN_PLAN.md §8.7, item 4): merges the
-// old RunDiagnosticsPage (filters, breakdown, list) with RunSamplePage
-// (one sample, fully explained) into one master-detail view. Both
-// `/runs/:id/samples` and `/runs/:id/samples/:sampleKey` mount this same
-// component -- the optional :sampleKey is what decides whether the
-// panel renders at all, not a second route or a nested outlet.
+// The Samples tab: merges the old RunDiagnosticsPage (filters,
+// breakdown, list) with RunSamplePage (one sample, fully explained)
+// into one master-detail view. Both `/runs/:id/samples` and
+// `/runs/:id/samples/:sampleKey` mount this same component -- the
+// optional :sampleKey is what decides whether the panel renders at
+// all, not a second route or a nested outlet.
 export function RunSamplesTab() {
   const { run, diagnostics } = useRunReport()
   const { sampleKey } = useParams<{ sampleKey?: string }>()
@@ -54,7 +54,7 @@ export function RunSamplesTab() {
   // or a sample's own panel) and only rewrite the query string -- a
   // filter change must never itself close an open panel (the panel can
   // still show whatever is currently open; only its Prev/Next degrade
-  // if the new filter no longer includes it). `replace`, per §4.5's own
+  // if the new filter no longer includes it). `replace` follows the
   // "replace for filter edits, push for navigation" rule.
   function updateFilters(next: SampleListFilters): void {
     const query = toSearchParams(next).toString()
@@ -77,9 +77,9 @@ export function RunSamplesTab() {
     updateFilters({ ...filters, offset: filters.offset + SAMPLE_PAGE_SIZE })
   }
 
-  // Opening, stepping between and closing a sample are real navigation
-  // (§4.5: "push for navigation") -- Back steps through what was
-  // actually viewed, one sample at a time.
+  // Opening, stepping between and closing a sample are real
+  // navigation -- Back steps through what was actually viewed, one
+  // sample at a time.
   function openSample(key: string, offsetOverride?: number): void {
     const nextFilters = offsetOverride === undefined ? filters : { ...filters, offset: offsetOverride }
     const query = toSearchParams(nextFilters).toString()

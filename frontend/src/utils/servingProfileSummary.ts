@@ -1,15 +1,13 @@
-// A one-line "what this profile actually does" summary -- promoted
-// from ServingProfilePicker.helper.ts (Phase 11, docs/UI_REDESIGN_PLAN.md
-// section 8.11) once a model's own Configuration tab became a second
-// caller: the registration wizard's accept/pick options and a model's
+// A one-line "what this profile actually does" summary -- the
+// registration wizard's accept/pick options and a model's
 // currently-registered profile now read the exact same description,
 // so the two can never drift apart.
 import type { ServingProfileSummary } from '../api/client'
 import { servingProfileDisplayName } from './servingProfileDisplayName'
 
 // The profile's own facts, without its name -- split out of
-// describeProfileGlance (Phase 12, docs/UI_REDESIGN_PLAN.md §8.12) once
-// the Profiles page's own table needed a "Summary" column next to a
+// describeProfileGlance once the Profiles page's own table needed a
+// "Summary" column next to a
 // "Name" column that already shows servingProfileDisplayName, so the
 // name would otherwise print twice in the same row.
 export function servingSummary(profile: ServingProfileSummary): string {

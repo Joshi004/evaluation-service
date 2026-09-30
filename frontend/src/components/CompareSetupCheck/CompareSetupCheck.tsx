@@ -12,9 +12,9 @@ interface CompareSetupCheckProps {
   runs: RunDetail[]
 }
 
-// §8.8 item 3: whether the baseline and every other run share one
-// setup, and -- when they don't -- exactly what differs, read straight
-// off each run's own resolved standard/sampling/serving (already
+// Whether the baseline and every other run share one setup, and --
+// when they don't -- exactly what differs, read straight off each
+// run's own resolved standard/sampling/serving (already
 // loaded by ComparisonView; no extra request). Uses the same
 // setupMatchForHashes the compare tray's own "Setups differ" badge
 // calls, so the tray and this page can never disagree.

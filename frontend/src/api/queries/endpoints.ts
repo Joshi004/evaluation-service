@@ -32,9 +32,7 @@ interface StartEndpointCallbacks {
 // a closed dialog or a page navigation would trip. The options object
 // passed to useMutation itself has no such guard -- Mutation.execute
 // calls it unconditionally -- so a toast fired from here still reaches
-// the user after they've moved on (docs/UI_REDESIGN_PLAN.md §8.13,
-// item 2's "if the dialog is closed, report completion or failure with
-// a toast").
+// the user after they've moved on.
 export function useStartEndpoint({
   onStarted,
   onFailed,

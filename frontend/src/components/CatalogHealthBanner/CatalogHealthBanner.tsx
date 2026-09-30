@@ -9,11 +9,11 @@ interface CatalogHealthBannerProps {
   className?: string
 }
 
-// Decision #2 (docs/UI_REDESIGN_PLAN.md §8.12): only new/conflicting/
-// invalid ever surface here (entryNeedsAttention) -- ad_hoc and
-// orphaned rows are normal, permanent fixtures (a live check found one
-// of each today), so a banner that fired on "not literally loaded"
-// would show up on every page load. Renders nothing while status is
+// Only new/conflicting/invalid ever surface here (entryNeedsAttention)
+// -- ad_hoc and orphaned rows are normal, permanent fixtures (a live
+// check found one of each today), so a banner that fired on "not
+// literally loaded" would show up on every page load. Renders nothing
+// while status is
 // loading, on error (a broken banner would be a worse distraction than
 // a missing one -- the drawer's own ErrorState covers this case if
 // someone opens it), or once nothing needs attention.

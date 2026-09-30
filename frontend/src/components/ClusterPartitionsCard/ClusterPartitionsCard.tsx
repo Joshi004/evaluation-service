@@ -11,11 +11,10 @@ import { Skeleton } from '../Skeleton/Skeleton'
 import { Table, TableCell, TableHeaderCell } from '../Table/Table'
 import { buildPartitionRows } from './ClusterPartitionsCard.helper'
 
-// docs/UI_REDESIGN_PLAN.md §8.13, item 3: the cluster's own partition
-// list, read only on request (ground rule 15 -- this is an SSH-backed
-// read, never polled). `useClusterPartitions` seeds itself from a
-// week-old localStorage cache, so `hasData` below is true on most
-// page loads even before anyone clicks Refresh.
+// The cluster's own partition list, read only on request (ground rule
+// 15 -- this is an SSH-backed read, never polled). `useClusterPartitions`
+// seeds itself from a week-old localStorage cache, so `hasData` below
+// is true on most page loads even before anyone clicks Refresh.
 export function ClusterPartitionsCard() {
   const partitionsQuery = useClusterPartitions()
   const hasData = partitionsQuery.data !== undefined

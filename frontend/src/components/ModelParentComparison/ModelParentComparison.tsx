@@ -14,9 +14,9 @@ interface ModelParentComparisonProps {
   comparisons: SharedSetupComparison[]
 }
 
-// The Lineage tab's own "Compare with parent" delta table
-// (docs/UI_REDESIGN_PLAN.md §8.11): one row per (benchmark, setup) both
-// the model and its parent have a done result on, baseline = parent
+// The Lineage tab's own "Compare with parent" delta table: one row per
+// (benchmark, setup) both the model and its parent have a done result
+// on, baseline = parent
 // (findSharedSetups' own baseline-first convention). Δ reads "within
 // margin of error" instead of a bare number whenever the two
 // confidence intervals overlap, so a difference that isn't

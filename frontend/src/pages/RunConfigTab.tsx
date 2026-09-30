@@ -42,11 +42,9 @@ function ConfigCard({ title, fingerprint, children }: ConfigCardProps) {
   )
 }
 
-// The Configuration tab (docs/UI_REDESIGN_PLAN.md §8.7, item 5):
-// resolved benchmark, sampling, serving, model server and execution
-// details as grouped key-value lists -- everything the old run page's
-// five stacked configuration blocks showed, moved off the default view
-// and onto its own tab so results lead instead (§3 rule 2).
+// The Configuration tab: resolved benchmark, sampling, serving, model
+// server and execution details as grouped key-value lists, kept off
+// the default view and on its own tab so results lead instead.
 export function RunConfigTab() {
   const { run } = useRunReport()
   const now = new Date()
@@ -86,11 +84,11 @@ export function RunConfigTab() {
 
       <ConfigCard title="Model server">
         {run.endpoint === null ? (
-          // Not only a cancel-before-endpoint gap (Phase 5's own known
-          // one) -- a run also lands here 'failed' with no endpoint at
-          // all if starting or reusing one itself threw before
-          // attach_endpoint ever ran (worker.py's own try block), so
-          // this stays status-agnostic rather than naming one cause.
+          // Not only a cancel-before-endpoint gap -- a run also lands
+          // here 'failed' with no endpoint at all if starting or
+          // reusing one itself threw before attach_endpoint ever ran
+          // (worker.py's own try block), so this stays status-agnostic
+          // rather than naming one cause.
           <p className="text-sm text-muted-foreground">No model server was assigned to this run.</p>
         ) : (
           <KeyValueList

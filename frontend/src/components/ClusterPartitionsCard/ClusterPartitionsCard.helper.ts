@@ -1,7 +1,6 @@
 // Non-DOM logic for ClusterPartitionsCard.tsx: turning a
 // ClusterPartitions response into table rows, sorted default-first
-// then alphabetically (docs/UI_REDESIGN_PLAN.md §8.13's own layout
-// sketch shows the default partition on top).
+// then alphabetically.
 import type { ClusterPartitions } from '../../api/client'
 import type { BadgeTone } from '../Badge/Badge.helper'
 

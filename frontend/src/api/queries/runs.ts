@@ -41,9 +41,9 @@ function hasActiveRun(runs: RunListItem[] | undefined): boolean {
 }
 
 // Shared by useRuns' own refetchInterval below and the Runs page's own
-// live indicator (docs/UI_REDESIGN_PLAN.md §8.9, LiveIndicator) --
-// "5s while something in view is active, else 30s" is one computation
-// both read, not two literals that could drift apart.
+// live indicator (LiveIndicator) -- "5s while something in view is
+// active, else 30s" is one computation both read, not two literals
+// that could drift apart.
 export function runsPollIntervalMs(runs: RunListItem[] | undefined): number {
   return hasActiveRun(runs) ? 5_000 : 30_000
 }
@@ -74,13 +74,12 @@ export function useRuns(
 }
 
 // Keeps status, phase and metrics live while watching a run finish, and
-// stops polling once it has (§3 rule 11: "live where it matters, calm
-// elsewhere") -- a finished run's own row never changes again, so
-// there is nothing a 5s poll would ever catch that a page reload
-// wouldn't. Factored out of useRun so Compare's own useRunsById (Phase
-// 8) can fetch several runs in parallel through the exact same
-// options -- one implementation of "how a run is fetched and polled",
-// not two that could drift apart.
+// stops polling once it has -- a finished run's own row never changes
+// again, so there is nothing a 5s poll would ever catch that a page
+// reload wouldn't. Factored out of useRun so Compare's own
+// useRunsById can fetch several runs in parallel through the exact
+// same options -- one implementation of "how a run is fetched and
+// polled", not two that could drift apart.
 export function runQueryOptions(runId: number) {
   return queryOptions({
     queryKey: queryKeys.run(runId),
@@ -94,19 +93,19 @@ export function useRun(runId: number): UseQueryResult<RunDetail> {
   return useQuery(runQueryOptions(runId))
 }
 
-// Compare's own "every run in ?runs=" fetch (Phase 8,
-// docs/UI_REDESIGN_PLAN.md §8.8) -- each run is its own cache entry
-// (queryKeys.run(id)), shared with useRun, so opening a compared run's
-// own report page never re-fetches what this page already loaded.
+// Compare's own "every run in ?runs=" fetch -- each run is its own
+// cache entry (queryKeys.run(id)), shared with useRun, so opening a
+// compared run's own report page never re-fetches what this page
+// already loaded.
 export function useRunsById(runIds: number[]): UseQueryResult<RunDetail>[] {
   return useQueries({ queries: runIds.map((runId) => runQueryOptions(runId)) })
 }
 
 // The one cancel-run mutation, shared by the run report's own
-// RunCancelButton (Phase 7) and the Runs table's own row action
-// (Phase 9's RunCancelButton reuse) -- one implementation of "what
-// happens after a cancel succeeds" instead of two invalidation lists
-// that can drift apart.
+// RunCancelButton and the Runs table's own row action (a
+// RunCancelButton reuse) -- one implementation of "what happens after
+// a cancel succeeds" instead of two invalidation lists that can drift
+// apart.
 export function useCancelRun(): UseMutationResult<RunListItem, Error, number> {
   const queryClient = useQueryClient()
   return useMutation({
@@ -118,10 +117,10 @@ export function useCancelRun(): UseMutationResult<RunListItem, Error, number> {
   })
 }
 
-// The batch cancel mutation (docs/UI_REDESIGN_PLAN.md §8.9's "Cancel
-// batch"), moved out of RunsPage's own inlined mutation so
-// RunGroupCancelButton owns no fetch logic of its own -- the same
-// "one hook, one invalidation list" reasoning as useCancelRun above.
+// The batch cancel mutation, moved out of RunsPage's own inlined
+// mutation so RunGroupCancelButton owns no fetch logic of its own --
+// the same "one hook, one invalidation list" reasoning as
+// useCancelRun above.
 // Also invalidates each cancelled run's own detail cache, in case its
 // report page happens to be open in another tab.
 export function useCancelRunGroup(): UseMutationResult<RunGroupCancellation, Error, number> {
@@ -138,13 +137,13 @@ export function useCancelRunGroup(): UseMutationResult<RunGroupCancellation, Err
   })
 }
 
-// New evaluation's own dry-run preview (Phase 10, docs/UI_REDESIGN_PLAN.md
-// §8.10) -- moved out of SubmitPage.tsx's own inlined query so
-// NewEvaluationWizard owns no fetch logic of its own, the same "one
-// hook, one call site's worth of comments" reasoning as useCancelRun
-// above. `request` is built by the caller from its own current
-// selection and overrides; the query key is the same object, so the
-// two can never drift apart (queryKeys.runPreview's own docstring).
+// New evaluation's own dry-run preview -- moved out of
+// SubmitPage.tsx's own inlined query so NewEvaluationWizard owns no
+// fetch logic of its own, the same "one hook, one call site's worth
+// of comments" reasoning as useCancelRun above. `request` is built by
+// the caller from its own current selection and overrides; the query
+// key is the same object, so the two can never drift apart
+// (queryKeys.runPreview's own docstring).
 export function useRunPreview(request: RunPreviewRequest, enabled: boolean): UseQueryResult<RunPreview> {
   return useQuery({
     queryKey: queryKeys.runPreview(request),

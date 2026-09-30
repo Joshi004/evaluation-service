@@ -2,9 +2,8 @@
 // (reload/prune/delete), parameterised by a CatalogResourceDescriptor
 // so ManageCatalogButton, CatalogHealthBanner and the restyled
 // CatalogPanel all share one implementation across the three catalogs
-// (Phase 12, docs/UI_REDESIGN_PLAN.md §8.12) rather than each page
-// wiring its own copy the way the pre-Phase-12 CatalogPanel.tsx did
-// inline.
+// rather than each page wiring its own copy the way CatalogPanel.tsx
+// did inline.
 import {
   useMutation,
   useQuery,

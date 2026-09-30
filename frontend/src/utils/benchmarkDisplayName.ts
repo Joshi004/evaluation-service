@@ -1,10 +1,8 @@
 import type { StandardSummary } from '../api/client'
 
 // "gpqa_diamond" -> "Gpqa Diamond" -- only reached when a benchmark has
-// no catalog display_name yet (a standard loaded before the Phase 3
-// YAML update, until the next reload backfills it); every benchmark in
-// today's catalog already has one, so this is a fallback, not the
-// common path.
+// no catalog display_name yet; every benchmark in today's catalog
+// already has one, so this is a fallback, not the common path.
 function prettifySlug(slug: string): string {
   return slug
     .split(/[-_]+/)

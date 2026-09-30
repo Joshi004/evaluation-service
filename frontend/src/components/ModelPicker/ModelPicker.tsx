@@ -14,12 +14,11 @@ interface ModelPickerProps {
   onSelectedCheckpointIdsChange: (ids: number[]) => void
 }
 
-// The Choose step's model list (Phase 10, docs/UI_REDESIGN_PLAN.md
-// §8.10): searchable, grouped by family, weights status on every row.
-// Assumes `checkpoints` is non-empty -- NewEvaluationPage shows its own
-// full-page empty state ("Register a model first") before ever
-// mounting this, so the only empty case here is "no results for this
-// search".
+// The Choose step's model list: searchable, grouped by family, weights
+// status on every row. Assumes `checkpoints` is non-empty --
+// NewEvaluationPage shows its own full-page empty state ("Register a
+// model first") before ever mounting this, so the only empty case here
+// is "no results for this search".
 export function ModelPicker({ checkpoints, selectedCheckpointIds, onSelectedCheckpointIdsChange }: ModelPickerProps) {
   const [query, setQuery] = useState('')
   const groups = groupCheckpointsByFamily(filterCheckpointsByQuery(checkpoints, query))

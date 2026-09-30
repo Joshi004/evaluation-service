@@ -27,12 +27,12 @@ interface CompareHeaderProps {
   onAddRun: () => void
 }
 
-// The compare page's own identity strip (docs/UI_REDESIGN_PLAN.md
-// §8.8): one chip per run, each carrying the series colour every other
-// Compare section reuses for that same run, plus the "Make
-// baseline"/"Remove" actions that rewrite the page's own ?runs= --
-// CompareSetupCheck, CompareScoreMatrix and CompareFlippedSamples just
-// re-render against whatever order that produces.
+// The compare page's own identity strip: one chip per run, each
+// carrying the series colour every other Compare section reuses for
+// that same run, plus the "Make baseline"/"Remove" actions that
+// rewrite the page's own ?runs= -- CompareSetupCheck,
+// CompareScoreMatrix and CompareFlippedSamples just re-render against
+// whatever order that produces.
 export function CompareHeader({
   benchmarkDisplayName,
   runs,

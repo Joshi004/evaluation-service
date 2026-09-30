@@ -1,8 +1,7 @@
 // Every query key the frontend uses, in one place -- so a key is never
-// hand-typed twice with a chance of drifting (docs/UI_REDESIGN_PLAN.md
-// Phase 4, Appendix A: "Query hooks and queryKeys" is a contract every
-// later phase reads from). Each hook in src/api/queries/ builds its key
-// here rather than inline in its own useQuery call.
+// hand-typed twice with a chance of drifting. Each hook in
+// src/api/queries/ builds its key here rather than inline in its own
+// useQuery call.
 //
 // `allRuns`/`runs` are deliberately two different entries, not one
 // parameterised key called with no filters: `allRuns()` is also the

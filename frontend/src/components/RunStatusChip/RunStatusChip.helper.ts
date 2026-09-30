@@ -13,8 +13,8 @@ interface RunStatusStyle {
 // Maps each of the five eval_run statuses (the CheckConstraint in
 // app/models/eval_run.py) to a label, a tone and an icon, in one
 // place, so every page showing a run's status renders it identically
-// -- §4.5's status vocabulary now also carries an icon, never colour
-// alone. Replaces the old StatusBadge.helper.ts's tone-only map.
+// -- the status vocabulary now also carries an icon, never colour
+// alone.
 const RUN_STATUS_STYLES: Record<string, Omit<RunStatusStyle, 'label'>> = {
   queued: { tone: 'neutral', icon: Clock, spin: false },
   running: { tone: 'info', icon: LoaderCircle, spin: true },

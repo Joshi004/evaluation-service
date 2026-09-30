@@ -1,9 +1,9 @@
 import { Skeleton } from '../Skeleton/Skeleton'
 
-// Shaped like the final layout (§4.5: never the text "Loading…") --
-// stands in for either of Compare's two shapes (the start state's own
-// picker, or a loaded comparison's header-plus-table), since both are
-// a header block followed by a table-ish block.
+// Shaped like the final layout (never the text "Loading…") -- stands
+// in for either of Compare's two shapes (the start state's own picker,
+// or a loaded comparison's header-plus-table), since both are a
+// header block followed by a table-ish block.
 export function CompareSkeleton() {
   return (
     <div className="space-y-6" aria-busy="true">

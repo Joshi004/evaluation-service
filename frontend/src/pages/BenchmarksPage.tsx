@@ -12,10 +12,9 @@ import { CATALOG_RESOURCES } from '../utils/catalogResources'
 import { groupStandardsByCategory } from '../utils/standardCategoryGroups'
 import { buildBenchmarkCardStatsByStandardId } from './BenchmarksPage.helper'
 
-// The Benchmarks list (Phase 12, docs/UI_REDESIGN_PLAN.md §8.12):
-// replaces the old StandardsPage. Every reviewed benchmark, grouped by
-// category, each card linking straight to its own detail page instead
-// of this page trying to show every field for every benchmark at once.
+// The Benchmarks list: every reviewed benchmark, grouped by category,
+// each card linking straight to its own detail page instead of this
+// page trying to show every field for every benchmark at once.
 export function BenchmarksPage() {
   const standards = useStandards()
   const leaderboard = useLeaderboard()

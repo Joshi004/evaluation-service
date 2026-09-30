@@ -1,9 +1,9 @@
 import { Skeleton } from '../Skeleton/Skeleton'
 
-// Shaped like the final layout (§4.5: never the text "Loading…") --
-// a breadcrumb-height line, the header's title and two meta lines, a
+// Shaped like the final layout (never the text "Loading…") -- a
+// breadcrumb-height line, the header's title and two meta lines, a
 // tab strip, then a content placeholder -- mirrors RunReportSkeleton's
-// own reasoning for the model page (docs/UI_REDESIGN_PLAN.md §8.11).
+// own reasoning for the model page.
 export function ModelDetailSkeleton() {
   return (
     <div className="space-y-6" aria-busy="true">

@@ -15,14 +15,13 @@ import { buildLeaderboard } from '../utils/buildLeaderboard'
 import { paths } from '../utils/paths'
 import { buildBenchmarkPageTabs, type BenchmarkPageContext } from './BenchmarkDetailPage.helper'
 
-// The Benchmark detail page (Phase 12, docs/UI_REDESIGN_PLAN.md
-// §8.12): mirrors ModelDetailPage.tsx's own shape -- a header, then
-// tabs for Overview, Protocol and Runs, all sharing this one
-// already-loaded standard (plus the board it's ranked in) through the
-// outlet context (BenchmarkDetailPage.helper.ts's useBenchmarkPage).
-// Decision #1: the URL id is the standard id, not the benchmark slug --
-// each versioned standard gets its own page, matching the New
-// evaluation picker's own "one card per standard" convention.
+// The Benchmark detail page: mirrors ModelDetailPage.tsx's own shape --
+// a header, then tabs for Overview, Protocol and Runs, all sharing this
+// one already-loaded standard (plus the board it's ranked in) through
+// the outlet context (BenchmarkDetailPage.helper.ts's useBenchmarkPage).
+// The URL id is the standard id, not the benchmark slug -- each
+// versioned standard gets its own page, matching the New evaluation
+// picker's own "one card per standard" convention.
 export function BenchmarkDetailPage() {
   const { benchmarkId } = useParams<{ benchmarkId: string }>()
   const id = Number(benchmarkId)

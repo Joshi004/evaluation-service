@@ -24,9 +24,9 @@ interface LeaderboardScoreCellProps {
   showOtherSetupsChip: boolean
 }
 
-// One Overview matrix cell (§8.6 item 3): a score with its ★, an
-// optional heat tint, an optional "+N other setup" chip, or a "Run it"
-// link when this model has no result on this setup.
+// One Overview matrix cell: a score with its ★, an optional heat tint,
+// an optional "+N other setup" chip, or a "Run it" link when this
+// model has no result on this setup.
 export function LeaderboardScoreCell({
   column,
   model,
@@ -99,8 +99,8 @@ export function LeaderboardScoreCell({
           trigger={
             // A link, not a button: hovering or focusing it opens the
             // card below (HoverCard's own handlers work on any element),
-            // but a plain click still goes straight to the run -- §8.6's
-            // "cell click opens the run" holds even though the same
+            // but a plain click still goes straight to the run -- a
+            // cell click always opens the run, even though the same
             // cell also has a richer card for anyone who pauses on it.
             <Link
               to={paths.run(cell.evalRunId)}

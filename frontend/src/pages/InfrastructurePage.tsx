@@ -13,12 +13,11 @@ import { StartModelServerDialog } from '../components/StartModelServerDialog/Sta
 import { SystemHealthCard } from '../components/SystemHealthCard/SystemHealthCard'
 import { describeStartFailure } from './InfrastructurePage.helper'
 
-// docs/UI_REDESIGN_PLAN.md §8.13: replaces the legacy EndpointsPage.
 // Owns the one useEndpoints() poll, the one useCheckpoints() catalog
 // read, and the one useStartEndpoint mutation -- ModelServerList and
 // StartModelServerDialog each read these as props rather than running
 // their own, so there is never a second 5s poller or a second start
-// in flight (decision #2: "the page allows one start at a time").
+// in flight: the page allows one start at a time.
 export function InfrastructurePage() {
   const [startDialogOpen, setStartDialogOpen] = useState(false)
   const endpoints = useEndpoints()

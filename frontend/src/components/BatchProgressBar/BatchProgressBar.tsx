@@ -7,11 +7,10 @@ interface BatchProgressBarProps {
   className?: string
 }
 
-// The batch header's own stacked progress bar (docs/UI_REDESIGN_PLAN.md
-// §8.9, item 2) -- one segment per status present, proportional to how
-// many runs hold it. `aria-valuetext` and the visible caption both
-// spell out "N of M runs finished" in words, so colour is never the
-// only signal (§4.5).
+// The batch header's own stacked progress bar -- one segment per status
+// present, proportional to how many runs hold it. `aria-valuetext` and
+// the visible caption both spell out "N of M runs finished" in words,
+// so colour is never the only signal.
 export function BatchProgressBar({ runs, className }: BatchProgressBarProps) {
   const total = runs.length
   if (total === 0) {

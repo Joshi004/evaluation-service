@@ -2,9 +2,7 @@
 // before/after values in a FieldChange, collapsing repeated
 // compatibility findings across the grid's pairs into one line each,
 // and turning the preview's own resolved-* arrays into the compact
-// "what will be created" list (Phase 10, docs/UI_REDESIGN_PLAN.md
-// §8.10 -- the per-pair ResolvedSamplingCard/ResolvedServingCard this
-// replaces showed every merge layer; the created list only needs the
+// "what will be created" list (the created list only needs the
 // answer, since the Settings step's own setup-alignment line is where
 // "will this line up?" now lives).
 //

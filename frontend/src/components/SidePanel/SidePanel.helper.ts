@@ -1,8 +1,8 @@
 // Non-DOM logic for SidePanel.tsx: one complete width/position class
 // string. Mirrors Dialog.helper.ts's own reasoning (no tailwind-merge
-// in this project -- see D2) -- a caller can never layer a second
-// width or position utility on top of this component's own without
-// one silently losing to the other.
+// in this project) -- a caller can never layer a second width or
+// position utility on top of this component's own without one
+// silently losing to the other.
 import { cn } from '../../utils/cn'
 
 export function sidePanelContentClassName(className?: string): string {

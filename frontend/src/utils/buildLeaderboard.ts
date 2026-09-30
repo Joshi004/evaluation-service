@@ -2,9 +2,8 @@
 // Leaderboard's own board shape: benchmarks as columns, each with one
 // SetupOption per comparison_hash, each cell ranked against its peers
 // on that same setup. The backend deliberately returns rows, not a
-// pre-pivoted grid (docs/IMPLEMENTATION_PHASES.md) -- this is that
-// pivot, rewritten for Phase 6 (docs/UI_REDESIGN_PLAN.md §8.6) to key
-// on benchmark + setup instead of the old one-column-per-hash grid.
+// pre-pivoted grid -- this is that pivot, keyed on benchmark + setup
+// instead of the old one-column-per-hash grid.
 import type { CheckpointListItem, ConfidenceInterval, LeaderboardRow, StandardSummary } from '../api/client'
 import { benchmarkDisplayName, benchmarkVersion } from './benchmarkDisplayName'
 import { familyKey } from './familyKey'
@@ -89,13 +88,12 @@ function higherIsBetterForBenchmark(benchmark: string, standards: StandardSummar
   return primaryMetric?.higher_is_better ?? true
 }
 
-// Five shades by rank position (§8.6's own "Heat tint" decision): the
-// top tier (the leader plus every row within its margin of error)
-// always takes the warmest shade, and whatever's left is spread
-// across the remaining four from warm (just outside the leader's
-// margin) to cool (last place) -- so a column with only two or three
-// rows still uses a sensible pair of shades instead of defaulting
-// everyone below the leader to the coolest one.
+// Five shades by rank position: the top tier (the leader plus every
+// row within its margin of error) always takes the warmest shade, and
+// whatever's left is spread across the remaining four from warm (just
+// outside the leader's margin) to cool (last place) -- so a column
+// with only two or three rows still uses a sensible pair of shades
+// instead of defaulting everyone below the leader to the coolest one.
 const HEAT_LEVELS = 5
 
 function buildHeatLevels(ranked: RankedScore[]): Map<number, number> {
@@ -140,7 +138,7 @@ function buildSetupOption(comparisonHash: string, setupRows: LeaderboardRow[], h
   }
 
   // Every row sharing a comparison_hash shares the same standard and
-  // resolved sampling profile by definition (S-D5), so the first row
+  // resolved sampling profile by definition, so the first row
   // seen for this hash carries the labels for the whole setup.
   const [firstRow, ...restRows] = setupRows
   const latestFinishedAt = restRows.reduce(
@@ -160,10 +158,10 @@ function buildSetupOption(comparisonHash: string, setupRows: LeaderboardRow[], h
   }
 }
 
-// "Most models, ties broken by most recent" (§8.6 item 1's default-setup
-// rule) -- also doubles as All-setups mode's own sub-column order,
-// since the same priority reads sensibly there too: the setup most
-// people are looking at first, then newest.
+// "Most models, ties broken by most recent" (the default-setup rule)
+// -- also doubles as All-setups mode's own sub-column order, since the
+// same priority reads sensibly there too: the setup most people are
+// looking at first, then newest.
 function compareSetupsByDefaultPriority(a: SetupOption, b: SetupOption): number {
   if (a.modelCount !== b.modelCount) {
     return b.modelCount - a.modelCount
@@ -209,8 +207,7 @@ function buildColumn(benchmark: string, benchmarkRows: LeaderboardRow[], standar
   }
 }
 
-// Category first (uncategorised last), then display name -- §8.6 item
-// 1's own column order rule.
+// Category first (uncategorised last), then display name.
 function compareColumns(a: BenchmarkColumn, b: BenchmarkColumn): number {
   if (a.category === null && b.category !== null) return 1
   if (a.category !== null && b.category === null) return -1
@@ -242,12 +239,11 @@ function buildModelRows(rows: LeaderboardRow[], checkpoints: CheckpointListItem[
   return models.sort((a, b) => a.name.localeCompare(b.name))
 }
 
-// Delegates to familyGroups.ts's shared rule (Phase 11,
-// docs/UI_REDESIGN_PLAN.md §8.11) so the Leaderboard's own family
-// filter always shows the same label the Models list and the
+// Delegates to familyGroups.ts's shared rule so the Leaderboard's own
+// family filter always shows the same label the Models list and the
 // registration wizard's family input would show for the same
 // checkpoints -- "most common spelling, ties to most recently
-// registered" replaces this file's earlier "first spelling seen wins".
+// registered".
 function buildFamilyOptions(checkpoints: CheckpointListItem[]): FamilyOption[] {
   return groupCheckpointsByFamily(checkpoints).map((group) => ({ key: group.key, label: group.label }))
 }
@@ -301,10 +297,9 @@ export interface RankedRow {
 // Every model with a result on this setup, best rank first --
 // `cell.rank` already comes from rankScores (above), so this is just
 // "join it back to the model list and order by it", not a second
-// ranking computation. Promoted from LeaderboardBenchmarkTable.helper.ts
-// (Phase 12, docs/UI_REDESIGN_PLAN.md §8.12) once the Benchmark detail
-// page's own leaderboard preview became a second caller -- both need
-// this board's own rank, never one either page recomputes itself.
+// ranking computation. Shared by LeaderboardBenchmarkTable and
+// BenchmarkLeaderboardPreview -- both need this board's own rank,
+// never one either page recomputes itself.
 export function buildRankedRows(setup: SetupOption, models: ModelRow[]): RankedRow[] {
   const rows: RankedRow[] = []
   for (const model of models) {

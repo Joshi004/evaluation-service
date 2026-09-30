@@ -13,12 +13,11 @@ interface FlipListProps {
   onOpenSample: (sampleKey: string) => void
 }
 
-// Compare's own flip table (Phase 8, docs/UI_REDESIGN_PLAN.md §8.8):
-// every row is the actual diff of whatever changed between the
-// baseline and one other run. Opening a row is how the side-by-side
-// dialog (CompareSampleDialog) gets its sample key -- there is no
-// per-side link to a separate page any more; the dialog is how a
-// flipped sample is read now.
+// Compare's own flip table: every row is the actual diff of whatever
+// changed between the baseline and one other run. Opening a row is how
+// the side-by-side dialog (CompareSampleDialog) gets its sample key --
+// there is no per-side link to a separate page any more; the dialog is
+// how a flipped sample is read now.
 export function FlipList({
   direction,
   samples,

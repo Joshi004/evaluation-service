@@ -65,15 +65,13 @@ const StyleguidePage = import.meta.env.DEV
   ? lazy(() => import('./pages/StyleguidePage').then((m) => ({ default: m.StyleguidePage })))
   : null
 
-// The real pages, nested under AppShell (sidebar + top bar; replaces
-// the old flat-nav App component -- docs/UI_REDESIGN_PLAN.md Phase 2).
+// The real pages, nested under AppShell (sidebar + top bar).
 // Leaderboard is the index route ("/"). Every route below mounts an
-// existing page component verbatim -- Phase 2 only moves where each
-// one lives, per §4.2's route map; no page body changes here, except
-// where a later phase's own spec says otherwise (Phase 6 rewrites the
-// Leaderboard into a wide data table, so that one route now wraps in
-// PageWide instead). A later phase that rewrites a page the same way
-// swaps that one route's wrapper, with no change to AppShell.
+// existing page component verbatim; no page body changes here, except
+// that a route's own wrapper differs when the page itself needs the
+// width (the Leaderboard is a wide data table, so that route wraps in
+// PageWide instead). Any future page rewrite that needs more width
+// only swaps that one route's wrapper, with no change to AppShell.
 export function AppRoutes() {
   return (
     <Routes>
@@ -88,10 +86,9 @@ export function AppRoutes() {
         />
 
         {/*
-         * PageWide, not Page (Phase 11, docs/UI_REDESIGN_PLAN.md
-         * §8.11): the family-grouped cards/table view needs the full
-         * width the same way the Leaderboard's own matrix and the Runs
-         * page's own table do.
+         * PageWide, not Page: the family-grouped cards/table view needs
+         * the full width the same way the Leaderboard's own matrix and
+         * the Runs page's own table do.
          */}
         <Route
           path="models"
@@ -104,9 +101,9 @@ export function AppRoutes() {
         {/*
          * No nav item -- reached only via the "Register a model"
          * button on the models page. Its four steps live in this
-         * page's own component state, not further router segments
-         * (R-D30): a deep link to step 3 has nothing to render without
-         * step 2's server response.
+         * page's own component state, not further router segments: a
+         * deep link to step 3 has nothing to render without step 2's
+         * server response.
          */}
         <Route
           path="models/register"
@@ -117,15 +114,14 @@ export function AppRoutes() {
           }
         />
         {/*
-         * The model page (Phase 11, docs/UI_REDESIGN_PLAN.md §8.11):
-         * ModelDetailPage owns the header and the tab strip; each child
-         * route below is one tab, rendered into its own <Outlet> and
-         * reading the already-loaded checkpoint through its outlet
-         * context (ModelDetailPage.helper.ts's useModelPage) -- mirrors
-         * the run report's own routes above. PageWide, not Page: the
-         * Results tab's scorecard grid and the Runs tab's table both
-         * need the full width the same way the Leaderboard and Runs
-         * pages do.
+         * The model page: ModelDetailPage owns the header and the tab
+         * strip; each child route below is one tab, rendered into its
+         * own <Outlet> and reading the already-loaded checkpoint through
+         * its outlet context (ModelDetailPage.helper.ts's useModelPage)
+         * -- mirrors the run report's own routes above. PageWide, not
+         * Page: the Results tab's scorecard grid and the Runs tab's
+         * table both need the full width the same way the Leaderboard
+         * and Runs pages do.
          */}
         <Route
           path="models/:modelId"
@@ -142,10 +138,9 @@ export function AppRoutes() {
         </Route>
 
         {/*
-         * The Benchmarks list (Phase 12, docs/UI_REDESIGN_PLAN.md
-         * §8.12): replaces StandardsPage. Page, not PageWide -- the
-         * category-grouped card grid doesn't need the extra width a
-         * data table does.
+         * The Benchmarks list: Page, not PageWide -- the category-
+         * grouped card grid doesn't need the extra width a data table
+         * does.
          */}
         <Route
           path="benchmarks"
@@ -156,17 +151,16 @@ export function AppRoutes() {
           }
         />
         {/*
-         * The Benchmark detail page (Phase 12, docs/UI_REDESIGN_PLAN.md
-         * §8.12): BenchmarkDetailPage owns the header and the tab
-         * strip; each child route below is one tab, rendered into its
-         * own <Outlet> and reading the already-loaded standard through
-         * its outlet context (BenchmarkDetailPage.helper.ts's
-         * useBenchmarkPage) -- mirrors the model page's own routes
-         * above. `:benchmarkId` is the standard id, not the benchmark
-         * slug (decision #1): each versioned standard gets its own
-         * page. PageWide, not Page: the Overview tab's leaderboard
-         * preview and the Runs tab's table both need the full width the
-         * same way the model page's own tabs do.
+         * The Benchmark detail page: BenchmarkDetailPage owns the
+         * header and the tab strip; each child route below is one tab,
+         * rendered into its own <Outlet> and reading the already-loaded
+         * standard through its outlet context
+         * (BenchmarkDetailPage.helper.ts's useBenchmarkPage) -- mirrors
+         * the model page's own routes above. `:benchmarkId` is the
+         * standard id, not the benchmark slug: each versioned standard
+         * gets its own page. PageWide, not Page: the Overview tab's
+         * leaderboard preview and the Runs tab's table both need the
+         * full width the same way the model page's own tabs do.
          */}
         <Route
           path="benchmarks/:benchmarkId"
@@ -182,12 +176,10 @@ export function AppRoutes() {
         </Route>
 
         {/*
-         * Profiles (Phase 12, docs/UI_REDESIGN_PLAN.md §8.12): replaces
-         * the separate SamplingProfilesPage/ServingProfilesPage routes
-         * with one ProfilesPage owning a PageHeader and a Sampling/
-         * Serving TabNav; each child route below is one tab, rendered
-         * into ProfilesPage's own <Outlet>. The index route redirects
-         * bare /profiles to /profiles/sampling, the same
+         * Profiles: one ProfilesPage owning a PageHeader and a
+         * Sampling/Serving TabNav; each child route below is one tab,
+         * rendered into ProfilesPage's own <Outlet>. The index route
+         * redirects bare /profiles to /profiles/sampling, the same
          * RedirectPreservingSearch every other bare-parent route below
          * uses, so a colleague's saved /profiles link still lands
          * somewhere real.
@@ -206,14 +198,13 @@ export function AppRoutes() {
         </Route>
 
         {/*
-         * New evaluation (Phase 10, docs/UI_REDESIGN_PLAN.md §8.10):
-         * NewEvaluationPage replaces SubmitPage's single stacked form
-         * with a three-step Choose/Settings/Review flow, whose own
-         * step lives in this same route's `?step=` query param rather
-         * than a further path segment -- a step has nothing to show
-         * without the axis chosen in an earlier one, the same "no
-         * server response to deep-link to" reasoning
-         * RegisterModelPage's own wizard steps already follow.
+         * New evaluation: NewEvaluationPage is a three-step
+         * Choose/Settings/Review flow, whose own step lives in this
+         * same route's `?step=` query param rather than a further path
+         * segment -- a step has nothing to show without the axis chosen
+         * in an earlier one, the same "no server response to deep-link
+         * to" reasoning RegisterModelPage's own wizard steps already
+         * follow.
          */}
         <Route
           path="evaluate/new"
@@ -225,9 +216,9 @@ export function AppRoutes() {
         />
 
         {/*
-         * PageWide, not Page (Phase 9, docs/UI_REDESIGN_PLAN.md §8.9):
-         * the batch-grouped table needs the full width the same way the
-         * Leaderboard's own matrix and the run report's Samples tab do.
+         * PageWide, not Page: the batch-grouped table needs the full
+         * width the same way the Leaderboard's own matrix and the run
+         * report's Samples tab do.
          */}
         <Route
           path="runs"
@@ -238,11 +229,10 @@ export function AppRoutes() {
           }
         />
         {/*
-         * The run report (Phase 7, docs/UI_REDESIGN_PLAN.md §8.7):
-         * RunReportPage owns the header, the verdict band (done runs
-         * only) and the tab strip; each child route below is one tab,
-         * rendered into RunReportPage's own <Outlet> and reading the
-         * already-loaded run through its outlet context
+         * The run report: RunReportPage owns the header, the verdict
+         * band (done runs only) and the tab strip; each child route
+         * below is one tab, rendered into RunReportPage's own <Outlet>
+         * and reading the already-loaded run through its outlet context
          * (RunReportPage.helper.ts's useRunReport). Both Samples routes
          * mount the same RunSamplesTab, which reads its own optional
          * :sampleKey -- there is no nested outlet for the sample panel,
@@ -265,11 +255,12 @@ export function AppRoutes() {
           <Route path="logs" element={<RunLogsTab />} />
         </Route>
         {/*
-         * Old URL from before Phase 7 renamed this tab to .../samples,
-         * keeping the same query params (outcome, subset, rule, tag, q,
-         * offset -- Appendix A, frozen). A sibling of the report route
-         * above, not nested under it -- its only job is to redirect,
-         * never to render inside RunReportPage's own frame.
+         * This tab's old URL, from before it was renamed to
+         * .../samples, keeping the same query params (outcome, subset,
+         * rule, tag, q, offset -- Appendix A, frozen). A sibling of the
+         * report route above, not nested under it -- its only job is
+         * to redirect, never to render inside RunReportPage's own
+         * frame.
          */}
         <Route
           path="runs/:runId/diagnostics"
@@ -277,11 +268,10 @@ export function AppRoutes() {
         />
 
         {/*
-         * Compare (Phase 8, docs/UI_REDESIGN_PLAN.md §8.8): a sibling
-         * of the /runs tree rather than nested under it -- it takes
-         * 2-4 run ids via ?runs=, not one. PageWide, not Page: the
-         * score matrix's forest plot and the setup-diff table both
-         * need the full width, the same reasoning the run report's
+         * Compare: a sibling of the /runs tree rather than nested under
+         * it -- it takes 2-4 run ids via ?runs=, not one. PageWide, not
+         * Page: the score matrix's forest plot and the setup-diff table
+         * both need the full width, the same reasoning the run report's
          * own route already applies to its Samples tab.
          */}
         <Route
@@ -294,10 +284,9 @@ export function AppRoutes() {
         />
 
         {/*
-         * The Infrastructure page (Phase 13, docs/UI_REDESIGN_PLAN.md
-         * §8.13): replaces the legacy EndpointsPage -- model server
-         * cards, the Start dialog, cluster partitions (read only on a
-         * Refresh click, ground rule 15) and system health.
+         * The Infrastructure page: model server cards, the Start
+         * dialog, cluster partitions (read only on a Refresh click,
+         * ground rule 15) and system health.
          */}
         <Route
           path="infrastructure"
@@ -309,11 +298,10 @@ export function AppRoutes() {
         />
 
         {/*
-         * Old URLs from before Phase 2 (§4.2's route map). Redirected
-         * rather than broken (decision D9) -- deep links to these are
-         * already pasted in Slack. RedirectPreservingSearch keeps any
-         * query string; none of these old paths had a sub-path beyond
-         * what's listed here.
+         * Old URLs. Redirected rather than broken -- deep links to
+         * these are already pasted in Slack. RedirectPreservingSearch
+         * keeps any query string; none of these old paths had a
+         * sub-path beyond what's listed here.
          */}
         <Route path="checkpoints" element={<RedirectPreservingSearch to={paths.models()} />} />
         <Route path="checkpoints/register" element={<RedirectPreservingSearch to={paths.modelRegister()} />} />

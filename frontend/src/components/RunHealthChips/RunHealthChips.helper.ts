@@ -41,9 +41,8 @@ export function erroredRequestsChip(erroredRequests: number): HealthChip {
 }
 
 // Warns once the slowest requests take at least this many times the
-// median -- run 13's own ~5.2x spread (docs/UI_REDESIGN_PLAN.md §8.7's
-// own sketch: "Slowest requests 5x the median") is the plan's own
-// example of what should trip this.
+// median -- run 13's own ~5.2x spread is an example of what should
+// trip this.
 const LATENCY_SPREAD_WARNING_RATIO = 3
 
 export function latencySpreadChip(latency: LatencySeconds): HealthChip | null {

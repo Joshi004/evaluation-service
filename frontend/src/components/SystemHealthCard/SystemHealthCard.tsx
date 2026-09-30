@@ -6,9 +6,8 @@ import { RelativeTime } from '../RelativeTime/RelativeTime'
 import { Tooltip } from '../Tooltip/Tooltip'
 import { buildHealthRows } from './SystemHealthCard.helper'
 
-// docs/UI_REDESIGN_PLAN.md §8.13, item 4: the same useHealth() query
-// that backs the top-bar status pill, read here as a small Backend +
-// Database panel instead of a popover.
+// The same useHealth() query that backs the top-bar status pill, read
+// here as a small Backend + Database panel instead of a popover.
 export function SystemHealthCard() {
   const health = useHealth()
   const rows = buildHealthRows({ isLoading: health.isLoading, isError: health.isError, data: health.data })

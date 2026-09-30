@@ -19,15 +19,13 @@ interface SamplingProfilesUrlParams {
 
 const SAMPLING_PROFILES_URL_DEFAULTS: SamplingProfilesUrlParams = { profile: null }
 
-// The Sampling tab of /profiles (Phase 12, docs/UI_REDESIGN_PLAN.md
-// §8.12): every sampling profile, its own catalog toolbar and banner,
-// and the ?profile=-driven detail drawer (decision #3).
+// The Sampling tab of /profiles: every sampling profile, its own
+// catalog toolbar and banner, and the ?profile=-driven detail drawer.
 export function SamplingProfilesTab() {
   const profiles = useSamplingProfiles()
   const checkpoints = useCheckpoints()
-  // Unfiltered -- shares its cache with the sidebar's own Runs badge
-  // (§8.12's "Data sources"), so counting by sampling_profile_hash
-  // here adds no request.
+  // Unfiltered -- shares its cache with the sidebar's own Runs badge,
+  // so counting by sampling_profile_hash here adds no request.
   const runs = useRuns()
 
   const [searchParams, setUrlParams] = useUrlState<SamplingProfilesUrlParams>(SAMPLING_PROFILES_URL_DEFAULTS)

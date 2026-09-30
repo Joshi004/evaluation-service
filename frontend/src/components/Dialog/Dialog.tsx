@@ -12,7 +12,7 @@ interface DialogProps {
   children?: ReactNode
   // Defaults to 'md' -- every dialog before this prop existed
   // (ConfirmDialog, plain forms) keeps that same width unchanged.
-  // Compare (Phase 8) is the first caller to reach for 'lg'/'xl'.
+  // Compare is the first caller to reach for 'lg'/'xl'.
   size?: DialogSize
   className?: string
 }

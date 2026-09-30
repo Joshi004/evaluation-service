@@ -1,7 +1,7 @@
 // Non-DOM logic for CompareTrayProvider.tsx: reading and writing the
 // tray's sessionStorage entry. Session-scoped, not local-storage, so
-// the tray is per-tab (§8.5's own acceptance criterion) rather than
-// shared across every tab a person has open.
+// the tray is per-tab rather than shared across every tab a person has
+// open.
 import type { PinnedRun } from '../../utils/compareTray'
 
 const STORAGE_KEY = 'eval.compareTray.v1'

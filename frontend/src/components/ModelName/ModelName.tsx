@@ -20,7 +20,7 @@ interface ModelNameProps {
   className?: string
 }
 
-// §4.5's "Long names" pattern in one place -- every screen that lists
+// The "Long names" pattern in one place -- every screen that lists
 // models (Leaderboard, Runs, Models, Compare) renders through this
 // instead of each re-implementing the middle-ellipsis rule. The full
 // name always stays reachable: in the tooltip on hover/focus, and in a

@@ -1,9 +1,8 @@
 // Non-DOM logic for NewEvaluationPage.tsx: turning the three prefill
-// params (Phase 10, docs/UI_REDESIGN_PLAN.md §8.10 and Appendix A --
-// `models`, `benchmarks`, `from`) into the wizard's own starting
-// selection and drafts. Read once, at mount (see NewEvaluationPage.tsx's
-// own comment on `prefillKey`) -- nothing here reacts to a later change
-// of these same params.
+// params (`models`, `benchmarks`, `from`) into the wizard's own
+// starting selection and drafts. Read once, at mount (see
+// NewEvaluationPage.tsx's own comment on `prefillKey`) -- nothing here
+// reacts to a later change of these same params.
 import type { CheckpointListItem, RunDetail, StandardSummary } from '../api/client'
 import {
   EMPTY_SUBMIT_OVERRIDE_DRAFTS,
@@ -77,9 +76,9 @@ function resolveModelsAndBenchmarksPrefill(
   return { checkpointIds, standardIds, drafts: EMPTY_SUBMIT_OVERRIDE_DRAFTS, notices }
 }
 
-// Re-run's own prefill (Phase 7's RunFailurePanel/RunReportHeader and
-// Phase 9's RunsTableRow all link here with `?from=<runId>`): the same
-// model and benchmark, plus whichever sampling/serving profile that run
+// Re-run's own prefill (RunFailurePanel/RunReportHeader and
+// RunsTableRow all link here with `?from=<runId>`): the same model and
+// benchmark, plus whichever sampling/serving profile that run
 // actually used -- but only recorded as an explicit choice when it
 // differs from the checkpoint's own *current* registered default, so a
 // re-run of a run that already matched the default doesn't show a
@@ -128,9 +127,7 @@ function resolveFromRunPrefill(
 
 // `fromRun` is `undefined` while the run hasn't loaded yet (the caller
 // doesn't call this until then), `null` when there is no `from` param
-// at all or it failed to load -- `from` wins over `models`/`benchmarks`
-// per this phase's own prefill precedence (docs/UI_REDESIGN_PLAN.md
-// §8.10 item 2).
+// at all or it failed to load -- `from` wins over `models`/`benchmarks`.
 export function resolvePrefill(
   modelsParam: string | null,
   benchmarksParam: string | null,

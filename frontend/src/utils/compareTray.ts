@@ -1,17 +1,16 @@
-// Phase 5 (docs/UI_REDESIGN_PLAN.md §8.5): the compare tray's own
-// rules, kept as a pure module (no React, no DOM) so a later phase can
-// reuse them from anywhere a run can be pinned -- Runs today, the
-// Leaderboard and Model page once Phases 6 and 11 add their own pin
-// controls (Appendix A: "useCompareTray(), AddToCompareButton,
-// MAX_COMPARE_RUNS" is the contract phases 6-11 read from).
+// The compare tray's own rules, kept as a pure module (no React, no
+// DOM) so they can be reused from anywhere a run can be pinned --
+// Runs, the Leaderboard and the Model page each build their own pin
+// controls on `useCompareTray()`, `AddToCompareButton` and
+// `MAX_COMPARE_RUNS`, the contract every caller reads from.
 
 import type { RunListItem } from '../api/client'
 
-// Phase 8 (docs/UI_REDESIGN_PLAN.md §8.8) raised this from 2 to 4 once
-// the compare page itself learned to read more than two runs off
-// ?runs=. MIN_COMPARE_RUNS is what actually gates the tray's own
-// Compare button -- a tray sitting at exactly 2 is already a valid
-// comparison, it doesn't need to fill every slot first.
+// MAX_COMPARE_RUNS is 4, matching the compare page's own ability to
+// read more than two runs off ?runs=. MIN_COMPARE_RUNS is what
+// actually gates the tray's own Compare button -- a tray sitting at
+// exactly 2 is already a valid comparison, it doesn't need to fill
+// every slot first.
 export const MAX_COMPARE_RUNS = 4
 export const MIN_COMPARE_RUNS = 2
 
@@ -158,12 +157,12 @@ export function revalidatePinnedRuns(pinnedRuns: PinnedRun[], doneRuns: RunListI
 }
 
 // The comparison-hash-only check shared by the tray's own badge and
-// the compare page's setup check (CompareSetupCheck, Phase 8) -- one
-// rule, so the tray's "Setups differ" and the page's own verdict can
-// never disagree. `null` below two hashes means there is nothing yet
-// to compare setups between. The first hash is always the baseline's,
-// matching both callers' own "first pinned run" / "first run in ?runs="
-// convention.
+// the compare page's setup check (CompareSetupCheck) -- one rule, so
+// the tray's "Setups differ" and the page's own verdict can never
+// disagree. `null` below two hashes means there is nothing yet to
+// compare setups between. The first hash is always the baseline's,
+// matching both callers' own "first pinned run" / "first run in
+// ?runs=" convention.
 export function setupMatchForHashes(comparisonHashes: string[]): SetupMatch {
   if (comparisonHashes.length < 2) {
     return null

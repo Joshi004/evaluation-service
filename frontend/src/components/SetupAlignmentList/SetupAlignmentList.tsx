@@ -18,11 +18,9 @@ interface SetupAlignmentListProps {
 }
 
 // Per (model, benchmark) pair, "will this line up with the
-// leaderboard?" -- the Settings step's own answer to §4.4.6's sketch
-// line, computed from the live preview's `comparison_hash` against the
-// known leaderboard hashes rather than guessing from the sampling
-// profile choice alone (docs/UI_REDESIGN_PLAN.md §8.10, item 1's own
-// per-pair rule).
+// leaderboard?" -- computed from the live preview's `comparison_hash`
+// against the known leaderboard hashes rather than guessing from the
+// sampling profile choice alone.
 export function SetupAlignmentList({ preview, isPreviewFetching, samplingProfiles, leaderboardQuery }: SetupAlignmentListProps) {
   if (!preview || preview.pairs.length === 0) {
     return null

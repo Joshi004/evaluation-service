@@ -22,13 +22,13 @@ interface CompareScoreMatrixProps {
   pairs: ComparePairState[]
 }
 
-// Wider than the Leaderboard's own row-height whisker (Phase 6's
-// default 96px) so 2-4 overlapping intervals stay legible on one
-// shared axis -- the forest plot §8.8 item 4 asks for.
+// Wider than the Leaderboard's own row-height whisker (default 96px)
+// so 2-4 overlapping intervals stay legible on one shared axis -- what
+// a forest plot needs.
 const WHISKER_WIDTH = 240
 
-// §8.8 item 4: score, forest-plot whisker and Δ-vs-baseline, one row
-// per run. Score, interval, samples and pass/fail come straight from
+// Score, forest-plot whisker and Δ-vs-baseline, one row per run.
+// Score, interval, samples and pass/fail come straight from
 // each run's own GET /runs/{id} (already loaded by ComparisonView),
 // so every row renders before any pairwise comparison finishes; only
 // the Δ and significance columns wait on that second request.

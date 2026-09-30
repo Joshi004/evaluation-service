@@ -10,9 +10,9 @@ interface ModelLatestScoresProps {
 const MAX_VISIBLE_SCORES = 3
 
 // Up to 3 mini scores, most recently evaluated first, then "+N more"
-// (docs/UI_REDESIGN_PLAN.md §8.11) -- the Models list' own glance at
-// what a model has been run on; the model page's own ModelScorecard is
-// where every setup's full detail actually lives.
+// -- the Models list' own glance at what a model has been run on; the
+// model page's own ModelScorecard is where every setup's full detail
+// actually lives.
 export function ModelLatestScores({ evaluated, className }: ModelLatestScoresProps) {
   if (evaluated.length === 0) {
     return <p className={cn('text-sm text-muted-foreground', className)}>Not evaluated yet</p>

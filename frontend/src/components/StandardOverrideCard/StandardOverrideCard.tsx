@@ -29,8 +29,8 @@ const THINK_HANDLING_OPTIONS = [
 // as each field's default. Fields here never involve a checkpoint: a
 // standard's shape resolves the same way regardless of which
 // checkpoint runs it. Rendered inside its Settings row's own "Customize
-// protocol" side panel (Phase 10, docs/UI_REDESIGN_PLAN.md §8.10) --
-// the standard's own name is the panel's title, not repeated here.
+// protocol" side panel -- the standard's own name is the panel's title,
+// not repeated here.
 export function StandardOverrideCard({ standard, draft, onDraftChange, labelValue, onLabelChange }: StandardOverrideCardProps) {
   const hasChange = standardOverrideDraftHasChange(draft)
 

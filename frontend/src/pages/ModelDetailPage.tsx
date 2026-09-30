@@ -16,12 +16,11 @@ import { isNotFoundError } from '../utils/isNotFoundError'
 import { paths } from '../utils/paths'
 import { buildModelPageTabs, type ModelPageContext } from './ModelDetailPage.helper'
 
-// The model page (docs/UI_REDESIGN_PLAN.md §8.11): replaces the old
-// checkpoints list's expandable rows with a real page -- a header
-// (identity, weights, registration, actions), then tabs for Results,
-// Runs, Configuration and Lineage, all sharing this one already-loaded
-// checkpoint (plus the catalog it's ranked against) through the outlet
-// context (ModelDetailPage.helper.ts's useModelPage). The leaderboard
+// The model page: a header (identity, weights, registration, actions),
+// then tabs for Results, Runs, Configuration and Lineage, all sharing
+// this one already-loaded checkpoint (plus the catalog it's ranked
+// against) through the outlet context (ModelDetailPage.helper.ts's
+// useModelPage). The leaderboard
 // board is built once here, exactly as LeaderboardPage itself builds
 // it, so no tab ever re-ranks or disagrees with the Leaderboard.
 export function ModelDetailPage() {

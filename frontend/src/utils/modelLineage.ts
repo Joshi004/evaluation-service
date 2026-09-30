@@ -1,9 +1,9 @@
 // Resolves one checkpoint's parent and children against the full
-// checkpoint list (Phase 11, docs/UI_REDESIGN_PLAN.md section 8.11's
-// Lineage tab). GET /checkpoints/{id} already returns parent_checkpoint_id
-// as a raw id -- this turns that id (and the reverse child relationship,
-// which no endpoint returns directly) into the actual CheckpointListItem
-// rows a page can render a name and status badge for.
+// checkpoint list, for the model page's Lineage tab. GET
+// /checkpoints/{id} already returns parent_checkpoint_id as a raw id
+// -- this turns that id (and the reverse child relationship, which no
+// endpoint returns directly) into the actual CheckpointListItem rows a
+// page can render a name and status badge for.
 import type { CheckpointListItem } from '../api/client'
 
 export interface ModelLineage {

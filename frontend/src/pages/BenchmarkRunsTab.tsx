@@ -5,9 +5,8 @@ import { ScopedRunsList } from '../components/ScopedRunsList/ScopedRunsList'
 import { paths } from '../utils/paths'
 import { useBenchmarkPage } from './BenchmarkDetailPage.helper'
 
-// The Benchmark detail page's Runs tab (Phase 12,
-// docs/UI_REDESIGN_PLAN.md §8.12): this standard version's own runs
-// (already scoped server-side by BenchmarkDetailPage's own
+// The Benchmark detail page's Runs tab: this standard version's own
+// runs (already scoped server-side by BenchmarkDetailPage's own
 // `useRuns({ standard_id: id })`), rendered through the same
 // ScopedRunsList ModelRunsTab uses.
 export function BenchmarkRunsTab() {

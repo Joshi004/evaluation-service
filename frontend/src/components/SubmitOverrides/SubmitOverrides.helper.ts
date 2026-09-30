@@ -113,10 +113,10 @@ export const EMPTY_SERVING_OVERRIDE_DRAFT: ServingOverrideDraft = {
 }
 
 // Every selected standard's and checkpoint's own draft, plus which base
-// profile a checkpoint starts from if not its registered default
-// (S-D35's per-checkpoint choice) on both the sampling and serving
-// axes, plus a label draft per axis. An id absent from a draft or
-// profile-choice map simply hasn't been typed into yet -- see
+// profile a checkpoint starts from if not its registered default, on
+// both the sampling and serving axes, plus a label draft per axis. An
+// id absent from a draft or profile-choice map simply hasn't been
+// typed into yet -- see
 // standardDraftFor / samplingDraftFor / servingDraftFor and the label
 // accessors below for the fallback each gives.
 export interface SubmitOverrideDrafts {
@@ -223,7 +223,7 @@ export function withServingDraft(
 
 // `profileId === null` clears the entry rather than storing it -- an
 // absent key is what falls back to the checkpoint's own
-// default_sampling_profile_id (S-D9); storing `null` would mean two
+// default_sampling_profile_id; storing `null` would mean two
 // different keyed-out states.
 export function withSamplingProfileChoice(
   drafts: SubmitOverrideDrafts,
