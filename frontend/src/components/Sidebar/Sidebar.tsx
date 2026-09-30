@@ -50,7 +50,23 @@ function SidebarNavLink({
         )
       }
     >
-      <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+      <span className="relative shrink-0">
+        <Icon className="h-4 w-4" aria-hidden="true" />
+        {/* The rail (768-1279px) hides the label and the full badge
+            below, so this is the sighted equivalent for that width --
+            "is anything running" (Appendix C task 7) still needs only a
+            glance, not a click into the expanded sidebar. aria-hidden
+            since the count is already announced by the sr-only badge
+            below at every width. */}
+        {responsive && Boolean(badgeCount) && (
+          <span
+            aria-hidden="true"
+            className="absolute -top-1.5 -right-2 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-info-soft px-0.5 text-[10px] font-medium text-info xl:hidden"
+          >
+            {badgeCount}
+          </span>
+        )}
+      </span>
       {/* sr-only (not `hidden`) below xl so the rail keeps an accessible
           name for screen readers even though the label isn't drawn. */}
       <span className={cn('truncate', responsive && 'sr-only xl:not-sr-only')}>{item.label}</span>

@@ -6,6 +6,10 @@ import { textInputClassName } from '../TextInput/TextInput.helper'
 
 interface SearchInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
   onClear?: () => void
+  // Required, not just inherited optionally from InputHTMLAttributes --
+  // a search box has no visible <label> anywhere it's used, so leaving
+  // this out silently ships a control with no accessible name.
+  'aria-label': string
 }
 
 // TextInput's styling with a leading search icon and, once there is a

@@ -16,6 +16,7 @@ import { ErrorState } from '../components/ErrorState/ErrorState'
 import { FailureBreakdown } from '../components/FailureBreakdown/FailureBreakdown'
 import { SampleFilters } from '../components/SampleFilters/SampleFilters'
 import { SampleList } from '../components/SampleList/SampleList'
+import { sampleRowLinkId } from '../components/SampleList/SampleList.helper'
 import { SamplePanel } from '../components/SamplePanel/SamplePanel'
 import { Skeleton } from '../components/Skeleton/Skeleton'
 import { cn } from '../utils/cn'
@@ -86,7 +87,15 @@ export function RunSamplesTab() {
   }
   function closeSample(): void {
     const query = toSearchParams(filters).toString()
+    const closedSampleKey = sampleKey
     navigate({ pathname: paths.runSamples(run.id), search: query })
+    // SampleList's row link is already in the DOM the whole time the
+    // panel is open (only its `compact` prop toggles, never a mount),
+    // so focus can move there immediately rather than waiting for a
+    // re-render.
+    if (closedSampleKey !== undefined) {
+      document.getElementById(sampleRowLinkId(closedSampleKey))?.focus()
+    }
   }
 
   async function handleStep(step: SampleStep): Promise<void> {
@@ -196,11 +205,15 @@ export function RunSamplesTab() {
               <button
                 type="button"
                 onClick={() => setBreakdownExpanded((value) => !value)}
+                aria-expanded={breakdownExpanded}
                 className="flex w-full items-center justify-between p-4 text-left"
               >
                 <span className="text-sm font-medium text-foreground">Breakdown</span>
                 <ChevronDown
-                  className={cn('h-4 w-4 text-muted-foreground transition-transform', breakdownExpanded && 'rotate-180')}
+                  className={cn(
+                    'h-4 w-4 text-muted-foreground motion-safe:transition-transform',
+                    breakdownExpanded && 'rotate-180',
+                  )}
                   aria-hidden="true"
                 />
               </button>

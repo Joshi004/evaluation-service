@@ -26,3 +26,11 @@ export interface OutcomeBadgeStyle {
 export function outcomeBadge(passed: boolean): OutcomeBadgeStyle {
   return passed ? { label: 'Pass', tone: 'success' } : { label: 'Fail', tone: 'danger' }
 }
+
+// One shared id format for a row's own Key link, so RunSamplesTab can
+// return focus to the right row by id after SamplePanel closes without
+// duplicating (and risking drift from) the string this component
+// builds for itself.
+export function sampleRowLinkId(sampleKey: string): string {
+  return `sample-row-${sampleKey}`
+}

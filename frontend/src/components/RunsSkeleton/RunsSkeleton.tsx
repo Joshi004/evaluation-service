@@ -5,7 +5,8 @@ import { Skeleton } from '../Skeleton/Skeleton'
 // in for the table.
 export function RunsSkeleton() {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" aria-busy="true">
+      <span className="sr-only">Loading…</span>
       <div className="flex flex-wrap items-center gap-2">
         <Skeleton className="h-8 w-80" />
         <Skeleton className="h-5 w-16" />

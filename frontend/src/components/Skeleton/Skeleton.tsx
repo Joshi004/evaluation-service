@@ -10,5 +10,5 @@ interface SkeletonProps {
 // primitive intentionally stays generic rather than guessing at any
 // one page's layout.
 export function Skeleton({ className }: SkeletonProps) {
-  return <div className={cn('animate-pulse rounded-md bg-muted', className)} />
+  return <div aria-hidden="true" className={cn('motion-safe:animate-pulse rounded-md bg-muted', className)} />
 }

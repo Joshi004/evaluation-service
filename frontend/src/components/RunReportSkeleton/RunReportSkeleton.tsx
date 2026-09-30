@@ -5,7 +5,8 @@ import { Skeleton } from '../Skeleton/Skeleton'
 // verdict band's own height, and a tab strip.
 export function RunReportSkeleton() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" aria-busy="true">
+      <span className="sr-only">Loading…</span>
       <div className="space-y-2">
         <Skeleton className="h-4 w-16" />
         <Skeleton className="h-7 w-40" />

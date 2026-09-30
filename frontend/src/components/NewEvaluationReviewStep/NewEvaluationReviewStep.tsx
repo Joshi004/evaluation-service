@@ -64,9 +64,14 @@ export function NewEvaluationReviewStep({
             value={batchName}
             onChange={(event) => onBatchNameChange(event.target.value)}
             invalid={batchNameError !== null}
+            aria-describedby={batchNameError ? 'batch-name-error' : undefined}
             className="mt-1"
           />
-          {batchNameError && <p className="mt-1 text-xs text-danger">{batchNameError}</p>}
+          {batchNameError && (
+            <p id="batch-name-error" className="mt-1 text-xs text-danger">
+              {batchNameError}
+            </p>
+          )}
         </label>
         <label className="block">
           <span className="text-xs text-muted-foreground">Submitted by (optional)</span>

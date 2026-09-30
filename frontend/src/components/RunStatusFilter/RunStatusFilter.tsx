@@ -28,6 +28,7 @@ export function RunStatusFilter({ value, counts, onChange, className }: RunStatu
   return (
     <SegmentedControl
       className={className}
+      aria-label="Status"
       value={value}
       onValueChange={(next) => onChange(next as RunsStatusFilterValue)}
       options={[

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { Link, useLocation } from 'react-router'
 import { useRunSample } from '../../api/queries/runDiagnostics'
@@ -47,9 +48,20 @@ export function SamplePanel({
   const location = useLocation()
   const sample = useRunSample(runId, sampleKey)
   const badge = sample.data ? outcomeBadge(sample.data.passed) : null
+  const headingRef = useRef<HTMLHeadingElement>(null)
+
+  // Moves focus to this panel's own heading every time it opens or
+  // steps to a different sample -- a keyboard or screen-reader user
+  // who just triggered a navigation shouldn't have to hunt for where
+  // the page changed. Runs on mount too (the panel's first open), not
+  // just on later sampleKey changes, since useEffect always fires
+  // after the first render.
+  useEffect(() => {
+    headingRef.current?.focus()
+  }, [sampleKey])
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
+    <section aria-labelledby="sample-panel-heading" className="rounded-lg border border-border bg-card p-4">
       {/* Only meaningful below the xl breakpoint, where the list is
           hidden while the panel is open (§4.4.3's "full-screen route
           below that" -- the same route just renders full width there
@@ -63,7 +75,14 @@ export function SamplePanel({
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-sm text-foreground">{sampleKey}</span>
+          <h2
+            id="sample-panel-heading"
+            ref={headingRef}
+            tabIndex={-1}
+            className="font-mono text-sm text-foreground focus:outline-none"
+          >
+            {sampleKey}
+          </h2>
           {badge && <Badge tone={badge.tone}>{badge.label}</Badge>}
         </div>
         <div className="flex items-center gap-1">
@@ -122,6 +141,6 @@ export function SamplePanel({
           <IfevalRuleChecklist rules={sample.data.rules} />
         </>
       )}
-    </div>
+    </section>
   )
 }

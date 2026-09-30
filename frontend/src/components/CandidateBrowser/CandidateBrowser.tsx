@@ -80,6 +80,7 @@ export function CandidateBrowser({
             onChange={(event) => setFilterText(event.target.value)}
             onClear={() => setFilterText('')}
             placeholder="Filter by name or path…"
+            aria-label="Filter candidates"
           />
 
           {filteredCandidates.length === 0 &&

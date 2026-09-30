@@ -405,6 +405,7 @@ export function StyleguidePage() {
             onClear={() => setSearch('')}
             className="w-56"
             placeholder="Search"
+            aria-label="Search"
           />
           <SelectField className="w-40" defaultValue="ifeval">
             <option value="ifeval">IFEval</option>
@@ -421,6 +422,7 @@ export function StyleguidePage() {
               { value: 'comfortable', label: 'Comfortable' },
               { value: 'compact', label: 'Compact' },
             ]}
+            aria-label="Density"
           />
         </Section>
 

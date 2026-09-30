@@ -13,7 +13,7 @@ interface SpinnerProps {
 export function Spinner({ className, label }: SpinnerProps) {
   return (
     <svg
-      className={cn('h-4 w-4 animate-spin text-current', className)}
+      className={cn('h-4 w-4 motion-safe:animate-spin text-current', className)}
       viewBox="0 0 24 24"
       fill="none"
       role={label ? 'status' : 'presentation'}

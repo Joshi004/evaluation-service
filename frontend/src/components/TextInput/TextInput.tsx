@@ -14,5 +14,5 @@ export const TextInput = forwardRef<HTMLInputElement, TextInputProps>(function T
   { invalid = false, className, ...rest },
   ref,
 ) {
-  return <input ref={ref} className={textInputClassName({ invalid, className })} {...rest} />
+  return <input ref={ref} {...rest} aria-invalid={invalid} className={textInputClassName({ invalid, className })} />
 })

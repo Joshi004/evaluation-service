@@ -56,6 +56,7 @@ export function ComparisonBucketTable({ otherRuns, pairs, level, onLevelChange }
             value={effectiveLevel}
             onValueChange={onLevelChange}
             options={availableLevels.map((candidate) => ({ value: candidate, label: candidate }))}
+            aria-label="Bucket level"
           />
         )}
       </div>

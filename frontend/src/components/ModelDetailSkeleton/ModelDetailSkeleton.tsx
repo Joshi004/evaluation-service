@@ -6,7 +6,8 @@ import { Skeleton } from '../Skeleton/Skeleton'
 // own reasoning for the model page (docs/UI_REDESIGN_PLAN.md §8.11).
 export function ModelDetailSkeleton() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" aria-busy="true">
+      <span className="sr-only">Loading…</span>
       <div className="space-y-2">
         <Skeleton className="h-4 w-16" />
         <Skeleton className="h-7 w-64" />

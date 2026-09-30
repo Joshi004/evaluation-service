@@ -31,6 +31,7 @@ export function ModelPicker({ checkpoints, selectedCheckpointIds, onSelectedChec
         onChange={(event) => setQuery(event.target.value)}
         onClear={() => setQuery('')}
         placeholder="Search models..."
+        aria-label="Search models"
       />
       <div className="mt-3 max-h-96 space-y-4 overflow-y-auto">
         {groups.length === 0 ? (

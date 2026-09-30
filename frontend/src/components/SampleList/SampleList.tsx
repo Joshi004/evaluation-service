@@ -8,7 +8,7 @@ import { tagHint, tagLabel } from '../../utils/tagLabel'
 import { Badge } from '../Badge/Badge'
 import { Table, TableCell, TableHeaderCell } from '../Table/Table'
 import { Tooltip } from '../Tooltip/Tooltip'
-import { outcomeBadge, primaryScoreText } from './SampleList.helper'
+import { outcomeBadge, primaryScoreText, sampleRowLinkId } from './SampleList.helper'
 
 interface SampleListProps {
   runId: number
@@ -79,6 +79,7 @@ export function SampleList({
             >
               <TableCell>
                 <Link
+                  id={sampleRowLinkId(sample.sample_key)}
                   to={{ pathname: paths.runSample(runId, sample.sample_key), search: location.search }}
                   className="font-mono text-primary hover:underline"
                 >

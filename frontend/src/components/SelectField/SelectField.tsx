@@ -18,12 +18,13 @@ export const SelectField = forwardRef<HTMLSelectElement, SelectFieldProps>(funct
     <div className={cn('relative', className)}>
       <select
         ref={ref}
+        {...rest}
+        aria-invalid={invalid}
         className={cn(
           'h-9 w-full appearance-none rounded-md border bg-muted px-3 pr-8 text-sm text-foreground',
           'disabled:cursor-not-allowed disabled:opacity-50',
           invalid ? 'border-danger' : 'border-border',
         )}
-        {...rest}
       >
         {children}
       </select>

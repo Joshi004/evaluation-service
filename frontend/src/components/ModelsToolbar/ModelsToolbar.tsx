@@ -78,6 +78,7 @@ export function ModelsToolbar({
         value={view.view}
         onValueChange={(value) => onViewModeChange(value as ModelsViewMode)}
         options={VIEW_MODE_OPTIONS}
+        aria-label="View"
       />
     </div>
   )

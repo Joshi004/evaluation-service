@@ -40,6 +40,7 @@ export function CompareSampleDialog({ runs, sampleKey, onClose }: CompareSampleD
       }}
       size="xl"
       title={`Sample ${sampleKey}`}
+      description={`Comparing sample ${sampleKey} across ${runs.length} runs.`}
     >
       <div className="space-y-4">
         {sharedPrompt !== null && (

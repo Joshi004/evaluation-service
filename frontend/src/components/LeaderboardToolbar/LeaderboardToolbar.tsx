@@ -97,11 +97,21 @@ export function LeaderboardToolbar({
             selected={view.benchFilter}
             onChange={onBenchChange}
           />
-          <SegmentedControl value={view.mode} onValueChange={(value) => onModeChange(value as LeaderboardSetupsMode)} options={MODE_OPTIONS} />
+          <SegmentedControl
+            value={view.mode}
+            onValueChange={(value) => onModeChange(value as LeaderboardSetupsMode)}
+            options={MODE_OPTIONS}
+            aria-label="Setups mode"
+          />
         </>
       )}
 
-      <SegmentedControl value={view.lens} onValueChange={(value) => onLensChange(value as LeaderboardLens)} options={LENS_OPTIONS} />
+      <SegmentedControl
+        value={view.lens}
+        onValueChange={(value) => onLensChange(value as LeaderboardLens)}
+        options={LENS_OPTIONS}
+        aria-label="View"
+      />
 
       <Popover
         align="end"
@@ -118,6 +128,7 @@ export function LeaderboardToolbar({
               value={view.density}
               onValueChange={(value) => onDensityChange(value as LeaderboardDensity)}
               options={DENSITY_OPTIONS}
+              aria-label="Density"
             />
           </div>
           {view.lens === 'overview' && (

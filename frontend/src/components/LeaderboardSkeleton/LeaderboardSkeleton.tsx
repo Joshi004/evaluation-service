@@ -5,7 +5,8 @@ import { Skeleton } from '../Skeleton/Skeleton'
 // row-height bars standing in for the matrix.
 export function LeaderboardSkeleton() {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" aria-busy="true">
+      <span className="sr-only">Loading…</span>
       <div className="flex flex-wrap items-center gap-2">
         <Skeleton className="h-9 w-56" />
         <Skeleton className="h-9 w-28" />

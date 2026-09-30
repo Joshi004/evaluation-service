@@ -28,6 +28,7 @@ export function RunLogsTab() {
           options={LOG_SOURCE_OPTIONS}
           value={source}
           onValueChange={(value) => setSource(value as LogSource)}
+          aria-label="Log source"
         />
         <div className="flex items-center gap-4 text-sm text-foreground">
           <label className="flex items-center gap-2">

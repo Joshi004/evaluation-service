@@ -33,6 +33,7 @@ export function ParentModelPicker({ checkpoints, selectedParentId, onSelectedPar
         onChange={(event) => setQuery(event.target.value)}
         onClear={() => setQuery('')}
         placeholder="Search models…"
+        aria-label="Search models"
       />
       <div className="mt-3 max-h-72 space-y-4 overflow-y-auto">
         <label className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted">

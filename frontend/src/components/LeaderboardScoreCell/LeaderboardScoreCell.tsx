@@ -106,7 +106,12 @@ export function LeaderboardScoreCell({
               to={paths.run(cell.evalRunId)}
               className="inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-foreground hover:bg-muted"
             >
-              {star && <Star className="h-3.5 w-3.5 text-warning" aria-hidden="true" />}
+              {star && (
+                <>
+                  <Star className="h-3.5 w-3.5 text-warning" aria-hidden="true" />
+                  <span className="sr-only">{cell.isLeader ? 'Leads this setup' : 'Within margin of error of the leader'}</span>
+                </>
+              )}
               <ScoreValue value={cell.value} interval={cell.confidenceInterval} />
             </Link>
           }

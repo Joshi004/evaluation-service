@@ -46,6 +46,7 @@ export function CompareFlippedSamples({
             value={String(effectiveRunId)}
             onValueChange={(value) => onSelectedRunChange(Number(value))}
             options={otherRuns.map((run) => ({ value: String(run.id), label: `vs #${run.id}` }))}
+            aria-label="Compare against"
           />
         )}
       </div>

@@ -33,12 +33,15 @@ export function PartitionPicker({ value, onValueChange }: PartitionPickerProps) 
   return (
     <div>
       <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">Cluster partition</span>
+        <label htmlFor="partition-picker-select" className="text-xs text-muted-foreground">
+          Cluster partition
+        </label>
         <Button variant="ghost" size="sm" onClick={() => partitionsQuery.refetch()} loading={partitionsQuery.isFetching}>
           Refresh
         </Button>
       </div>
       <SelectField
+        id="partition-picker-select"
         value={value ?? ''}
         onChange={(event) => onValueChange(event.target.value === '' ? null : event.target.value)}
         className="mt-1"

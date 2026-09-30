@@ -170,6 +170,7 @@ export function RunsToolbar({
           value={viewMode}
           onValueChange={(value) => onViewModeChange(value as RunsViewMode)}
           options={VIEW_MODE_OPTIONS}
+          aria-label="View"
         />
       </div>
     </div>

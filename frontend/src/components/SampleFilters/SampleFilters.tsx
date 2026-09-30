@@ -77,12 +77,22 @@ export function SampleFilters({ filters, subsets, onChange }: SampleFiltersProps
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <SegmentedControl options={OUTCOME_OPTIONS} value={filters.outcome} onValueChange={handleOutcomeChange} />
+      <SegmentedControl
+        options={OUTCOME_OPTIONS}
+        value={filters.outcome}
+        onValueChange={handleOutcomeChange}
+        aria-label="Outcome"
+      />
 
       {/* IFEval's single "default" subset shows no control; MMLU-Pro's
           14 do (Phase 4's "hidden when the benchmark has only one"). */}
       {subsets.length > 1 && (
-        <SelectField value={filters.subset ?? ''} onChange={(event) => handleSubsetChange(event.target.value)} className="w-48">
+        <SelectField
+          value={filters.subset ?? ''}
+          onChange={(event) => handleSubsetChange(event.target.value)}
+          aria-label="Subset"
+          className="w-48"
+        >
           <option value="">All subsets</option>
           {subsets.map((subset) => (
             <option key={subset.name} value={subset.name}>
@@ -98,6 +108,7 @@ export function SampleFilters({ filters, subsets, onChange }: SampleFiltersProps
         onClear={() => setSearchDraft('')}
         placeholder="Search prompt or answer…"
         className="w-64"
+        aria-label="Search prompt or answer"
       />
 
       {filters.rule !== null && (

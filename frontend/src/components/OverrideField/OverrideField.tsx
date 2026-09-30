@@ -32,7 +32,12 @@ interface FieldLabelProps {
 function FieldLabel({ label, isChanged, onReset }: FieldLabelProps) {
   return (
     <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-      {isChanged && <span className="h-1.5 w-1.5 rounded-full bg-primary" title="Changed from the default" />}
+      {isChanged && (
+        <>
+          <span className="h-1.5 w-1.5 rounded-full bg-primary" title="Changed from the default" aria-hidden="true" />
+          <span className="sr-only">Changed from the default</span>
+        </>
+      )}
       {label}
       {isChanged && (
         <button

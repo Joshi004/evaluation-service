@@ -51,6 +51,7 @@ export function CompareRunPicker({
         onChange={(event) => setQuery(event.target.value)}
         onClear={() => setQuery('')}
         placeholder="Search by model or run number"
+        aria-label="Search by model or run number"
       />
       <ul className="max-h-80 divide-y divide-border overflow-y-auto rounded-md border border-border">
         {visibleRuns.map((run) => {

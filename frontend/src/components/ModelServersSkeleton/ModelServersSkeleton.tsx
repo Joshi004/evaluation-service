@@ -5,7 +5,8 @@ import { Skeleton } from '../Skeleton/Skeleton'
 // "a list of servers" without matching any one real count.
 export function ModelServersSkeleton() {
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" aria-busy="true">
+      <span className="sr-only">Loading…</span>
       <Skeleton className="h-4 w-48" />
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         {[0, 1, 2].map((index) => (

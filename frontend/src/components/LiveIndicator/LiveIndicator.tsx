@@ -34,7 +34,7 @@ export function LiveIndicator({ pollIntervalMs, isRefetchError, lastCheckedAt }:
       <Tooltip
         content={`The last automatic refresh failed. Showing data from ${lastChecked ?? 'the last successful check'}.`}
       >
-        <span tabIndex={0}>
+        <span tabIndex={0} role="status">
           <Badge tone="warning" className="gap-1">
             <AlertTriangle className="h-3 w-3" aria-hidden="true" />
             Not updating
@@ -46,7 +46,7 @@ export function LiveIndicator({ pollIntervalMs, isRefetchError, lastCheckedAt }:
 
   return (
     <Tooltip content={`Checking every ${intervalSeconds}s. Last checked ${lastChecked ?? 'just now'}.`}>
-      <span tabIndex={0} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      <span tabIndex={0} role="status" className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <span
           className={cn('h-2 w-2 rounded-full bg-info', isFastPoll && 'motion-safe:animate-pulse')}
           aria-hidden="true"

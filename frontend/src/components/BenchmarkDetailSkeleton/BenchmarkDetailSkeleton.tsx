@@ -6,7 +6,8 @@ import { Skeleton } from '../Skeleton/Skeleton'
 // lines, a tab strip, then a content placeholder.
 export function BenchmarkDetailSkeleton() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" aria-busy="true">
+      <span className="sr-only">Loading…</span>
       <div className="space-y-2">
         <Skeleton className="h-4 w-24" />
         <Skeleton className="h-7 w-64" />

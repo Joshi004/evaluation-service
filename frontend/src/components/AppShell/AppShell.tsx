@@ -40,6 +40,12 @@ export function AppShell() {
 
   return (
     <div className="flex h-screen bg-background text-foreground">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-card focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-foreground focus:shadow-lg"
+      >
+        Skip to content
+      </a>
       <Sidebar
         isDrawerOpen={isDrawerOpen}
         onCloseDrawer={() => setIsDrawerOpen(false)}
@@ -50,7 +56,7 @@ export function AppShell() {
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar breadcrumb={pageTitle} onOpenDrawer={() => setIsDrawerOpen(true)} />
-        <main className="flex-1 overflow-y-auto">
+        <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto focus:outline-none">
           <Outlet />
         </main>
         <CompareTray />

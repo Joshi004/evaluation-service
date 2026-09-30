@@ -32,6 +32,7 @@ export function PathReferenceInput({ selectedReference, onSelect }: PathReferenc
             placeholder="/home/jihye.back/slm/experiments/.../merged_global_step_810"
             className="w-full font-mono"
             invalid={error !== null}
+            aria-describedby={error ? 'path-reference-error' : undefined}
           />
           <Button size="sm" className="shrink-0" disabled={candidate === null} onClick={() => candidate && onSelect(candidate)}>
             Use this path
@@ -39,7 +40,11 @@ export function PathReferenceInput({ selectedReference, onSelect }: PathReferenc
         </div>
       </label>
 
-      {error && <p className="mt-1 text-xs text-danger">{error}</p>}
+      {error && (
+        <p id="path-reference-error" className="mt-1 text-xs text-danger">
+          {error}
+        </p>
+      )}
 
       {candidate !== null && candidate.reference === selectedReference && (
         <p className="mt-1 text-xs text-success">Selected</p>

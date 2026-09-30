@@ -6,7 +6,8 @@ import { Skeleton } from '../Skeleton/Skeleton'
 // count.
 export function BenchmarksSkeleton() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" aria-busy="true">
+      <span className="sr-only">Loading…</span>
       {[0, 1].map((groupIndex) => (
         <div key={groupIndex} className="space-y-2">
           <Skeleton className="h-4 w-32" />

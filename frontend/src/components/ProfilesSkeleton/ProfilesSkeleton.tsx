@@ -5,7 +5,8 @@ import { Skeleton } from '../Skeleton/Skeleton'
 // handful of table rows -- mirrors CatalogPanel's own loading rows.
 export function ProfilesSkeleton() {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" aria-busy="true">
+      <span className="sr-only">Loading…</span>
       <div className="flex items-center justify-between gap-2">
         <Skeleton className="h-4 w-32" />
         <Skeleton className="h-8 w-32" />
