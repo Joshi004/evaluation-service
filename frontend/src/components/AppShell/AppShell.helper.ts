@@ -37,10 +37,11 @@ export const NAV_GROUPS: NavGroup[] = [
     heading: 'Library',
     items: [
       { label: 'Benchmarks', to: paths.benchmarks(), icon: Target },
-      // Two flat links, not one collapsible "Profiles" parent, until
-      // Phase 12 merges the two pages into tabs of one (spec note).
-      { label: 'Sampling profiles', to: paths.profilesSampling(), icon: SlidersHorizontal },
-      { label: 'Serving profiles', to: paths.profilesServing(), icon: SlidersHorizontal },
+      // One item, not two (Phase 12, docs/UI_REDESIGN_PLAN.md §8.12):
+      // Sampling and Serving profiles are now tabs of the one Profiles
+      // page, so the sidebar only needs the one link that page's own
+      // TabNav starts on.
+      { label: 'Profiles', to: paths.profiles(), icon: SlidersHorizontal },
     ],
   },
   {

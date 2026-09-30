@@ -4,8 +4,9 @@
 // finished_at/created_at; RunDetailPage's full row needs the identical
 // computation, which is why this lives here rather than in one page's
 // helper). Recomputed at render time from a Date the caller passes in,
-// the same "no separate ticker, let refetchInterval drive re-renders"
-// choice EndpointsPage.helper.ts's formatTimeRemaining already makes.
+// rather than keeping its own timer -- the same choice useNow leaves to
+// its own callers, whether they tick it themselves or (RunsPage) get a
+// re-render for free from refetchInterval.
 // Renamed from formatElapsedTime.ts in Phase 4 to match the vocabulary
 // domain components import it under (RunReportPage's own duration, in
 // a later phase).

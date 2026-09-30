@@ -1,60 +1,71 @@
-// Non-DOM logic for CatalogPanel.tsx: the state-to-pill mapping, the
-// label-or-hash-or-file display name, and the prune preflight -- kept
-// here so CatalogPanel.tsx only renders.
+// Non-DOM logic for CatalogPanel.tsx: the state-to-badge-tone mapping,
+// the label-or-hash-or-file display name, a stable React key, sorting
+// entries so the ones needing attention lead, and the prune preflight.
 import type { CatalogEntryState, CatalogEntryStatus } from '../../api/client'
+import { entryNeedsAttention } from '../../utils/catalogResources'
+import type { BadgeTone } from '../Badge/Badge.helper'
 
-interface CatalogEntryBadgeStyle {
-  label: string
-  className: string
+// Mirrors CATALOG_STATE_LABELS' (utils/labels.ts) states with the tone
+// each reads as: `loaded` and `ad_hoc` are both unremarkable
+// (neutral), `new` is informational, `orphaned` a soft warning, and
+// `conflicting`/`invalid` both need a person (danger) -- the same
+// three states entryNeedsAttention flags.
+const CATALOG_ENTRY_BADGE_TONES: Record<CatalogEntryState, BadgeTone> = {
+  loaded: 'neutral',
+  new: 'info',
+  ad_hoc: 'neutral',
+  orphaned: 'warning',
+  conflicting: 'danger',
+  invalid: 'danger',
 }
 
-// Mirrors StatusBadge.helper.ts / AvailabilityBadge.helper.ts's palette
-// so every state pill in the app reads the same way (Phase 7 Build
-// item 2): `loaded` is neutral, `new` is blue, `orphaned` is amber, and
-// `conflicting`/`invalid` both need a person, which is why they share
-// red. `ad_hoc` gets its own dim slate, distinct from `loaded` --
-// S-D33 wants ad-hoc rows visually secondary, not indistinguishable
-// from a reviewed one.
-const CATALOG_ENTRY_BADGES: Record<CatalogEntryState, CatalogEntryBadgeStyle> = {
-  loaded: { label: 'Loaded', className: 'bg-slate-700/60 text-slate-300' },
-  new: { label: 'New', className: 'bg-blue-500/20 text-blue-300' },
-  ad_hoc: { label: 'Ad hoc', className: 'bg-slate-800/60 text-slate-500' },
-  orphaned: { label: 'Orphaned', className: 'bg-amber-500/20 text-amber-300' },
-  conflicting: { label: 'Conflicting', className: 'bg-red-500/20 text-red-300' },
-  invalid: { label: 'Invalid', className: 'bg-red-500/20 text-red-300' },
-}
-
-export function catalogEntryBadge(state: CatalogEntryState): CatalogEntryBadgeStyle {
-  return CATALOG_ENTRY_BADGES[state]
+export function catalogEntryBadgeTone(state: CatalogEntryState): BadgeTone {
+  return CATALOG_ENTRY_BADGE_TONES[state]
 }
 
 // The label-or-hash rule (utils/servingProfileDisplayName.ts,
 // utils/standardDisplayName.ts) extended with the two states that have
 // neither: `new` always has a label (it parsed from the YAML), but
 // falls through to the filename if somehow absent; `ad_hoc` has no
-// label by definition, so its hash is what identifies it (S-D33).
+// label by definition, so its hash is what identifies it.
 export function catalogEntryDisplayName(entry: CatalogEntryStatus): string {
   return entry.label ?? entry.row_hash ?? entry.file ?? '(unlabelled)'
 }
 
-// A stable React key across every state. `row_id` is null only for
-// `new`/`invalid` entries, which always have a filename (they came from
-// scanning a file); `orphaned`/`ad_hoc` entries always have a row_id.
-// The fallback chain never actually reaches 'unknown' -- it exists so
-// the return type stays `string` without a cast.
+// A stable React key across every state. Keyed on the file name first,
+// not `row_id`: two different files can validate to the exact same
+// content (differing only in label or comments, neither of which
+// participates in the content hash) and both resolve to the very same
+// existing row, so two catalog-status entries can legitimately share
+// one row_id (confirmed live: sampling-profiles' lfm2_5_think.yaml and
+// qwen3_think.yaml both report row_id 2). A directory scan can never
+// produce two files with the same name, so keying on the file first is
+// always unique for a file-backed entry (new/loaded/conflicting/
+// invalid). Only orphaned/ad_hoc entries have no file -- and only those
+// reach the row_id fallback, where it genuinely is unique (loader.py's
+// own unclaimed-row pass never revisits a row a file already claimed).
 export function catalogEntryKey(entry: CatalogEntryStatus): string {
-  if (entry.row_id !== null) {
-    return `row-${entry.row_id}`
+  if (entry.file !== null) {
+    return `file-${entry.file}`
   }
-  return `file-${entry.file ?? entry.label ?? 'unknown'}`
+  return `row-${entry.row_id}`
+}
+
+// Attention-needing entries first, in the order catalog-status
+// returned them; everything else follows, also in that same order --
+// so the handful of rows someone actually needs to act on are never
+// buried below a long list of loaded/orphaned/ad-hoc ones.
+export function sortEntriesByAttentionFirst(entries: CatalogEntryStatus[]): CatalogEntryStatus[] {
+  const needsAttention = entries.filter((entry) => entryNeedsAttention(entry))
+  const everythingElse = entries.filter((entry) => !entryNeedsAttention(entry))
+  return [...needsAttention, ...everythingElse]
 }
 
 // The exact set POST /{resource}/prune will remove: every ad-hoc row
 // catalog-status already marked deletable. There is no prune preflight
-// route (Phase 6 didn't add one) -- catalog-status already carries
-// everything needed to compute the same set client-side, so the confirm
-// text and the button's count can never disagree with what the server
-// is about to do.
+// route -- catalog-status already carries everything needed to compute
+// the same set client-side, so the confirm text and the button's count
+// can never disagree with what the server is about to do.
 export function prunableRowIds(entries: CatalogEntryStatus[]): number[] {
   const rowIds: number[] = []
   for (const entry of entries) {
@@ -67,6 +78,7 @@ export function prunableRowIds(entries: CatalogEntryStatus[]): number[] {
 
 // Prune's confirm text, naming the exact ids about to go (S-T26's
 // "never 'some rows'" rule, applied to prune as well as delete).
-export function describePrune(rowIds: number[], entryNoun: string): string {
-  return `Prune ${rowIds.length} unlabelled ${entryNoun}(s) with id ${rowIds.join(', ')}? This cannot be undone.`
+export function describePrune(rowIds: number[], noun: string): string {
+  const plural = rowIds.length === 1 ? '' : 's'
+  return `Removes id ${rowIds.join(', ')}: ${rowIds.length} unlabelled ${noun}${plural} with no other references. This cannot be undone.`
 }

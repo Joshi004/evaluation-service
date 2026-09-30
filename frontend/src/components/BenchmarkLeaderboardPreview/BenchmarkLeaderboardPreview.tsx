@@ -1,0 +1,106 @@
+import { Link } from 'react-router'
+import type { StandardSummary } from '../../api/client'
+import { buildRankedRows, type LeaderboardBoard } from '../../utils/buildLeaderboard'
+import { paths } from '../../utils/paths'
+import { BUTTON_LABEL_SIZE, buttonClassName } from '../Button/Button.helper'
+import { EmptyState } from '../EmptyState/EmptyState'
+import { ModelName } from '../ModelName/ModelName'
+import { ScoreValue } from '../ScoreValue/ScoreValue'
+import { SetupChip } from '../SetupChip/SetupChip'
+import { Table, TableCell, TableHeaderCell } from '../Table/Table'
+import { Tooltip } from '../Tooltip/Tooltip'
+
+interface BenchmarkLeaderboardPreviewProps {
+  standard: StandardSummary
+  board: LeaderboardBoard
+}
+
+const PREVIEW_ROW_COUNT = 5
+
+// The Benchmark Overview tab's own leaderboard slice (Phase 12,
+// docs/UI_REDESIGN_PLAN.md §8.12's "Data sources"): the board's column
+// for this benchmark, narrowed to setups on *this* standard version --
+// decision #1 means this page is only ever about one version, but a
+// column can mix e.g. ifeval/v1 and ifeval/v2 setups together -- then
+// the default setup's (most models, ties by most recent) top 5 rows,
+// via the same buildRankedRows the By-benchmark lens uses.
+export function BenchmarkLeaderboardPreview({ standard, board }: BenchmarkLeaderboardPreviewProps) {
+  const column = board.columns.find((candidate) => candidate.benchmark === standard.benchmark)
+  const setupsForThisStandard = column?.setups.filter((setup) => setup.standardId === standard.id) ?? []
+  const [defaultSetup] = setupsForThisStandard
+
+  if (!defaultSetup) {
+    return (
+      <EmptyState
+        title="No results yet"
+        description="Evaluate a model on this benchmark to see ranked results here."
+        actions={
+          <Link
+            to={paths.newEvaluation({ benchmarks: [standard.id] })}
+            className={buttonClassName('primary', BUTTON_LABEL_SIZE.md)}
+          >
+            Run it
+          </Link>
+        }
+      />
+    )
+  }
+
+  const otherSetupsCount = setupsForThisStandard.length - 1
+  const rankedRows = buildRankedRows(defaultSetup, board.models).slice(0, PREVIEW_ROW_COUNT)
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <SetupChip
+          samplingProfileLabel={defaultSetup.samplingProfileLabel}
+          samplingProfileHash={defaultSetup.samplingProfileHash}
+        />
+        {otherSetupsCount > 0 && (
+          <span className="text-xs text-muted-foreground">
+            +{otherSetupsCount} other setup{otherSetupsCount === 1 ? '' : 's'}
+          </span>
+        )}
+      </div>
+
+      <Table>
+        <thead>
+          <tr>
+            <TableHeaderCell>Rank</TableHeaderCell>
+            <TableHeaderCell>Model</TableHeaderCell>
+            <TableHeaderCell className="text-right">Score</TableHeaderCell>
+          </tr>
+        </thead>
+        <tbody>
+          {rankedRows.map((row) => (
+            <tr key={row.model.checkpointId}>
+              <TableCell className="tabular-nums">
+                {row.cell.rank}
+                {row.cell.withinLeaderMargin && (
+                  <Tooltip content="Within the leader's margin of error (the intervals overlap)">
+                    <span tabIndex={0} className="ml-1 text-muted-foreground">
+                      ≈
+                    </span>
+                  </Tooltip>
+                )}
+              </TableCell>
+              <TableCell>
+                <ModelName name={row.model.name} family={row.model.family} to={paths.model(row.model.checkpointId)} />
+              </TableCell>
+              <TableCell className="text-right">
+                <ScoreValue value={row.cell.value} />
+              </TableCell>
+            </tr>
+          ))}
+        </tbody>
+      </Table>
+
+      <Link
+        to={paths.leaderboard({ benchmark: standard.benchmark, comparisonHash: defaultSetup.comparisonHash })}
+        className="text-sm font-medium text-primary hover:underline"
+      >
+        View full ranking
+      </Link>
+    </div>
+  )
+}

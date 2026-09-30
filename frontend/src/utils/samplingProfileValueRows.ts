@@ -15,9 +15,29 @@ export interface SamplingProfileValueRow {
   value: string
 }
 
+// Every SamplingProfileConfig field's human label, keyed the same way
+// runConfigFieldRows.ts's samplingFieldRows labels the same fields --
+// one label set for e.g. "temperature" across the app, not two.
+// Relocated from the deleted StandardsPage.helper.ts (as
+// SAMPLING_OVERRIDE_LABELS) in Phase 12, docs/UI_REDESIGN_PLAN.md
+// §8.12, once the Benchmark detail page's own Protocol tab became a
+// second caller alongside DryRunPreview -- neither is a page about
+// sampling *profiles* specifically, so the name drops "override" for
+// the more accurate "field".
+export const SAMPLING_FIELD_LABELS: Record<string, string> = {
+  temperature: 'Temperature',
+  top_p: 'Top-p',
+  top_k: 'Top-k',
+  min_p: 'Min-p',
+  presence_penalty: 'Presence penalty',
+  repetition_penalty: 'Repetition penalty',
+  max_tokens: 'Max tokens',
+  enable_thinking: 'Enable thinking',
+  seed: 'Seed',
+}
+
 // Every SamplingProfileConfig field, labelled the same way
-// StandardsPage.helper.ts's SAMPLING_OVERRIDE_LABELS and
-// RunDetailPage.helper.ts's samplingFieldRows both label them -- one
+// RunDetailPage.helper.ts's samplingFieldRows labels them -- one
 // label set for e.g. "temperature" across the app, not three.
 export function buildSamplingValueRows(profile: SamplingProfileSummary): SamplingProfileValueRow[] {
   return [

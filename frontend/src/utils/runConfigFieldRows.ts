@@ -87,3 +87,13 @@ export function servingFieldRows(serving: ServingProfileSummary): FieldRow[] {
     { label: 'GPU memory utilization', value: String(serving.gpu_memory_utilization) },
   ]
 }
+
+// engine_options' keys vary per profile -- it's an escape hatch for
+// uncommon engine flags (R-D6) -- so its entries are listed on their
+// own rather than forced into servingFieldRows' fixed field set.
+// Relocated from the deleted ServingProfilesPage.helper.ts in Phase 12
+// (docs/UI_REDESIGN_PLAN.md §8.12), next to servingFieldRows since
+// RunConfigTab.tsx already renders the two side by side.
+export function engineOptionEntries(profile: ServingProfileSummary): [string, string | number | boolean][] {
+  return Object.entries(profile.engine_options)
+}

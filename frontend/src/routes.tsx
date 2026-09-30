@@ -11,9 +11,14 @@ import { ModelRunsTab } from './pages/ModelRunsTab'
 import { ModelConfigTab } from './pages/ModelConfigTab'
 import { ModelLineageTab } from './pages/ModelLineageTab'
 import { RegisterModelPage } from './pages/RegisterModelPage'
-import { StandardsPage } from './pages/StandardsPage'
-import { SamplingProfilesPage } from './pages/SamplingProfilesPage'
-import { ServingProfilesPage } from './pages/ServingProfilesPage'
+import { BenchmarksPage } from './pages/BenchmarksPage'
+import { BenchmarkDetailPage } from './pages/BenchmarkDetailPage'
+import { BenchmarkOverviewTab } from './pages/BenchmarkOverviewTab'
+import { BenchmarkProtocolTab } from './pages/BenchmarkProtocolTab'
+import { BenchmarkRunsTab } from './pages/BenchmarkRunsTab'
+import { ProfilesPage } from './pages/ProfilesPage'
+import { SamplingProfilesTab } from './pages/SamplingProfilesTab'
+import { ServingProfilesTab } from './pages/ServingProfilesTab'
 import { NewEvaluationPage } from './pages/NewEvaluationPage'
 import { RunsPage } from './pages/RunsPage'
 import { RunReportPage } from './pages/RunReportPage'
@@ -22,7 +27,7 @@ import { RunSamplesTab } from './pages/RunSamplesTab'
 import { RunConfigTab } from './pages/RunConfigTab'
 import { RunLogsTab } from './pages/RunLogsTab'
 import { ComparePage } from './pages/ComparePage'
-import { EndpointsPage } from './pages/EndpointsPage'
+import { InfrastructurePage } from './pages/InfrastructurePage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { StyleguidePage } from './pages/StyleguidePage'
 import { PrototypeApp } from './prototype/PrototypeApp'
@@ -104,31 +109,69 @@ export function AppRoutes() {
           <Route path="lineage" element={<ModelLineageTab />} />
         </Route>
 
+        {/*
+         * The Benchmarks list (Phase 12, docs/UI_REDESIGN_PLAN.md
+         * §8.12): replaces StandardsPage. Page, not PageWide -- the
+         * category-grouped card grid doesn't need the extra width a
+         * data table does.
+         */}
         <Route
           path="benchmarks"
           element={
             <Page>
-              <StandardsPage />
+              <BenchmarksPage />
             </Page>
           }
         />
+        {/*
+         * The Benchmark detail page (Phase 12, docs/UI_REDESIGN_PLAN.md
+         * §8.12): BenchmarkDetailPage owns the header and the tab
+         * strip; each child route below is one tab, rendered into its
+         * own <Outlet> and reading the already-loaded standard through
+         * its outlet context (BenchmarkDetailPage.helper.ts's
+         * useBenchmarkPage) -- mirrors the model page's own routes
+         * above. `:benchmarkId` is the standard id, not the benchmark
+         * slug (decision #1): each versioned standard gets its own
+         * page. PageWide, not Page: the Overview tab's leaderboard
+         * preview and the Runs tab's table both need the full width the
+         * same way the model page's own tabs do.
+         */}
+        <Route
+          path="benchmarks/:benchmarkId"
+          element={
+            <PageWide>
+              <BenchmarkDetailPage />
+            </PageWide>
+          }
+        >
+          <Route index element={<BenchmarkOverviewTab />} />
+          <Route path="protocol" element={<BenchmarkProtocolTab />} />
+          <Route path="runs" element={<BenchmarkRunsTab />} />
+        </Route>
 
+        {/*
+         * Profiles (Phase 12, docs/UI_REDESIGN_PLAN.md §8.12): replaces
+         * the separate SamplingProfilesPage/ServingProfilesPage routes
+         * with one ProfilesPage owning a PageHeader and a Sampling/
+         * Serving TabNav; each child route below is one tab, rendered
+         * into ProfilesPage's own <Outlet>. The index route redirects
+         * bare /profiles to /profiles/sampling, the same
+         * RedirectPreservingSearch every other bare-parent route below
+         * uses, so a colleague's saved /profiles link still lands
+         * somewhere real.
+         */}
         <Route
-          path="profiles/sampling"
+          path="profiles"
           element={
             <Page>
-              <SamplingProfilesPage />
+              <ProfilesPage />
             </Page>
           }
-        />
-        <Route
-          path="profiles/serving"
-          element={
-            <Page>
-              <ServingProfilesPage />
-            </Page>
-          }
-        />
+        >
+          <Route index element={<RedirectPreservingSearch to={paths.profilesSampling()} />} />
+          <Route path="sampling" element={<SamplingProfilesTab />} />
+          <Route path="serving" element={<ServingProfilesTab />} />
+        </Route>
 
         {/*
          * New evaluation (Phase 10, docs/UI_REDESIGN_PLAN.md §8.10):
@@ -218,11 +261,17 @@ export function AppRoutes() {
           }
         />
 
+        {/*
+         * The Infrastructure page (Phase 13, docs/UI_REDESIGN_PLAN.md
+         * §8.13): replaces the legacy EndpointsPage -- model server
+         * cards, the Start dialog, cluster partitions (read only on a
+         * Refresh click, ground rule 15) and system health.
+         */}
         <Route
           path="infrastructure"
           element={
             <Page>
-              <EndpointsPage />
+              <InfrastructurePage />
             </Page>
           }
         />

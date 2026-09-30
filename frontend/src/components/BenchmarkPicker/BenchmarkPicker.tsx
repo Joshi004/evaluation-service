@@ -4,8 +4,8 @@ import { Checkbox } from '../Checkbox/Checkbox'
 import { benchmarkVersion } from '../../utils/benchmarkDisplayName'
 import { cn } from '../../utils/cn'
 import { protocolSummary } from '../../utils/protocolSummary'
+import { groupStandardsByCategory } from '../../utils/standardCategoryGroups'
 import { toggleId } from '../../utils/toggleId'
-import { groupStandardsByCategory } from './BenchmarkPicker.helper'
 
 interface BenchmarkPickerProps {
   standards: StandardSummary[]

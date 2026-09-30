@@ -1030,11 +1030,11 @@ Also confirmed: the skeleton renders while the first request is held open; a fir
 **Data & API.** `GET /standards` (with Phase 3 metadata), `/sampling-profiles`, `/serving-profiles`, `/{resource}/catalog-status`, `GET /leaderboard`, `GET /runs`.
 
 **Acceptance criteria**
-- [ ] Five benchmarks appear under their categories with descriptions; opening IFEval shows what it measures and its metrics with the primary flagged.
-- [ ] Profiles page shows seven sampling profiles (including the unlabelled ad-hoc one, shown by fingerprint) and four serving profiles with summary lines.
-- [ ] With everything in sync, no catalog banner is shown; forcing a non-loaded state in the UI layer (devtools override of the response) shows the banner.
-- [ ] Reload, Prune and Delete require confirmation (**do not confirm** during verification).
-- [ ] Gates pass.
+- [x] Five benchmarks appear under their categories with descriptions; opening IFEval shows what it measures and its metrics with the primary flagged (confirmed via a scripted Playwright walkthrough of the real running app: `/benchmarks` renders "Instruction following" (IFBench, IFEval), "Knowledge & reasoning" (GPQA-Diamond, MMLU-Pro) and "Math" (GSM8K) — five cards, three categories, matching `GET /standards` exactly; `/benchmarks/4` (IFEval) Overview lists all 4 metrics with "Prompt-level (strict)" carrying the "Headline score" badge, and its leaderboard preview shows run 13 at rank 1 (85.4%) and run 15 at rank 2 (85.0%, marked `≈`) on the `qwen3_5_think` setup plus "+1 other setup", matching `GET /leaderboard` filtered to `standard_id=4`).
+- [x] Profiles page shows seven sampling profiles (including the unlabelled ad-hoc one, shown by fingerprint) and four serving profiles with summary lines (confirmed on screen: `/profiles/sampling` lists 7 rows; the unlabelled ad_hoc row (id 7) reads "Custom", fingerprint `77f35859`, summary "Thinking on · T 1 · top-p 0.95 · 30k tokens", "Used by" = "3 runs"; `greedy` reads "Default for 3 models · 2 runs" — both exact matches against `GET /sampling-profiles` + `GET /runs` counts; `/profiles/serving` lists 4 rows with summary lines and no run counts, per decision #8).
+- [x] With everything in sync, no catalog banner is shown; forcing a non-loaded state in the UI layer (devtools override of the response) shows the banner (confirmed: today's real `catalog-status` has zero `new`/`conflicting`/`invalid` entries for any of the three resources — sampling's one `ad_hoc` row and serving's one `orphaned` row are both excluded by design (decision #2) — so no banner renders on `/benchmarks`, `/profiles/sampling` or `/profiles/serving`; overriding one `GET .../catalog-status` response client-side to add a `new` entry made the banner read "1 catalog file needs attention", and its **Review** action opened the same Manage catalog drawer showing that entry).
+- [x] Reload, Prune and Delete require confirmation (**do not confirm** during verification) (confirmed: all three open a `ConfirmDialog`. Reload was opened — "Reload the sampling profiles catalog?" — and cancelled. Today's real data makes Prune and Delete disabled (0 rows are currently deletable), so their dialogs were exercised by overriding one `GET .../catalog-status` response client-side to mark the ad_hoc row deletable: Prune read "Prune 1 unlabelled sampling profile?" / "Removes id 7: 1 unlabelled sampling profile with no other references. This cannot be undone."; Delete read "Delete sampling profile 77f35859ab387706?" / "Catalog rows are immutable; this cannot be undone." Both were cancelled. No mutating request ever reached the backend — the whole walkthrough ran with every non-`GET` request intercepted and aborted, and zero were observed).
+- [x] Gates pass (`npx tsc -b --noEmit`, `npm run lint`, and `npm run build` all clean; the §6 rule 9 palette check and an `any`-usage check return nothing across the phase's touched files. Verification also surfaced and fixed a pre-existing bug, not scoped to this phase's own new files: `PageHeader`'s `description` slot rendered inside a `<p>`, but `ModelHeader` (Phase 11) and `RunReportHeader` (Phase 7) both already passed multi-line `<div>`-based content into it — invalid HTML that React logged as a hydration warning on every page using either header. `BenchmarkHeader` hit the same warning by following the same established pattern. Fixed at the shared source (`PageHeader.tsx`'s wrapper changed from `<p>` to `<div>`); re-verified clean on both `/benchmarks/:id` and `/models/:id`).
 
 **Pitfalls.** Verify state semantics in `loader.py` before writing explanations; catalog rows are immutable — Delete copy must say so (existing wording).
 
@@ -1056,12 +1056,14 @@ Also confirmed: the skeleton renders while the first request is held open; a fir
 **Out of scope.** Queue depth, idle GPU counts, GPU-hours (backlog; no API today).
 
 **Acceptance criteria**
-- [ ] With no live servers, an empty state explains what a model server is and how one starts (via a run or manually).
-- [ ] Kill and Start use dialogs; **do not confirm Kill or Start** during verification.
-- [ ] Partitions are not requested until Refresh is clicked (check the network tab).
-- [ ] Gates pass.
+- [x] With no live servers, an empty state explains what a model server is and how one starts (via a run or manually) (confirmed on screen against the real backend's own `GET /endpoints` → `[]`: `/infrastructure` renders "No model servers running" / "A model server hosts one model on cluster GPUs so evaluations can query it. Runs start one automatically, or you can start one here." with a **Start a model server** action; the Cluster partitions card beside it independently shows its own "Partitions not loaded" empty state, since `useClusterPartitions` never auto-fetches).
+- [x] Kill and Start use dialogs; **do not confirm Kill or Start** during verification (confirmed via a scripted Playwright walkthrough of the real running app, every non-`GET` request intercepted at the network layer — `route.fulfill`/`route.abort`, never `route.continue()` — so nothing non-`GET` could ever reach the real backend regardless of what the UI did: Kill opened its `ConfirmDialog` — "Kill the model server for `<model>`?" / "SLURM job 123456 is cancelled now and its 1 GPU is freed. Any run still using this server loses it." — and was **cancelled**, not confirmed. Start's dialog was opened and its model select, cost summary and all three outcome lines (reuse, already-starting, new) were checked against overridden `GET /endpoints` responses; its full multi-minute flow — progress view, closing the dialog mid-request, the success toast still firing, navigating to `/runs` mid-start, a 502, and a dropped connection — was exercised only against browser-fulfilled responses, never the real cluster. `docker logs evaluation-service-backend-1` for the test window shows only `GET /api/v1/endpoints` calls; zero `POST` or `DELETE /api/v1/endpoints` ever reached the real backend).
+- [x] Partitions are not requested until Refresh is clicked (check the network tab) (confirmed: loading `/infrastructure` fresh made zero requests to `GET /cluster/partitions`; one click on the Cluster partitions card's Load/Refresh action made exactly one. This check also ran against a browser-overridden response, so it never touched the real cluster either).
+- [x] Gates pass (confirmed: `npm run lint` (oxlint) and `npm run build` (`tsc -b && vite build`) both clean; the §6 rule 9 palette check and a `window.confirm` search return nothing across every file this phase touched; `rg "EndpointsPage|formatTimeRemaining" frontend/src` returns only historical comments naming the page this phase replaces — e.g. "replaces the legacy EndpointsPage" — the same pattern Phase 12 itself left behind for `StandardsPage`/`SamplingProfilesPage`/`ServingProfilesPage`; no live import or call remains).
 
 **Pitfalls.** Long-running mutation UX; `expires_at` is server time — compute progress defensively.
+
+**Follow-ups (not in this phase).** Backend: when a start fails after `sbatch` (the server process died, readiness timed out, or the tunnel failed), expire the row it already wrote and, in the tunnel case, `scancel` the job — today that row just sits listed as "Starting" for up to 2 h, its GPUs still counted, indistinguishable from a start still in progress. This touches the run worker's own `start_or_reuse_endpoint` path too, so it belongs in its own change, not this frontend-only phase. Backend, unverified: `connector.cancel` runs `scancel` with `check=True`; if the job has already ended, Kill on a leftover row could fail with a 500 — needs a check against the real cluster. Phase 14: rename `RunsLiveIndicator` to `LiveIndicator` now that a second page (this one) uses it.
 
 ---
 
@@ -1148,7 +1150,7 @@ Other phases depend on these staying stable. Do not rename them without updating
 | Domain components (`ModelName`, `BenchmarkName`, `SetupChip`, `ScoreValue`, `FingerprintChip`, `RelativeTime`, `RunStatusChip`) | 4 | 6–13 |
 | `useCompareTray()`, `AddToCompareButton`, `MAX_COMPARE_RUNS` | 5 | 6, 7, 8, 9, 11 |
 | Rank helper (`rankScores`: rank by score, `≈` within the leader's margin, latest-per-model-and-setup rule) | 6 | 7, 11 |
-| Board shape (`buildLeaderboard`, `resolveSetupForBenchmark`) and new primitives (`HoverCard`, `MultiSelectMenu`, `IntervalWhisker`, `CopyLinkButton`) | 6 | 7, 8, 11 |
+| Board shape (`buildLeaderboard`, `resolveSetupForBenchmark`, `buildRankedRows`) and new primitives (`HoverCard`, `MultiSelectMenu`, `IntervalWhisker`, `CopyLinkButton`) | 6 | 7, 8, 11, 12 |
 | URL params — Leaderboard: `lens`, `q`, `family`, `bench`, `setup.<benchmark>`, `mode`, `sort`, `dir`, `density`, `heat` | 6 | share links |
 | URL params — Samples: `outcome`, `subset`, `rule`, `tag`, `q`, `offset` (**frozen**, old links use them) | existing, kept in 7 | 7, 8 |
 | `TabNav` (routed tab strip, `Tabs`' sibling for path-based tabs) | 7 | 11, 12 |
@@ -1169,6 +1171,14 @@ Other phases depend on these staying stable. Do not rename them without updating
 | `paths.modelRuns`, `paths.modelConfig`, `paths.modelLineage` | 11 | 11 |
 | URL params — Models: `q`, `family`, `weights`, `view` | 11 | 11 |
 | URL params — model Runs: `status` | 11 | 11 |
+| `groupStandardsByCategory` (relocated from Phase 10's own `BenchmarkPicker` into a shared util so `BenchmarksPage` reads categories the same way the New evaluation picker does) | 12 | 10, 12 |
+| `ScopedRunsList` (extracted from Phase 11's own `ModelRunsTab`, now shared with `BenchmarkRunsTab`) | 12 | 11, 12 |
+| `paths.benchmark`, `paths.benchmarkProtocol`, `paths.benchmarkRuns`, `paths.profiles`, `paths.profilesSampling`, `paths.profilesServing` | 12 | 12 |
+| URL params — Profiles: `profile` | 12 | 12 |
+| Catalog hooks (`useCatalogStatus`, `useReloadCatalog`, `usePruneCatalog`, `useDeleteCatalogRow`), `CatalogResourceDescriptor`/`CATALOG_RESOURCES`, `ManageCatalogButton`, `CatalogHealthBanner` | 12 | 12 |
+| New primitives (`CodeBlock`, `Callout`) | 12 | 12 |
+| `useStartEndpoint()`, `useKillEndpoint()` (hook-level success/failure callbacks, so a toast still fires after the dialog closes or the page changes) | 13 | 13 |
+| `TimeToLiveBar` (`computeTimeToLive`: `{ fractionLeft, label, endingSoon }`, guarded against bad dates and clock skew) | 13 | 13 |
 
 ---
 

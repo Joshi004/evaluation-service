@@ -100,5 +100,10 @@ export function useClusterPartitions(): UseQueryResult<ClusterPartitions> {
     initialData: cached?.data,
     initialDataUpdatedAt: cached?.cachedAtMs,
     staleTime: PARTITIONS_CACHE_TTL_MS,
+    // The default 3 retries would turn one Refresh click into four
+    // SSH calls against the cluster -- the same ground rule 15 this
+    // hook's own `enabled: false` already honours. The Refresh button
+    // itself is what a human retries with.
+    retry: false,
   })
 }

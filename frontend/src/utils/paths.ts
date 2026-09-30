@@ -6,7 +6,26 @@
 // page -- but the builder exists now so that phase extends this file
 // instead of inventing a second path module.
 export const paths = {
-  leaderboard: () => '/',
+  // Bare '/' for every existing call site (the sidebar link, the
+  // not-found page's "Back to Leaderboard"); a `target` opens straight
+  // into the By-benchmark lens on one setup (the Benchmark detail
+  // page's own "View full ranking" link, Phase 12,
+  // docs/UI_REDESIGN_PLAN.md §8.12). The three params written here
+  // (`lens`, `sort`, `setup.<benchmark>`) must match
+  // LeaderboardPage.helper.ts's own URL contract exactly -- duplicated
+  // as literals rather than imported, since this module is a leaf
+  // every layer (including pages) imports, and a page helper must
+  // never import back from utils/paths.ts's own directory.
+  leaderboard: (target?: { benchmark: string; comparisonHash: string }) => {
+    if (!target) {
+      return '/'
+    }
+    const search = new URLSearchParams()
+    search.set('lens', 'benchmark')
+    search.set('sort', target.benchmark)
+    search.set(`setup.${target.benchmark}`, target.comparisonHash)
+    return `/?${search.toString()}`
+  },
   // `filters` jumps straight into one family (the model page header's
   // own family chip, Phase 11) -- every other call site keeps calling
   // this with no arguments, same as `newEvaluation`/`runs` above.
@@ -29,7 +48,17 @@ export const paths = {
   modelConfig: (modelId: number | string) => `/models/${modelId}/config`,
   modelLineage: (modelId: number | string) => `/models/${modelId}/lineage`,
   benchmarks: () => '/benchmarks',
+  // Phase 12 (docs/UI_REDESIGN_PLAN.md §8.12): the benchmark detail
+  // page's own path tabs, mirroring modelRuns/modelConfig's own
+  // "index tab has no suffix" convention above.
   benchmark: (benchmarkId: number | string) => `/benchmarks/${benchmarkId}`,
+  benchmarkProtocol: (benchmarkId: number | string) => `/benchmarks/${benchmarkId}/protocol`,
+  benchmarkRuns: (benchmarkId: number | string) => `/benchmarks/${benchmarkId}/runs`,
+  // The merged Profiles page (Phase 12): a bare call is the page's own
+  // default redirect target; profilesSampling/profilesServing below
+  // are its two path tabs, kept as their own named builders since
+  // every existing call site already names one or the other directly.
+  profiles: () => '/profiles',
   profilesSampling: () => '/profiles/sampling',
   profilesServing: () => '/profiles/serving',
   // `params` prefills the Choose step (Phase 10's own `?models=&

@@ -27,6 +27,8 @@ import { Checkbox } from '../components/Checkbox/Checkbox'
 import { SegmentedControl } from '../components/SegmentedControl/SegmentedControl'
 import { Skeleton } from '../components/Skeleton/Skeleton'
 import { Spinner } from '../components/Spinner/Spinner'
+import { Callout } from '../components/Callout/Callout'
+import { CodeBlock } from '../components/CodeBlock/CodeBlock'
 import { EmptyState } from '../components/EmptyState/EmptyState'
 import { ErrorState } from '../components/ErrorState/ErrorState'
 import { JsonDetails } from '../components/JsonDetails/JsonDetails'
@@ -43,6 +45,7 @@ import { RunStatusChip } from '../components/RunStatusChip/RunStatusChip'
 import { BatchProgressBar } from '../components/BatchProgressBar/BatchProgressBar'
 import { RunFailureReason } from '../components/RunFailureReason/RunFailureReason'
 import { RunsLiveIndicator } from '../components/RunsLiveIndicator/RunsLiveIndicator'
+import { TimeToLiveBar } from '../components/TimeToLiveBar/TimeToLiveBar'
 import { classifyRunError } from '../utils/classifyRunError'
 import { shortenModelName } from '../utils/shortenModelName'
 import { familyKey } from '../utils/familyKey'
@@ -81,6 +84,8 @@ const MODEL_NAME_EXAMPLE = 'Qwen3.5-0.8B-Think-MOPD-mixv2-RL-v11c-s810'
 // on every re-render for no reason this static example needs).
 const RECENT_TIMESTAMP_EXAMPLE = new Date(Date.now() - 21 * 60 * 60 * 1000).toISOString()
 const NOW_EXAMPLE_MS = Date.now()
+const NOW_EXAMPLE_DATE = new Date(NOW_EXAMPLE_MS)
+const MINUTE_MS = 60_000
 const RUN_8_ERROR =
   "FileNotFoundError: [Errno 2] No such file or directory: '/data/evalsvc/runs/run-8/reports/Qwen3.5-0.8B-Think-MOPD-mixv2-RL-v11c-s810/ifeval.json'"
 
@@ -485,6 +490,26 @@ export function StyleguidePage() {
           <JsonDetails summary="config.json (verbatim)" value={{ model_type: 'qwen3', torch_dtype: 'bfloat16' }} />
         </Section>
 
+        {/* Phase 12 (docs/UI_REDESIGN_PLAN.md §8.12): CodeBlock is the
+            <pre>+CopyButton shell JsonDetails above now composes, for
+            plain text rather than JSON (a benchmark's own prompt
+            template, its source YAML); Callout generalises the
+            tinted-box-with-icon pattern InspectionSummary.tsx and
+            DryRunPreview.tsx already hand-roll, first used for real by
+            the Catalog health banner below. */}
+        <Section title="CodeBlock & Callout">
+          <div className="flex w-full flex-col gap-3">
+            <CodeBlock value={'{{question}}\n\nAnswer with one of A, B, C, D.'} className="max-w-lg" />
+            <Callout tone="info">Sampling fields not listed here aren't mandated by this benchmark.</Callout>
+            <Callout tone="warning" title="2 catalog files need attention" actions={<Button size="sm">Review</Button>}>
+              1 not loaded yet · 1 invalid file
+            </Callout>
+            <Callout tone="danger" title="Delete blocked">
+              3 eval_run(s) reference it.
+            </Callout>
+          </div>
+        </Section>
+
         {/* Phase 4 (docs/UI_REDESIGN_PLAN.md §8.4, item 6/7): the seven
             domain display components every later phase composes from,
             each shown against real data from the running stack. */}
@@ -546,6 +571,54 @@ export function StyleguidePage() {
               <RunFailureReason run={RUN_8_EXAMPLE} />
               <RunFailureReason run={UNRECOGNISED_ERROR_RUN_EXAMPLE} />
             </div>
+          </div>
+        </Section>
+
+        {/* Phase 13 (docs/UI_REDESIGN_PLAN.md §8.13): the model server
+            card's own time-to-live meter, against the five shapes
+            computeTimeToLive branches on -- a live card grid only ever
+            shows whichever one today's real cluster state happens to
+            produce, so the rest are only reachable here. No
+            ModelServerCard/Kill button here: Kill is a real mutation,
+            out of place on a page every dev session loads. */}
+        <Section title="TimeToLiveBar">
+          <div className="w-56">
+            <TimeToLiveBar
+              createdAt={new Date(NOW_EXAMPLE_MS - 1 * MINUTE_MS).toISOString()}
+              expiresAt={new Date(NOW_EXAMPLE_MS + 119 * MINUTE_MS).toISOString()}
+              now={NOW_EXAMPLE_DATE}
+            />
+          </div>
+          <div className="w-56">
+            <TimeToLiveBar
+              createdAt={new Date(NOW_EXAMPLE_MS - 60 * MINUTE_MS).toISOString()}
+              expiresAt={new Date(NOW_EXAMPLE_MS + 60 * MINUTE_MS).toISOString()}
+              now={NOW_EXAMPLE_DATE}
+            />
+          </div>
+          {/* endingSoon (<=10m remaining): the bar and caption both
+              switch to the warning tone. */}
+          <div className="w-56">
+            <TimeToLiveBar
+              createdAt={new Date(NOW_EXAMPLE_MS - 115 * MINUTE_MS).toISOString()}
+              expiresAt={new Date(NOW_EXAMPLE_MS + 5 * MINUTE_MS).toISOString()}
+              now={NOW_EXAMPLE_DATE}
+            />
+          </div>
+          {/* This browser's clock running ahead of the value the list
+              endpoint already filtered on (expires_at > now()) -- reads
+              "Ending now", never "expired" (TimeToLiveBar.helper.ts's
+              own reasoning). */}
+          <div className="w-56">
+            <TimeToLiveBar
+              createdAt={new Date(NOW_EXAMPLE_MS - 130 * MINUTE_MS).toISOString()}
+              expiresAt={new Date(NOW_EXAMPLE_MS - 10 * MINUTE_MS).toISOString()}
+              now={NOW_EXAMPLE_DATE}
+            />
+          </div>
+          {/* Unparseable dates -- no bar at all, only the caption. */}
+          <div className="w-56">
+            <TimeToLiveBar createdAt="not-a-date" expiresAt="also-not-a-date" now={NOW_EXAMPLE_DATE} />
           </div>
         </Section>
 

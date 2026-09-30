@@ -13,9 +13,20 @@ import type { StandardSummary } from '../api/client'
 // StandardOverrideCard.helper.ts's sampleLimitPlaceholder, one call
 // site over: that file's version is an input placeholder, this one a
 // display summary, so the two stay separate rather than one reaching
-// across into the other's component folder).
-function formatSampleLimit(sampleLimit: number | null): string {
-  return sampleLimit === null ? 'Full dataset' : `${sampleLimit} samples`
+// across into the other's component folder). `scoredSampleCount` --
+// how many samples an actual run against this standard scored -- lets
+// a caller with a real result in hand (the Benchmarks list card, Phase
+// 12 §8.12) show that real count instead of "Full dataset" once one
+// exists; omitted entirely (BenchmarkPicker's own Choose-step card,
+// which has no run yet), the text stays exactly what it always said.
+function formatSampleLimit(sampleLimit: number | null, scoredSampleCount?: number | null): string {
+  if (sampleLimit !== null) {
+    return `${sampleLimit} samples`
+  }
+  if (scoredSampleCount !== null && scoredSampleCount !== undefined) {
+    return `${scoredSampleCount} samples`
+  }
+  return 'Full dataset'
 }
 
 function formatFewShot(fewShot: number): string {
@@ -26,8 +37,10 @@ function formatRepeats(repeats: number): string {
   return repeats === 1 ? '1 repeat' : `${repeats} repeats`
 }
 
-export function protocolSummary(standard: StandardSummary): string {
-  return [formatSampleLimit(standard.sample_limit), formatFewShot(standard.few_shot), formatRepeats(standard.repeats)].join(
-    ' \u00b7 ',
-  )
+export function protocolSummary(standard: StandardSummary, scoredSampleCount?: number | null): string {
+  return [
+    formatSampleLimit(standard.sample_limit, scoredSampleCount),
+    formatFewShot(standard.few_shot),
+    formatRepeats(standard.repeats),
+  ].join(' \u00b7 ')
 }

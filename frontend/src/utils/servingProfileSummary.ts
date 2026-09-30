@@ -7,9 +7,13 @@
 import type { ServingProfileSummary } from '../api/client'
 import { servingProfileDisplayName } from './servingProfileDisplayName'
 
-export function describeProfileGlance(profile: ServingProfileSummary): string {
+// The profile's own facts, without its name -- split out of
+// describeProfileGlance (Phase 12, docs/UI_REDESIGN_PLAN.md §8.12) once
+// the Profiles page's own table needed a "Summary" column next to a
+// "Name" column that already shows servingProfileDisplayName, so the
+// name would otherwise print twice in the same row.
+export function servingSummary(profile: ServingProfileSummary): string {
   const parts = [
-    servingProfileDisplayName(profile.label, profile.hash),
     `${profile.engine} ${profile.engine_version}`,
     `${profile.gpus} GPU${profile.gpus === 1 ? '' : 's'}`,
   ]
@@ -20,4 +24,8 @@ export function describeProfileGlance(profile: ServingProfileSummary): string {
     parts.push(`reasoning_parser ${profile.reasoning_parser}`)
   }
   return parts.join(' \u00b7 ')
+}
+
+export function describeProfileGlance(profile: ServingProfileSummary): string {
+  return [servingProfileDisplayName(profile.label, profile.hash), servingSummary(profile)].join(' \u00b7 ')
 }

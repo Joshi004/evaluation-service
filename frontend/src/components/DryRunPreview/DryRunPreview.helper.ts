@@ -14,7 +14,7 @@
 // (app/schemas/runs.py's FieldChange) -- so this narrows before
 // formatting instead of assuming a shape.
 import type { CompatibilityFinding, RunPreview, RunPreviewPair } from '../../api/client'
-import { SAMPLING_OVERRIDE_LABELS } from '../../pages/StandardsPage.helper'
+import { SAMPLING_FIELD_LABELS } from '../../utils/samplingProfileValueRows'
 
 export function formatPreviewValue(value: unknown): string {
   if (value === null) {
@@ -29,16 +29,16 @@ export function formatPreviewValue(value: unknown): string {
 // A sparse sampling-overrides object (a standard's own
 // `sampling_overrides`, or a submit's own `SamplingOverrides` draft) as
 // one line of "field: value" pairs -- the same label set
-// StandardsPage.helper.ts already defines, so a resolved-sampling
+// samplingProfileValueRows.ts already defines, so a resolved-sampling
 // card's "standard mandates" / "you changed" lines never disagree with
-// the Standards page's own rendering of the same field names.
+// the Benchmark detail page's own rendering of the same field names.
 export function formatSamplingOverrides(overrides: Record<string, unknown>): string {
   const entries = Object.entries(overrides)
   if (entries.length === 0) {
     return 'none'
   }
   return entries
-    .map(([field, value]) => `${SAMPLING_OVERRIDE_LABELS[field] ?? field}: ${formatPreviewValue(value)}`)
+    .map(([field, value]) => `${SAMPLING_FIELD_LABELS[field] ?? field}: ${formatPreviewValue(value)}`)
     .join(', ')
 }
 

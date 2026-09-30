@@ -4,7 +4,7 @@ import {
   resolveSetupForBenchmark,
   type ResolvedLeaderboardView,
 } from '../../pages/LeaderboardPage.helper'
-import type { BenchmarkColumn, ModelRow, SetupOption } from '../../utils/buildLeaderboard'
+import { buildRankedRows, type BenchmarkColumn, type ModelRow, type RankedRow, type SetupOption } from '../../utils/buildLeaderboard'
 import { cn } from '../../utils/cn'
 import { compareCandidateFromLeaderboardCell } from '../../utils/compareTray'
 import { formatFractionAsPercent } from '../../utils/formatFractionAsPercent'
@@ -22,7 +22,7 @@ import { ScoreValue } from '../ScoreValue/ScoreValue'
 import { SelectField } from '../SelectField/SelectField'
 import { Table, TableCell, TableHeaderCell } from '../Table/Table'
 import { Tooltip } from '../Tooltip/Tooltip'
-import { buildNotEvaluatedModels, buildRankedRows, type RankedRow } from './LeaderboardBenchmarkTable.helper'
+import { buildNotEvaluatedModels } from './LeaderboardBenchmarkTable.helper'
 
 interface LeaderboardBenchmarkTableProps {
   // Unfiltered, for the Benchmark selector -- this lens ignores the

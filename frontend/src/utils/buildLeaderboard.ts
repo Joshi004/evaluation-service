@@ -292,3 +292,26 @@ export function groupColumnsByCategory(columns: BenchmarkColumn[]): BenchmarkCat
   }
   return groups
 }
+
+export interface RankedRow {
+  model: ModelRow
+  cell: ScoreCellData
+}
+
+// Every model with a result on this setup, best rank first --
+// `cell.rank` already comes from rankScores (above), so this is just
+// "join it back to the model list and order by it", not a second
+// ranking computation. Promoted from LeaderboardBenchmarkTable.helper.ts
+// (Phase 12, docs/UI_REDESIGN_PLAN.md §8.12) once the Benchmark detail
+// page's own leaderboard preview became a second caller -- both need
+// this board's own rank, never one either page recomputes itself.
+export function buildRankedRows(setup: SetupOption, models: ModelRow[]): RankedRow[] {
+  const rows: RankedRow[] = []
+  for (const model of models) {
+    const cell = setup.cellsByCheckpointId[model.checkpointId]
+    if (cell) {
+      rows.push({ model, cell })
+    }
+  }
+  return rows.sort((a, b) => a.cell.rank - b.cell.rank)
+}

@@ -19,7 +19,11 @@ export function PageHeader({ breadcrumb, title, description, actions, className 
       <div>
         {breadcrumb && <div className="text-sm text-muted-foreground">{breadcrumb}</div>}
         <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
-        {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+        {/* A div, not a p: ModelHeader, RunReportHeader and BenchmarkHeader
+            all pass multi-line descriptions (badge rows, a RelativeTime
+            line) built from div/p elements of their own, which is invalid
+            inside a p and was triggering React hydration warnings. */}
+        {description && <div className="mt-1 text-sm text-muted-foreground">{description}</div>}
       </div>
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
     </div>

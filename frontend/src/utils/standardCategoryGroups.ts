@@ -1,11 +1,13 @@
-// Non-DOM logic for BenchmarkPicker.tsx: grouping the Choose step's
-// benchmark cards by category, then display name -- the same ordering
-// rule buildLeaderboard.ts's own compareColumns uses for the
+// Groups standards by category, then display name -- the same
+// ordering rule buildLeaderboard.ts's own compareColumns uses for the
 // Leaderboard's column order, kept as its own small function here
 // rather than reused directly since it sorts BenchmarkColumn (a
 // pivoted leaderboard row), not StandardSummary (the catalog row this
-// picker reads).
-import type { StandardSummary } from '../../api/client'
+// file's own callers read). Promoted from BenchmarkPicker.helper.ts
+// (Phase 12, docs/UI_REDESIGN_PLAN.md §8.12) once the Benchmarks list
+// page became a second caller that needs the same grouping over the
+// same catalog rows.
+import type { StandardSummary } from '../api/client'
 
 export interface StandardCategoryGroup {
   category: string | null
