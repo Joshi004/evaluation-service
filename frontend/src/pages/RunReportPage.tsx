@@ -1,9 +1,11 @@
+import { Suspense } from 'react'
 import { Link, Outlet, useParams } from 'react-router'
 import { useRunDiagnostics } from '../api/queries/runDiagnostics'
 import { useRun } from '../api/queries/runs'
 import { BUTTON_LABEL_SIZE, buttonClassName } from '../components/Button/Button.helper'
 import { EmptyState } from '../components/EmptyState/EmptyState'
 import { ErrorState } from '../components/ErrorState/ErrorState'
+import { PageSkeleton } from '../components/PageSkeleton/PageSkeleton'
 import { RunReportHeader } from '../components/RunReportHeader/RunReportHeader'
 import { RunReportSkeleton } from '../components/RunReportSkeleton/RunReportSkeleton'
 import { RunVerdictBand } from '../components/RunVerdictBand/RunVerdictBand'
@@ -62,7 +64,12 @@ export function RunReportPage() {
       <RunReportHeader run={run.data} />
       {run.data.status === 'done' && <RunVerdictBand run={run.data} diagnostics={diagnostics} />}
       <TabNav items={buildRunReportTabs(run.data.id, diagnostics.data?.summary.failed)} />
-      <Outlet context={context} />
+      {/* Each tab is its own lazy chunk (routes.tsx) -- this narrower
+          boundary keeps the header and verdict band above on screen
+          while only the tab content below shows the fallback. */}
+      <Suspense fallback={<PageSkeleton />}>
+        <Outlet context={context} />
+      </Suspense>
     </div>
   )
 }

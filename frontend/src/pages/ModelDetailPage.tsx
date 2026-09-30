@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { Suspense, useMemo } from 'react'
 import { Link, Outlet, useParams } from 'react-router'
 import { useCheckpoint, useCheckpoints } from '../api/queries/checkpoints'
 import { useLeaderboard } from '../api/queries/leaderboard'
@@ -9,6 +9,7 @@ import { EmptyState } from '../components/EmptyState/EmptyState'
 import { ErrorState } from '../components/ErrorState/ErrorState'
 import { ModelDetailSkeleton } from '../components/ModelDetailSkeleton/ModelDetailSkeleton'
 import { ModelHeader } from '../components/ModelHeader/ModelHeader'
+import { PageSkeleton } from '../components/PageSkeleton/PageSkeleton'
 import { TabNav } from '../components/TabNav/TabNav'
 import { buildLeaderboard } from '../utils/buildLeaderboard'
 import { isNotFoundError } from '../utils/isNotFoundError'
@@ -107,7 +108,12 @@ export function ModelDetailPage() {
         board={board}
       />
       <TabNav items={buildModelPageTabs(checkpoint.data.id, runs.data.length)} />
-      <Outlet context={context} />
+      {/* Each tab is its own lazy chunk (routes.tsx) -- this narrower
+          boundary keeps the header and tab strip above on screen while
+          only the tab content below shows the fallback. */}
+      <Suspense fallback={<PageSkeleton />}>
+        <Outlet context={context} />
+      </Suspense>
     </div>
   )
 }

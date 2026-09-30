@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { Outlet, useLocation } from 'react-router'
 import { useRuns } from '../../api/queries/runs'
 import { CompareTray } from '../CompareTray/CompareTray'
+import { PageSkeleton } from '../PageSkeleton/PageSkeleton'
 import { Sidebar } from '../Sidebar/Sidebar'
 import { TopBar } from '../TopBar/TopBar'
 import { paths } from '../../utils/paths'
@@ -57,7 +58,13 @@ export function AppShell() {
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar breadcrumb={pageTitle} onOpenDrawer={() => setIsDrawerOpen(true)} />
         <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto focus:outline-none">
-          <Outlet />
+          {/* Every route element is its own lazy chunk (routes.tsx) --
+              this is the one boundary that catches all of them, so the
+              sidebar and top bar around it stay mounted rather than
+              disappearing during every navigation. */}
+          <Suspense fallback={<PageSkeleton />}>
+            <Outlet />
+          </Suspense>
         </main>
         <CompareTray />
       </div>

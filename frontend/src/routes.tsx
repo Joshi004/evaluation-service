@@ -1,35 +1,69 @@
+import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router'
 import { AppShell } from './components/AppShell/AppShell'
 import { Page, PageWide } from './components/Page/Page'
+import { PageSkeleton } from './components/PageSkeleton/PageSkeleton'
 import { RedirectPreservingSearch } from './components/RedirectPreservingSearch/RedirectPreservingSearch'
 import { paths } from './utils/paths'
-import { LeaderboardPage } from './pages/LeaderboardPage'
-import { ModelsPage } from './pages/ModelsPage'
-import { ModelDetailPage } from './pages/ModelDetailPage'
-import { ModelResultsTab } from './pages/ModelResultsTab'
-import { ModelRunsTab } from './pages/ModelRunsTab'
-import { ModelConfigTab } from './pages/ModelConfigTab'
-import { ModelLineageTab } from './pages/ModelLineageTab'
-import { RegisterModelPage } from './pages/RegisterModelPage'
-import { BenchmarksPage } from './pages/BenchmarksPage'
-import { BenchmarkDetailPage } from './pages/BenchmarkDetailPage'
-import { BenchmarkOverviewTab } from './pages/BenchmarkOverviewTab'
-import { BenchmarkProtocolTab } from './pages/BenchmarkProtocolTab'
-import { BenchmarkRunsTab } from './pages/BenchmarkRunsTab'
-import { ProfilesPage } from './pages/ProfilesPage'
-import { SamplingProfilesTab } from './pages/SamplingProfilesTab'
-import { ServingProfilesTab } from './pages/ServingProfilesTab'
-import { NewEvaluationPage } from './pages/NewEvaluationPage'
-import { RunsPage } from './pages/RunsPage'
-import { RunReportPage } from './pages/RunReportPage'
-import { RunOverviewTab } from './pages/RunOverviewTab'
-import { RunSamplesTab } from './pages/RunSamplesTab'
-import { RunConfigTab } from './pages/RunConfigTab'
-import { RunLogsTab } from './pages/RunLogsTab'
-import { ComparePage } from './pages/ComparePage'
-import { InfrastructurePage } from './pages/InfrastructurePage'
-import { NotFoundPage } from './pages/NotFoundPage'
-import { StyleguidePage } from './pages/StyleguidePage'
+
+// Every real page and tab is its own chunk, loaded only once its
+// route is actually visited -- the main bundle was 700+ kB with all
+// of these imported eagerly. Each factory's own .then(...) is needed
+// because these are named exports, not default ones; React.lazy only
+// accepts a module with a `default`.
+const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage').then((m) => ({ default: m.LeaderboardPage })))
+const ModelsPage = lazy(() => import('./pages/ModelsPage').then((m) => ({ default: m.ModelsPage })))
+const ModelDetailPage = lazy(() => import('./pages/ModelDetailPage').then((m) => ({ default: m.ModelDetailPage })))
+const ModelResultsTab = lazy(() => import('./pages/ModelResultsTab').then((m) => ({ default: m.ModelResultsTab })))
+const ModelRunsTab = lazy(() => import('./pages/ModelRunsTab').then((m) => ({ default: m.ModelRunsTab })))
+const ModelConfigTab = lazy(() => import('./pages/ModelConfigTab').then((m) => ({ default: m.ModelConfigTab })))
+const ModelLineageTab = lazy(() => import('./pages/ModelLineageTab').then((m) => ({ default: m.ModelLineageTab })))
+const RegisterModelPage = lazy(() =>
+  import('./pages/RegisterModelPage').then((m) => ({ default: m.RegisterModelPage })),
+)
+const BenchmarksPage = lazy(() => import('./pages/BenchmarksPage').then((m) => ({ default: m.BenchmarksPage })))
+const BenchmarkDetailPage = lazy(() =>
+  import('./pages/BenchmarkDetailPage').then((m) => ({ default: m.BenchmarkDetailPage })),
+)
+const BenchmarkOverviewTab = lazy(() =>
+  import('./pages/BenchmarkOverviewTab').then((m) => ({ default: m.BenchmarkOverviewTab })),
+)
+const BenchmarkProtocolTab = lazy(() =>
+  import('./pages/BenchmarkProtocolTab').then((m) => ({ default: m.BenchmarkProtocolTab })),
+)
+const BenchmarkRunsTab = lazy(() =>
+  import('./pages/BenchmarkRunsTab').then((m) => ({ default: m.BenchmarkRunsTab })),
+)
+const ProfilesPage = lazy(() => import('./pages/ProfilesPage').then((m) => ({ default: m.ProfilesPage })))
+const SamplingProfilesTab = lazy(() =>
+  import('./pages/SamplingProfilesTab').then((m) => ({ default: m.SamplingProfilesTab })),
+)
+const ServingProfilesTab = lazy(() =>
+  import('./pages/ServingProfilesTab').then((m) => ({ default: m.ServingProfilesTab })),
+)
+const NewEvaluationPage = lazy(() =>
+  import('./pages/NewEvaluationPage').then((m) => ({ default: m.NewEvaluationPage })),
+)
+const RunsPage = lazy(() => import('./pages/RunsPage').then((m) => ({ default: m.RunsPage })))
+const RunReportPage = lazy(() => import('./pages/RunReportPage').then((m) => ({ default: m.RunReportPage })))
+const RunOverviewTab = lazy(() => import('./pages/RunOverviewTab').then((m) => ({ default: m.RunOverviewTab })))
+const RunSamplesTab = lazy(() => import('./pages/RunSamplesTab').then((m) => ({ default: m.RunSamplesTab })))
+const RunConfigTab = lazy(() => import('./pages/RunConfigTab').then((m) => ({ default: m.RunConfigTab })))
+const RunLogsTab = lazy(() => import('./pages/RunLogsTab').then((m) => ({ default: m.RunLogsTab })))
+const ComparePage = lazy(() => import('./pages/ComparePage').then((m) => ({ default: m.ComparePage })))
+const InfrastructurePage = lazy(() =>
+  import('./pages/InfrastructurePage').then((m) => ({ default: m.InfrastructurePage })),
+)
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })))
+// The dev-only styleguide route below never renders in a production
+// build, but a bare `lazy(() => import(...))` call still leaves
+// Rollup a reachable import() to build a chunk for, even once the
+// route JSX using it is eliminated as dead code -- gating the lazy()
+// call itself behind the same check that gates the route keeps
+// nothing for Rollup to find.
+const StyleguidePage = import.meta.env.DEV
+  ? lazy(() => import('./pages/StyleguidePage').then((m) => ({ default: m.StyleguidePage })))
+  : null
 
 // The real pages, nested under AppShell (sidebar + top bar; replaces
 // the old flat-nav App component -- docs/UI_REDESIGN_PLAN.md Phase 2).
@@ -302,9 +336,20 @@ export function AppRoutes() {
       {/*
        * Design-system reference -- dev-only, so it never ships. A
        * sibling of the real app, not a child of it: it is not one of
-       * the real pages and has no reason to inherit AppShell.
+       * the real pages and has no reason to inherit AppShell, so it
+       * gets its own Suspense boundary rather than the one AppShell
+       * wraps around its own <Outlet /> for every route above.
        */}
-      {import.meta.env.DEV && <Route path="/styleguide" element={<StyleguidePage />} />}
+      {StyleguidePage && (
+        <Route
+          path="/styleguide"
+          element={
+            <Suspense fallback={<PageSkeleton />}>
+              <StyleguidePage />
+            </Suspense>
+          }
+        />
+      )}
     </Routes>
   )
 }

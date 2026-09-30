@@ -1,7 +1,9 @@
+import { Suspense } from 'react'
 import { Outlet } from 'react-router'
 import { useSamplingProfiles } from '../api/queries/samplingProfiles'
 import { useServingProfiles } from '../api/queries/servingProfiles'
 import { PageHeader } from '../components/PageHeader/PageHeader'
+import { PageSkeleton } from '../components/PageSkeleton/PageSkeleton'
 import { TabNav } from '../components/TabNav/TabNav'
 import { paths } from '../utils/paths'
 
@@ -27,7 +29,12 @@ export function ProfilesPage() {
           { to: paths.profilesServing(), label: 'Serving', badge: servingProfiles.data?.length },
         ]}
       />
-      <Outlet />
+      {/* Each tab is its own lazy chunk (routes.tsx) -- this narrower
+          boundary keeps the header and tab strip above on screen while
+          only the tab content below shows the fallback. */}
+      <Suspense fallback={<PageSkeleton />}>
+        <Outlet />
+      </Suspense>
     </div>
   )
 }

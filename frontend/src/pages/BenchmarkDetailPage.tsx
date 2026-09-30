@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { Suspense, useMemo } from 'react'
 import { Link, Outlet, useParams } from 'react-router'
 import { useCheckpoints } from '../api/queries/checkpoints'
 import { useLeaderboard } from '../api/queries/leaderboard'
@@ -9,6 +9,7 @@ import { BenchmarkHeader } from '../components/BenchmarkHeader/BenchmarkHeader'
 import { BUTTON_LABEL_SIZE, buttonClassName } from '../components/Button/Button.helper'
 import { EmptyState } from '../components/EmptyState/EmptyState'
 import { ErrorState } from '../components/ErrorState/ErrorState'
+import { PageSkeleton } from '../components/PageSkeleton/PageSkeleton'
 import { TabNav } from '../components/TabNav/TabNav'
 import { buildLeaderboard } from '../utils/buildLeaderboard'
 import { paths } from '../utils/paths'
@@ -98,7 +99,12 @@ export function BenchmarkDetailPage() {
     <div className="space-y-6">
       <BenchmarkHeader standard={standard} />
       <TabNav items={buildBenchmarkPageTabs(standard.id, runs.data.length)} />
-      <Outlet context={context} />
+      {/* Each tab is its own lazy chunk (routes.tsx) -- this narrower
+          boundary keeps the header and tab strip above on screen while
+          only the tab content below shows the fallback. */}
+      <Suspense fallback={<PageSkeleton />}>
+        <Outlet context={context} />
+      </Suspense>
     </div>
   )
 }
