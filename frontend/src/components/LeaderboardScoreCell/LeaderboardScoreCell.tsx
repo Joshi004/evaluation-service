@@ -4,6 +4,7 @@ import { DENSITY_CELL_PADDING, type LeaderboardDensity } from '../../pages/Leade
 import type { BenchmarkColumn, ModelRow, SetupOption } from '../../utils/buildLeaderboard'
 import { cn } from '../../utils/cn'
 import { paths } from '../../utils/paths'
+import { samplingProfileDisplayName } from '../../utils/samplingProfileDisplayName'
 import { HoverCard } from '../HoverCard/HoverCard'
 import { LeaderboardScoreCard } from '../LeaderboardScoreCard/LeaderboardScoreCard'
 import { Popover } from '../Popover/Popover'
@@ -84,7 +85,7 @@ export function LeaderboardScoreCell({
                       className="flex items-center justify-between gap-4 text-xs hover:underline"
                     >
                       <span className="text-muted-foreground">
-                        {otherSetup.samplingProfileLabel ?? otherSetup.samplingProfileHash}
+                        {samplingProfileDisplayName(otherSetup.samplingProfileLabel, otherSetup.samplingProfileHash)}
                       </span>
                       <ScoreValue value={otherCell.value} />
                     </Link>

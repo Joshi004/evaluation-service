@@ -1,5 +1,7 @@
+import { TERM_HINTS } from '../../utils/labels'
 import { FingerprintChip } from '../FingerprintChip/FingerprintChip'
 import { Table, TableCell, TableHeaderCell } from '../Table/Table'
+import { TermLabel } from '../TermLabel/TermLabel'
 
 export interface ProfileTableRow {
   id: number
@@ -32,7 +34,9 @@ export function ProfilesTable({ rows, onSelectProfile }: ProfilesTableProps) {
           <TableHeaderCell>Name</TableHeaderCell>
           <TableHeaderCell>Summary</TableHeaderCell>
           <TableHeaderCell>Used by</TableHeaderCell>
-          <TableHeaderCell>Fingerprint</TableHeaderCell>
+          <TableHeaderCell>
+            <TermLabel hint={TERM_HINTS.fingerprint}>Fingerprint</TermLabel>
+          </TableHeaderCell>
         </tr>
       </thead>
       <tbody>

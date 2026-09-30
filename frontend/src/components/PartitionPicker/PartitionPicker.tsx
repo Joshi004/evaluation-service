@@ -1,4 +1,5 @@
 import { useClusterPartitions } from '../../api/queries/cluster'
+import { describeError } from '../../utils/describeError'
 import { Button } from '../Button/Button'
 import { SelectField } from '../SelectField/SelectField'
 import { buildPartitionOptions } from './PartitionPicker.helper'
@@ -51,7 +52,7 @@ export function PartitionPicker({ value, onValueChange }: PartitionPickerProps) 
       {partitionsQuery.isLoading && <p className="mt-1 text-xs text-muted-foreground">Loading partitions…</p>}
       {partitionsQuery.isError && (
         <p className="mt-1 text-xs text-danger">
-          Could not load partitions from the cluster: {String(partitionsQuery.error)}
+          Could not load partitions from the cluster: {describeError(partitionsQuery.error)}
           {partitionsQuery.data ? ' — showing a cached list.' : ' — only the default is available.'}
         </p>
       )}

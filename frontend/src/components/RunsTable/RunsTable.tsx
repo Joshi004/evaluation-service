@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import type { RunListItem } from '../../api/client'
+import { TERM_HINTS } from '../../utils/labels'
 import { compareRunsNewestFirst, type RunsViewMode } from '../../pages/RunsPage.helper'
 import { RunsBatchHeaderRow } from '../RunsBatchHeaderRow/RunsBatchHeaderRow'
 import { RunsTableRow } from '../RunsTableRow/RunsTableRow'
 import { TableHeaderCell } from '../Table/Table'
+import { TermLabel } from '../TermLabel/TermLabel'
 import { buildRunsSections } from './RunsTable.helper'
 
 interface RunsTableProps {
@@ -56,7 +58,11 @@ export function RunsTable({ visibleRuns, allRuns, viewMode, now }: RunsTableProp
         <thead>
           <tr>
             <TableHeaderCell className={STICKY_HEADER_CLASSES}>Run</TableHeaderCell>
-            {viewMode === 'flat' && <TableHeaderCell className={STICKY_HEADER_CLASSES}>Batch</TableHeaderCell>}
+            {viewMode === 'flat' && (
+              <TableHeaderCell className={STICKY_HEADER_CLASSES}>
+                <TermLabel hint={TERM_HINTS.batch}>Batch</TermLabel>
+              </TableHeaderCell>
+            )}
             <TableHeaderCell className={STICKY_HEADER_CLASSES}>Model &amp; benchmark</TableHeaderCell>
             <TableHeaderCell className={STICKY_HEADER_CLASSES}>Result</TableHeaderCell>
             <TableHeaderCell className={STICKY_HEADER_CLASSES}>Time</TableHeaderCell>

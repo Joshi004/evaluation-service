@@ -3,12 +3,15 @@ import { Link } from 'react-router'
 import type { BenchmarkColumn, ModelRow, ScoreCellData, SetupOption } from '../../utils/buildLeaderboard'
 import { compareCandidateFromLeaderboardCell } from '../../utils/compareTray'
 import { formatFractionAsPercent } from '../../utils/formatFractionAsPercent'
+import { TERM_HINTS } from '../../utils/labels'
 import { paths } from '../../utils/paths'
+import { servingProfileDisplayName } from '../../utils/servingProfileDisplayName'
 import { AddToCompareButton } from '../AddToCompareButton/AddToCompareButton'
 import { BUTTON_LABEL_SIZE, buttonClassName } from '../Button/Button.helper'
 import { RelativeTime } from '../RelativeTime/RelativeTime'
 import { ScoreValue } from '../ScoreValue/ScoreValue'
 import { SetupChip } from '../SetupChip/SetupChip'
+import { TermLabel } from '../TermLabel/TermLabel'
 import { Tooltip } from '../Tooltip/Tooltip'
 
 interface LeaderboardScoreCardProps {
@@ -52,13 +55,21 @@ export function LeaderboardScoreCard({ column, model, setup, cell }: Leaderboard
       )}
 
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-xs">
-        <dt className="text-muted-foreground">Setup</dt>
+        <dt className="text-muted-foreground">
+          <TermLabel hint={TERM_HINTS.setup}>Setup</TermLabel>
+        </dt>
         <dd>
           <SetupChip samplingProfileLabel={setup.samplingProfileLabel} samplingProfileHash={setup.samplingProfileHash} />
         </dd>
-        <dt className="text-muted-foreground">Serving</dt>
-        <dd className="text-foreground">{cell.servingProfileLabel ?? cell.servingProfileHash}</dd>
-        <dt className="text-muted-foreground">Truncated</dt>
+        <dt className="text-muted-foreground">
+          <TermLabel hint={TERM_HINTS.servingProfile}>Serving profile</TermLabel>
+        </dt>
+        <dd className="text-foreground">
+          {servingProfileDisplayName(cell.servingProfileLabel, cell.servingProfileHash)}
+        </dd>
+        <dt className="text-muted-foreground">
+          <TermLabel hint={TERM_HINTS.truncated}>Truncated</TermLabel>
+        </dt>
         <dd className="text-foreground">{formatFractionAsPercent(cell.truncationRate)}</dd>
         <dt className="text-muted-foreground">Evaluated</dt>
         <dd className="text-foreground">

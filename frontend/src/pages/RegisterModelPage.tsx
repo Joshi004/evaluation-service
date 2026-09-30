@@ -9,6 +9,7 @@ import {
   useRegisterCheckpoint,
 } from '../api/queries/checkpoints'
 import { useServingProfiles } from '../api/queries/servingProfiles'
+import { describeError } from '../utils/describeError'
 import { paths } from '../utils/paths'
 import { useRememberedName } from '../utils/useRememberedName'
 import { Button } from '../components/Button/Button'
@@ -258,7 +259,9 @@ export function RegisterModelPage() {
                 />
               </div>
               {checkpoints.isError && (
-                <p className="mt-1 text-xs text-danger">Could not load checkpoints for lineage: {String(checkpoints.error)}</p>
+                <p className="mt-1 text-xs text-danger">
+                  Could not load checkpoints for lineage: {describeError(checkpoints.error)}
+                </p>
               )}
             </div>
           </div>

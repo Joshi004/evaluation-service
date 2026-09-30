@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { useValidateCheckpoint } from '../../api/queries/checkpoints'
+import { describeError } from '../../utils/describeError'
 import { WEIGHTS_STATUS_LABELS } from '../../utils/labels'
 import { Button } from '../Button/Button'
 import { ConfirmDialog } from '../ConfirmDialog/ConfirmDialog'
@@ -30,7 +31,7 @@ export function CheckWeightsButton({ checkpointId, checkpointName, className }: 
         toast.success(`${checkpointName}: ${WEIGHTS_STATUS_LABELS[updated.availability_status]}`)
       },
       onError: (error) => {
-        toast.error(`Could not check weights for ${checkpointName}: ${String(error)}`)
+        toast.error(`Could not check weights for ${checkpointName}: ${describeError(error)}`)
       },
     })
   }
@@ -44,7 +45,7 @@ export function CheckWeightsButton({ checkpointId, checkpointName, className }: 
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
         title="Check weights?"
-        description={`Reads ${checkpointName}'s files on the cluster over SSH and updates its availability status.`}
+        description={`Reads ${checkpointName}'s files on the cluster over SSH and updates its weights status.`}
         confirmLabel="Check weights"
         confirming={validateCheckpoint.isPending}
         onConfirm={handleConfirm}

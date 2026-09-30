@@ -25,6 +25,7 @@ import {
   resolveStandardLabels,
   type SubmitOverrideDrafts,
 } from '../SubmitOverrides/SubmitOverrides.helper'
+import { describeError } from '../../utils/describeError'
 import { indexById } from '../../utils/indexById'
 import { paths } from '../../utils/paths'
 import { useDebouncedValue } from '../../utils/useDebouncedValue'
@@ -185,11 +186,11 @@ export function NewEvaluationWizard({
     )
     createRuns.mutate(request, {
       onSuccess: (submission) => {
-        toast.success(`Submitted ${submission.run_ids.length} run${submission.run_ids.length === 1 ? '' : 's'}`)
+        toast.success(`Started ${submission.run_ids.length} run${submission.run_ids.length === 1 ? '' : 's'}`)
         navigate(paths.runs({ batch: submission.run_group_id }))
       },
       onError: (error) => {
-        toast.error(`Could not submit: ${String(error)}`)
+        toast.error(`Could not run evaluation: ${describeError(error)}`)
       },
     })
   }

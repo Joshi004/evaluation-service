@@ -1,15 +1,17 @@
 import { Link } from 'react-router'
 import { compareCandidateFromLeaderboardCell } from '../../utils/compareTray'
 import { formatFractionAsPercent } from '../../utils/formatFractionAsPercent'
+import { TERM_HINTS } from '../../utils/labels'
 import type { ModelEvaluatedResult } from '../../utils/modelResults'
 import { paths } from '../../utils/paths'
-import { shortFingerprint } from '../../utils/shortFingerprint'
+import { servingProfileDisplayName } from '../../utils/servingProfileDisplayName'
 import { AddToCompareButton } from '../AddToCompareButton/AddToCompareButton'
 import { BenchmarkName } from '../BenchmarkName/BenchmarkName'
 import { RelativeTime } from '../RelativeTime/RelativeTime'
 import { ScoreValue } from '../ScoreValue/ScoreValue'
 import { SetupChip } from '../SetupChip/SetupChip'
 import { Table, TableCell, TableHeaderCell } from '../Table/Table'
+import { TermLabel } from '../TermLabel/TermLabel'
 import { Tooltip } from '../Tooltip/Tooltip'
 
 interface ModelResultsTableProps {
@@ -37,11 +39,17 @@ export function ModelResultsTable({ checkpointId, modelName, evaluated }: ModelR
         <tr>
           <TableHeaderCell>Benchmark</TableHeaderCell>
           <TableHeaderCell>Setup</TableHeaderCell>
-          <TableHeaderCell className="text-right">Score</TableHeaderCell>
+          <TableHeaderCell className="text-right">
+            <TermLabel hint={TERM_HINTS.headlineScore}>Score</TermLabel>
+          </TableHeaderCell>
           <TableHeaderCell>Rank</TableHeaderCell>
-          <TableHeaderCell className="text-right">Samples</TableHeaderCell>
-          <TableHeaderCell className="text-right">Truncated</TableHeaderCell>
-          <TableHeaderCell>Serving</TableHeaderCell>
+          <TableHeaderCell className="text-right">
+            <TermLabel hint={TERM_HINTS.samples}>Samples</TermLabel>
+          </TableHeaderCell>
+          <TableHeaderCell className="text-right">
+            <TermLabel hint={TERM_HINTS.truncated}>Truncated</TermLabel>
+          </TableHeaderCell>
+          <TableHeaderCell>Serving profile</TableHeaderCell>
           <TableHeaderCell>Evaluated</TableHeaderCell>
           <TableHeaderCell />
         </tr>
@@ -92,7 +100,7 @@ function ResultRow({ checkpointId, modelName, entry }: ResultRowProps) {
       </TableCell>
       <TableCell className="text-right tabular-nums">{cell.nSamples ?? '\u2014'}</TableCell>
       <TableCell className="text-right tabular-nums">{formatFractionAsPercent(cell.truncationRate)}</TableCell>
-      <TableCell>{cell.servingProfileLabel ?? shortFingerprint(cell.servingProfileHash)}</TableCell>
+      <TableCell>{servingProfileDisplayName(cell.servingProfileLabel, cell.servingProfileHash)}</TableCell>
       <TableCell>
         <RelativeTime timestamp={cell.finishedAt} />
       </TableCell>

@@ -2,11 +2,13 @@ import { Link } from 'react-router'
 import type { SharedSetupComparison } from '../../utils/modelResults'
 import { formatScoreDelta } from '../../utils/formatScore'
 import { intervalsOverlap } from '../../utils/intervalsOverlap'
+import { TERM_HINTS } from '../../utils/labels'
 import { paths } from '../../utils/paths'
 import { BenchmarkName } from '../BenchmarkName/BenchmarkName'
 import { ScoreValue } from '../ScoreValue/ScoreValue'
 import { SetupChip } from '../SetupChip/SetupChip'
 import { Table, TableCell, TableHeaderCell } from '../Table/Table'
+import { TermLabel } from '../TermLabel/TermLabel'
 
 interface ModelParentComparisonProps {
   comparisons: SharedSetupComparison[]
@@ -25,7 +27,9 @@ export function ModelParentComparison({ comparisons }: ModelParentComparisonProp
       <thead>
         <tr>
           <TableHeaderCell>Benchmark</TableHeaderCell>
-          <TableHeaderCell>Setup</TableHeaderCell>
+          <TableHeaderCell>
+            <TermLabel hint={TERM_HINTS.setup}>Setup</TermLabel>
+          </TableHeaderCell>
           <TableHeaderCell className="text-right">Parent</TableHeaderCell>
           <TableHeaderCell className="text-right">This model</TableHeaderCell>
           <TableHeaderCell className="text-right">Δ</TableHeaderCell>

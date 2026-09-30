@@ -89,10 +89,10 @@ export interface SelectOverrideOption {
 interface SelectOverrideFieldProps {
   label: string
   options: SelectOverrideOption[]
-  // Already composed by the caller (e.g. "Default (strip)") -- the
-  // caller is what knows how to turn a resolved default's raw value
-  // into a human label; this component only renders it as the empty
-  // option.
+  // Already composed by the caller (e.g. "Default (Strip thinking)")
+  // -- the caller is what knows how to turn a resolved default's raw
+  // value into a human label; this component only renders it as the
+  // empty option.
   defaultOptionLabel: string
   value: string
   onValueChange: (value: string) => void

@@ -109,7 +109,7 @@ export function computeSubmitBlockReason(options: SubmitBlockOptions): string | 
     return options.batchNameError
   }
   if (options.isPreviewError) {
-    return 'Fix the preview error below before running.'
+    return 'Fix the error below before running.'
   }
   if (options.isPreviewLoading || options.isPreviewFetching) {
     return 'Checking this selection…'

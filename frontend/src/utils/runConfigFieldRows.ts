@@ -6,6 +6,7 @@
 // second component needs the same logic, promote it to src/utils/".
 
 import type { RunSamplingDetail, RunStandardDetail, ServingProfileSummary } from '../api/client'
+import { THINK_HANDLING_LABELS } from './labels'
 
 export interface FieldRow {
   label: string
@@ -44,7 +45,7 @@ export function standardFieldRows(standard: RunStandardDetail): FieldRow[] {
     { label: 'Few-shot', value: displayOrDash(standard.few_shot) },
     { label: 'Repeats', value: displayOrDash(standard.repeats) },
     { label: 'Sample limit', value: displayOrDash(standard.sample_limit) },
-    { label: 'Think handling', value: standard.think_handling },
+    { label: 'Think handling', value: THINK_HANDLING_LABELS[standard.think_handling] },
     { label: 'Subsets', value: standard.subsets.join(', ') },
     { label: 'Eval batch size', value: displayOrDash(standard.eval_batch_size) },
     { label: 'Request timeout (s)', value: displayOrDash(standard.request_timeout_seconds) },

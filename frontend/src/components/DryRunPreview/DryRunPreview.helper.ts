@@ -18,7 +18,7 @@ import { SAMPLING_FIELD_LABELS } from '../../utils/samplingProfileValueRows'
 
 export function formatPreviewValue(value: unknown): string {
   if (value === null) {
-    return 'null'
+    return '\u2014'
   }
   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
     return String(value)

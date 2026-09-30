@@ -107,7 +107,7 @@ export function RunConfigTab() {
                 ),
               },
               { label: 'SLURM job', value: displayOrDash(run.endpoint.slurm_job_id) },
-              { label: 'Partition', value: displayOrDash(run.endpoint.partition) },
+              { label: 'Cluster partition', value: displayOrDash(run.endpoint.partition) },
               { label: 'Expires', value: <RelativeTime timestamp={run.endpoint.expires_at} /> },
             ]}
           />

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Ban } from 'lucide-react'
 import { toast } from 'sonner'
 import { useCancelRunGroup } from '../../api/queries/runs'
+import { describeError } from '../../utils/describeError'
 import { Button } from '../Button/Button'
 import { ConfirmDialog } from '../ConfirmDialog/ConfirmDialog'
 
@@ -46,7 +47,7 @@ export function RunGroupCancelButton({
         }
       },
       onError: (error) => {
-        toast.error(`Could not cancel "${runGroupName}": ${String(error)}`)
+        toast.error(`Could not cancel "${runGroupName}": ${describeError(error)}`)
       },
     })
   }

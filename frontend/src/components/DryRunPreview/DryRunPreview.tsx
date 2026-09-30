@@ -84,7 +84,7 @@ export function DryRunPreview({ preview, isLoading, isError, error, onRetry, cre
       {groupedErrors.length > 0 && (
         <div className="rounded-md border border-danger/30 bg-danger-soft p-3">
           <p className="text-sm font-medium text-danger">
-            {groupedErrors.length} problem{groupedErrors.length === 1 ? '' : 's'} block this submission
+            {groupedErrors.length} problem{groupedErrors.length === 1 ? '' : 's'} block running this evaluation
           </p>
           <ul className="mt-2 space-y-1.5">
             {groupedErrors.map((finding) => (
@@ -102,7 +102,7 @@ export function DryRunPreview({ preview, isLoading, isError, error, onRetry, cre
         <div className="rounded-md border border-warning/30 bg-warning-soft p-3">
           <p className="text-sm font-medium text-warning">
             {groupedWarnings.length} warning{groupedWarnings.length === 1 ? '' : 's'} -- recorded, does not block
-            submitting
+            running
           </p>
           <ul className="mt-2 space-y-1.5">
             {groupedWarnings.map((finding) => (

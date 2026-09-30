@@ -4,6 +4,7 @@ import { cn } from '../../utils/cn'
 import { seriesBgClassName, seriesTextClassName } from '../../utils/compareSeriesColor'
 import { formatScore, formatScoreDelta, formatScoreWithUnit } from '../../utils/formatScore'
 import { computeIntervalDomain } from '../../utils/intervalDomain'
+import { TERM_HINTS } from '../../utils/labels'
 import { Badge } from '../Badge/Badge'
 import { EmptyState } from '../EmptyState/EmptyState'
 import { IntervalWhisker } from '../IntervalWhisker/IntervalWhisker'
@@ -12,6 +13,7 @@ import { ScoreValue } from '../ScoreValue/ScoreValue'
 import { SetupChip } from '../SetupChip/SetupChip'
 import { Skeleton } from '../Skeleton/Skeleton'
 import { Table, TableCell, TableHeaderCell } from '../Table/Table'
+import { TermLabel } from '../TermLabel/TermLabel'
 import { Tooltip } from '../Tooltip/Tooltip'
 import { buildRefusalNotes, primaryMetric } from './CompareScoreMatrix.helper'
 
@@ -47,8 +49,12 @@ export function CompareScoreMatrix({ baseline, pairs }: CompareScoreMatrixProps)
           <tr>
             <TableHeaderCell>Run</TableHeaderCell>
             <TableHeaderCell>Model</TableHeaderCell>
-            <TableHeaderCell>Setup</TableHeaderCell>
-            <TableHeaderCell className="text-right">Score</TableHeaderCell>
+            <TableHeaderCell>
+              <TermLabel hint={TERM_HINTS.setup}>Setup</TermLabel>
+            </TableHeaderCell>
+            <TableHeaderCell className="text-right">
+              <TermLabel hint={TERM_HINTS.headlineScore}>Score</TermLabel>
+            </TableHeaderCell>
             <TableHeaderCell>
               <div className="flex justify-between text-xs font-normal text-muted-foreground">
                 <span>{formatScoreWithUnit(domain.min)}</span>

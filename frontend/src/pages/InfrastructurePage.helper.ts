@@ -7,10 +7,11 @@
 // row already written before sbatch ran (Trap T3) might still turn
 // into a live server on its own.
 import { ApiError } from '../api/client'
+import { describeError } from '../utils/describeError'
 
 export function describeStartFailure(error: Error, modelName: string): string {
   if (error instanceof ApiError) {
-    return `Could not start a model server for ${modelName}: ${error.message}`
+    return `Could not start a model server for ${modelName}: ${describeError(error)}`
   }
   return `Lost contact while starting ${modelName}. It may still be starting; check the list before trying again.`
 }

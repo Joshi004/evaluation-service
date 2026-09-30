@@ -1,4 +1,5 @@
 import type { StandardSummary } from '../../api/client'
+import { THINK_HANDLING_LABELS } from '../../utils/labels'
 import { formatSamplingOverrides } from '../DryRunPreview/DryRunPreview.helper'
 import { LabelOverrideField, NumberOverrideField, SelectOverrideField } from '../OverrideField/OverrideField'
 import {
@@ -19,8 +20,8 @@ interface StandardOverrideCardProps {
 }
 
 const THINK_HANDLING_OPTIONS = [
-  { value: 'strip', label: 'strip' },
-  { value: 'as_is', label: 'as_is' },
+  { value: 'strip', label: THINK_HANDLING_LABELS.strip },
+  { value: 'as_is', label: THINK_HANDLING_LABELS.as_is },
 ]
 
 // One selected standard's evaluation shape -- sample_limit, few_shot,
@@ -60,7 +61,7 @@ export function StandardOverrideCard({ standard, draft, onDraftChange, labelValu
         <SelectOverrideField
           label="Think handling"
           options={THINK_HANDLING_OPTIONS}
-          defaultOptionLabel={`Default (${standard.think_handling})`}
+          defaultOptionLabel={`Default (${THINK_HANDLING_LABELS[standard.think_handling]})`}
           value={draft.think_handling}
           onValueChange={(value) =>
             onDraftChange({

@@ -2,11 +2,13 @@ import { Link } from 'react-router'
 import type { StandardSummary } from '../../api/client'
 import type { BenchmarkCardStats } from '../../pages/BenchmarksPage.helper'
 import { benchmarkVersion } from '../../utils/benchmarkDisplayName'
+import { TERM_HINTS } from '../../utils/labels'
 import { paths } from '../../utils/paths'
 import { protocolSummary } from '../../utils/protocolSummary'
 import { Badge } from '../Badge/Badge'
 import { Card } from '../Card/Card'
 import { RelativeTime } from '../RelativeTime/RelativeTime'
+import { TermLabel } from '../TermLabel/TermLabel'
 
 interface BenchmarkCardProps {
   standard: StandardSummary
@@ -36,7 +38,9 @@ export function BenchmarkCard({ standard, stats }: BenchmarkCardProps) {
           <p className="line-clamp-2 text-xs text-muted-foreground">{standard.description}</p>
         )}
         {primaryMetric && (
-          <p className="text-xs text-subtle-foreground">Headline score: {primaryMetric.display_name}</p>
+          <p className="text-xs text-subtle-foreground">
+            <TermLabel hint={TERM_HINTS.headlineScore}>Headline score</TermLabel>: {primaryMetric.display_name}
+          </p>
         )}
         <p className="text-xs text-subtle-foreground">{protocolSummary(standard, stats?.scoredSampleCount)}</p>
         <p className="text-xs text-muted-foreground">

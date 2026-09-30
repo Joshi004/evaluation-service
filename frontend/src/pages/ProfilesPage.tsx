@@ -19,7 +19,7 @@ export function ProfilesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Profiles"
-        description="Sampling profiles (how a checkpoint is asked to speak) and serving profiles (how its model server is started)."
+        description="Sampling profiles (how a model is asked to speak) and serving profiles (how its model server is started)."
       />
       <TabNav
         items={[

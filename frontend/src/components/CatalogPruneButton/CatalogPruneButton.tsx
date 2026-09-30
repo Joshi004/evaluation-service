@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import type { CatalogEntryStatus } from '../../api/client'
 import { usePruneCatalog } from '../../api/queries/catalog'
 import type { CatalogResourceDescriptor } from '../../utils/catalogResources'
+import { describeError } from '../../utils/describeError'
 import { Button } from '../Button/Button'
 import { ConfirmDialog } from '../ConfirmDialog/ConfirmDialog'
 import { describePrune, prunableRowIds } from '../CatalogPanel/CatalogPanel.helper'
@@ -35,7 +36,7 @@ export function CatalogPruneButton({ resource, entries }: CatalogPruneButtonProp
         }
       },
       onError: (error) => {
-        toast.error(`Could not prune: ${String(error)}`)
+        toast.error(`Could not prune: ${describeError(error)}`)
       },
     })
   }

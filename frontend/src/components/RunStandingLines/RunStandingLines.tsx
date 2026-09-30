@@ -2,8 +2,10 @@ import { Link } from 'react-router'
 import type { RunDetail } from '../../api/client'
 import { useLeaderboard } from '../../api/queries/leaderboard'
 import { useRuns } from '../../api/queries/runs'
+import { TERM_HINTS } from '../../utils/labels'
 import { paths } from '../../utils/paths'
 import { Skeleton } from '../Skeleton/Skeleton'
+import { TermLabel } from '../TermLabel/TermLabel'
 import {
   buildMovementText,
   rankStandingText,
@@ -50,7 +52,7 @@ function RankLine({ run }: { run: RunDetail }) {
   if (standing.kind === 'superseded') {
     return (
       <p>
-        Superseded by{' '}
+        <TermLabel hint={TERM_HINTS.superseded}>Superseded</TermLabel> by{' '}
         <Link to={paths.run(standing.byRunId)} className="text-primary hover:underline">
           run #{standing.byRunId}
         </Link>

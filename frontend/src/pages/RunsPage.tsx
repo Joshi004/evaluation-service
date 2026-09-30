@@ -113,7 +113,7 @@ export function RunsPage() {
       {!runs.isLoading && !hasBlockingError && allRuns.length === 0 && (
         <EmptyState
           title="Nothing has run yet"
-          description="Submit an evaluation to see its progress and results here."
+          description="Run an evaluation to see its progress and results here."
           actions={
             <Link to={paths.newEvaluation()} className={buttonClassName('primary', BUTTON_LABEL_SIZE.md)}>
               New evaluation

@@ -3,6 +3,7 @@ import { Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useDeleteCatalogRow } from '../../api/queries/catalog'
 import type { CatalogResourceDescriptor } from '../../utils/catalogResources'
+import { describeError } from '../../utils/describeError'
 import { ConfirmDialog } from '../ConfirmDialog/ConfirmDialog'
 import { IconButton } from '../IconButton/IconButton'
 
@@ -32,7 +33,7 @@ export function CatalogDeleteButton({ resource, rowId, name, deletable }: Catalo
         toast.success(`Deleted ${resource.noun} ${name}`)
       },
       onError: (error) => {
-        toast.error(`Could not delete ${name}: ${String(error)}`)
+        toast.error(`Could not delete ${name}: ${describeError(error)}`)
       },
     })
   }

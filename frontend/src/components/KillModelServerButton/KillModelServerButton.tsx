@@ -3,6 +3,7 @@ import { Ban } from 'lucide-react'
 import { toast } from 'sonner'
 import type { EndpointListItem } from '../../api/client'
 import { useKillEndpoint } from '../../api/queries/endpoints'
+import { describeError } from '../../utils/describeError'
 import { Button } from '../Button/Button'
 import { ConfirmDialog } from '../ConfirmDialog/ConfirmDialog'
 import { killModelServerDescription } from './KillModelServerButton.helper'
@@ -27,7 +28,7 @@ export function KillModelServerButton({ endpoint, className }: KillModelServerBu
         toast.success(`Killed the model server for ${endpoint.checkpoint_name}`)
       },
       onError: (error) => {
-        toast.error(`Could not kill the model server for ${endpoint.checkpoint_name}: ${String(error)}`)
+        toast.error(`Could not kill the model server for ${endpoint.checkpoint_name}: ${describeError(error)}`)
       },
     })
   }

@@ -64,7 +64,7 @@ export function ClusterPartitionsCard() {
         {!hasData && !partitionsQuery.isFetching && !partitionsQuery.isError && (
           <EmptyState
             icon={Network}
-            title="Partitions not loaded"
+            title="Cluster partitions not loaded"
             description="They're read straight from the cluster, so that only happens when you ask."
             actions={<Button size="sm" onClick={() => partitionsQuery.refetch()}>Load</Button>}
           />

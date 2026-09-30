@@ -9,9 +9,10 @@ import { cn } from '../../utils/cn'
 import { compareCandidateFromLeaderboardCell } from '../../utils/compareTray'
 import { formatFractionAsPercent } from '../../utils/formatFractionAsPercent'
 import { computeIntervalDomain } from '../../utils/intervalDomain'
+import { TERM_HINTS } from '../../utils/labels'
 import { paths } from '../../utils/paths'
 import { samplingProfileDisplayName } from '../../utils/samplingProfileDisplayName'
-import { shortFingerprint } from '../../utils/shortFingerprint'
+import { servingProfileDisplayName } from '../../utils/servingProfileDisplayName'
 import { AddToCompareButton } from '../AddToCompareButton/AddToCompareButton'
 import { EmptyState } from '../EmptyState/EmptyState'
 import { IntervalWhisker } from '../IntervalWhisker/IntervalWhisker'
@@ -21,6 +22,7 @@ import { RelativeTime } from '../RelativeTime/RelativeTime'
 import { ScoreValue } from '../ScoreValue/ScoreValue'
 import { SelectField } from '../SelectField/SelectField'
 import { Table, TableCell, TableHeaderCell } from '../Table/Table'
+import { TermLabel } from '../TermLabel/TermLabel'
 import { Tooltip } from '../Tooltip/Tooltip'
 import { buildNotEvaluatedModels } from './LeaderboardBenchmarkTable.helper'
 
@@ -100,11 +102,19 @@ export function LeaderboardBenchmarkTable({
             <tr>
               <TableHeaderCell>Rank</TableHeaderCell>
               <TableHeaderCell>Model</TableHeaderCell>
-              <TableHeaderCell className="text-right">Score</TableHeaderCell>
-              <TableHeaderCell>95% margin of error</TableHeaderCell>
-              <TableHeaderCell className="text-right">Samples</TableHeaderCell>
-              <TableHeaderCell className="text-right">Truncated</TableHeaderCell>
-              <TableHeaderCell>Serving</TableHeaderCell>
+              <TableHeaderCell className="text-right">
+                <TermLabel hint={TERM_HINTS.headlineScore}>Score</TermLabel>
+              </TableHeaderCell>
+              <TableHeaderCell>
+                <TermLabel hint={TERM_HINTS.marginOfError}>95% margin of error</TermLabel>
+              </TableHeaderCell>
+              <TableHeaderCell className="text-right">
+                <TermLabel hint={TERM_HINTS.samples}>Samples</TermLabel>
+              </TableHeaderCell>
+              <TableHeaderCell className="text-right">
+                <TermLabel hint={TERM_HINTS.truncated}>Truncated</TermLabel>
+              </TableHeaderCell>
+              <TableHeaderCell>Serving profile</TableHeaderCell>
               <TableHeaderCell>Evaluated</TableHeaderCell>
               <TableHeaderCell />
             </tr>
@@ -173,7 +183,7 @@ function LeaderboardBenchmarkRow({ column, setup, row, domain, density }: Leader
       </TableCell>
       <TableCell className={cn('text-right tabular-nums', padding)}>{cell.nSamples ?? '—'}</TableCell>
       <TableCell className={cn('text-right tabular-nums', padding)}>{formatFractionAsPercent(cell.truncationRate)}</TableCell>
-      <TableCell className={padding}>{cell.servingProfileLabel ?? shortFingerprint(cell.servingProfileHash)}</TableCell>
+      <TableCell className={padding}>{servingProfileDisplayName(cell.servingProfileLabel, cell.servingProfileHash)}</TableCell>
       <TableCell className={padding}>
         <RelativeTime timestamp={cell.finishedAt} />
       </TableCell>

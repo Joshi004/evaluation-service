@@ -11,6 +11,8 @@ import { inferredFieldsFromCheckpoint } from '../components/InspectionSummary/In
 import { JsonDetails } from '../components/JsonDetails/JsonDetails'
 import { KeyValueList } from '../components/KeyValueList/KeyValueList'
 import { RelativeTime } from '../components/RelativeTime/RelativeTime'
+import { TermLabel } from '../components/TermLabel/TermLabel'
+import { TERM_HINTS } from '../utils/labels'
 import { samplingSummary } from '../utils/samplingSummary'
 import { describeProfileGlance } from '../utils/servingProfileSummary'
 import { paths } from '../utils/paths'
@@ -40,7 +42,7 @@ export function ModelConfigTab() {
   return (
     <div className="space-y-6">
       <Card>
-        <h2 className="text-sm font-medium text-foreground">What the checkpoint says</h2>
+        <h2 className="text-sm font-medium text-foreground">What the model says</h2>
         <div className="mt-3">
           <InspectionSummary
             fields={inferredFieldsFromCheckpoint(checkpoint.inferred)}
@@ -55,7 +57,7 @@ export function ModelConfigTab() {
         </div>
         {checkpoint.generation_config !== null && (
           <JsonDetails
-            summary="generation_config (verbatim)"
+            summary="Generation config (verbatim)"
             value={checkpoint.generation_config}
             className="mt-4"
           />
@@ -68,7 +70,7 @@ export function ModelConfigTab() {
           className="mt-3"
           rows={[
             {
-              label: 'Serving',
+              label: <TermLabel hint={TERM_HINTS.servingProfile}>Serving profile</TermLabel>,
               value: servingProfile ? (
                 <span className="inline-flex flex-wrap items-center gap-2">
                   <span>{describeProfileGlance(servingProfile)}</span>
@@ -82,7 +84,7 @@ export function ModelConfigTab() {
               ),
             },
             {
-              label: 'Sampling',
+              label: <TermLabel hint={TERM_HINTS.samplingProfile}>Sampling profile</TermLabel>,
               value: samplingProfile ? (
                 <span className="inline-flex flex-wrap items-center gap-2">
                   <span>{samplingSummary(samplingProfile)}</span>
@@ -130,7 +132,9 @@ export function ModelConfigTab() {
       </Card>
 
       <Card>
-        <h2 className="text-sm font-medium text-foreground">Weights</h2>
+        <h2 className="text-sm font-medium text-foreground">
+          <TermLabel hint={TERM_HINTS.weights}>Weights</TermLabel>
+        </h2>
         <KeyValueList
           className="mt-3"
           rows={[

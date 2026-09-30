@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { useReloadCatalog } from '../../api/queries/catalog'
 import type { CatalogResourceDescriptor } from '../../utils/catalogResources'
+import { describeError } from '../../utils/describeError'
 import { Button } from '../Button/Button'
 import { ConfirmDialog } from '../ConfirmDialog/ConfirmDialog'
 
@@ -26,7 +27,7 @@ export function CatalogReloadButton({ resource }: CatalogReloadButtonProps) {
         toast.success(`Reloaded the ${resource.pluralNoun} catalog`)
       },
       onError: (error) => {
-        toast.error(`Could not reload: ${String(error)}`)
+        toast.error(`Could not reload: ${describeError(error)}`)
       },
     })
   }

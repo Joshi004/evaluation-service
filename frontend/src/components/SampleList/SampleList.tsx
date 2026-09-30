@@ -4,9 +4,10 @@ import type { DiagnosticsSample } from '../../api/client'
 import { cn } from '../../utils/cn'
 import { paths } from '../../utils/paths'
 import { previewText } from '../../utils/previewText'
-import { tagLabel } from '../../utils/tagLabel'
+import { tagHint, tagLabel } from '../../utils/tagLabel'
 import { Badge } from '../Badge/Badge'
 import { Table, TableCell, TableHeaderCell } from '../Table/Table'
+import { Tooltip } from '../Tooltip/Tooltip'
 import { outcomeBadge, primaryScoreText } from './SampleList.helper'
 
 interface SampleListProps {
@@ -90,11 +91,23 @@ export function SampleList({
               </TableCell>
               <TableCell>
                 <div className="flex flex-wrap gap-1">
-                  {sample.tags.map((tag) => (
-                    <Badge key={tag} tone="neutral">
-                      {tagLabel(tag)}
-                    </Badge>
-                  ))}
+                  {sample.tags.map((tag) => {
+                    const hint = tagHint(tag)
+                    if (hint === null) {
+                      return (
+                        <Badge key={tag} tone="neutral">
+                          {tagLabel(tag)}
+                        </Badge>
+                      )
+                    }
+                    return (
+                      <Tooltip key={tag} content={hint}>
+                        <span tabIndex={0}>
+                          <Badge tone="neutral">{tagLabel(tag)}</Badge>
+                        </span>
+                      </Tooltip>
+                    )
+                  })}
                 </div>
               </TableCell>
               <TableCell className="max-w-[24rem] truncate" title={sample.input_preview}>

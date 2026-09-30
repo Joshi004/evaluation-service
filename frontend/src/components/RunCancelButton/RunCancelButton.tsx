@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Ban } from 'lucide-react'
 import { toast } from 'sonner'
 import { useCancelRun } from '../../api/queries/runs'
+import { describeError } from '../../utils/describeError'
 import { Button } from '../Button/Button'
 import { ConfirmDialog } from '../ConfirmDialog/ConfirmDialog'
 
@@ -28,7 +29,7 @@ export function RunCancelButton({ runId, className }: RunCancelButtonProps) {
         toast.success(`Run #${runId} cancelled`)
       },
       onError: (error) => {
-        toast.error(`Could not cancel run #${runId}: ${String(error)}`)
+        toast.error(`Could not cancel run #${runId}: ${describeError(error)}`)
       },
     })
   }

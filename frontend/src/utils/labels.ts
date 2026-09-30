@@ -63,6 +63,25 @@ export const MODEL_SERVER_STATUS_LABELS = {
   starting: 'Starting',
 } as const
 
+// The dependency name health.py currently reports -- a fallback to
+// the raw key covers a dependency added on the backend before its own
+// label lands here, rather than rendering nothing.
+export const HEALTH_DEPENDENCY_LABELS: Record<string, string> = {
+  postgres: 'Database',
+}
+
+// Mirrors the two think_handling values a standard's own
+// CheckConstraint allows (app/models/standard.py): 'strip' pulls the
+// model's <think> block out before grading, so only the final answer
+// is scored; 'as_is' scores the completion exactly as produced,
+// thinking included (app/services/compatibility/rules.py is where
+// that distinction actually matters, against a serving profile's own
+// reasoning_parser).
+export const THINK_HANDLING_LABELS: Record<string, string> = {
+  strip: 'Strip thinking',
+  as_is: 'Score as-is',
+}
+
 // One-line explanations for jargon that appears in the UI (§3 rule 10:
 // "jargon gets a one-line tooltip"). Keyed loosely by concept, not by
 // every place a term appears.
@@ -72,4 +91,13 @@ export const TERM_HINTS = {
     'A content fingerprint -- identical fingerprints were produced by the exact same configuration.',
   marginOfError:
     '95% confidence interval from the sample count. Differences inside this range are not reliable.',
+  samples: 'How many test items this run actually scored -- fewer than the full dataset only if a sample limit was set.',
+  truncated:
+    'The model\u2019s response was cut off at the token limit before it finished -- a mechanical failure, not a reasoning one.',
+  batch: 'Every run created together from one New evaluation submission.',
+  headlineScore: 'This benchmark\u2019s primary metric -- the one score used for ranking and comparison.',
+  weights: 'Whether this model\u2019s files are actually present and complete on the cluster, checked on demand.',
+  samplingProfile: 'How the model was asked to speak -- temperature, max tokens, and the rest of its decoding settings.',
+  servingProfile: 'How the model\u2019s server was started -- engine, GPU count, and the rest of its deployment settings.',
+  superseded: 'An earlier run for this exact model and setup -- a newer run has since taken its place on the leaderboard.',
 } as const

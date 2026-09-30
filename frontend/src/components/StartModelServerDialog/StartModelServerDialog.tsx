@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { UseMutationResult, UseQueryResult } from '@tanstack/react-query'
 import type { CheckpointListItem, EndpointListItem, ServingProfileSummary } from '../../api/client'
+import { describeError } from '../../utils/describeError'
 import { groupCheckpointsByFamily } from '../../utils/familyGroups'
 import { formatDuration } from '../../utils/formatDuration'
 import { servingProfileDisplayName } from '../../utils/servingProfileDisplayName'
@@ -127,7 +128,7 @@ export function StartModelServerDialog({
               ))}
             </SelectField>
             {checkpoints.isError && (
-              <p className="mt-1 text-sm text-danger">Could not load models: {String(checkpoints.error)}</p>
+              <p className="mt-1 text-sm text-danger">Could not load models: {describeError(checkpoints.error)}</p>
             )}
           </div>
 
@@ -144,7 +145,7 @@ export function StartModelServerDialog({
                 { label: 'GPUs', value: selectedServingProfile?.gpus ?? '\u2014' },
                 // POST /endpoints has no partition field -- it always
                 // lands on whichever the backend picks as default.
-                { label: 'Partition', value: 'Default partition' },
+                { label: 'Cluster partition', value: 'Default partition' },
               ]}
             />
           )}

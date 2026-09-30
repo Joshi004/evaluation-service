@@ -1,6 +1,7 @@
 import type { CheckpointListItem } from '../../api/client'
 import type { LeaderboardBoard } from '../../utils/buildLeaderboard'
 import { familySpellingsHint, type FamilyGroup } from '../../utils/familyGroups'
+import { TERM_HINTS } from '../../utils/labels'
 import type { ModelOverview } from '../../pages/ModelsPage.helper'
 import { paths } from '../../utils/paths'
 import { AvailabilityBadge } from '../AvailabilityBadge/AvailabilityBadge'
@@ -10,6 +11,7 @@ import { ModelLineageIndicator } from '../ModelLineageIndicator/ModelLineageIndi
 import { ModelName } from '../ModelName/ModelName'
 import { RelativeTime } from '../RelativeTime/RelativeTime'
 import { Table, TableCell, TableHeaderCell } from '../Table/Table'
+import { TermLabel } from '../TermLabel/TermLabel'
 
 interface ModelsTableProps {
   groups: FamilyGroup[]
@@ -18,7 +20,7 @@ interface ModelsTableProps {
   board: LeaderboardBoard
 }
 
-// Name, Availability, Latest scores, Lineage, Last evaluated, Runs.
+// Name, Weights, Latest scores, Lineage, Last evaluated, Runs.
 const COLUMN_COUNT = 6
 
 // The table view's own grouped rows (docs/UI_REDESIGN_PLAN.md §8.11) --
@@ -31,7 +33,9 @@ export function ModelsTable({ groups, overviewByCheckpointId, allCheckpoints, bo
       <thead>
         <tr>
           <TableHeaderCell>Name</TableHeaderCell>
-          <TableHeaderCell>Availability</TableHeaderCell>
+          <TableHeaderCell>
+            <TermLabel hint={TERM_HINTS.weights}>Weights</TermLabel>
+          </TableHeaderCell>
           <TableHeaderCell>Latest scores</TableHeaderCell>
           <TableHeaderCell>Lineage</TableHeaderCell>
           <TableHeaderCell>Last evaluated</TableHeaderCell>

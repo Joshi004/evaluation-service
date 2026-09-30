@@ -1,5 +1,7 @@
 import type { DiagnosticsSummary as DiagnosticsSummaryData } from '../../api/client'
 import { cn } from '../../utils/cn'
+import { tagHint } from '../../utils/tagLabel'
+import { Tooltip } from '../Tooltip/Tooltip'
 import { tagChipLabel, tagOverlapCaption } from './DiagnosticsSummary.helper'
 
 interface DiagnosticsSummaryProps {
@@ -51,7 +53,8 @@ export function DiagnosticsSummary({ summary, activeTag, onTagChange }: Diagnost
           <div className="flex flex-wrap gap-2">
             {summary.tag_counts.map((tagCount) => {
               const isActive = tagCount.tag === activeTag
-              return (
+              const hint = tagHint(tagCount.tag)
+              const chip = (
                 <button
                   key={tagCount.tag}
                   type="button"
@@ -63,6 +66,13 @@ export function DiagnosticsSummary({ summary, activeTag, onTagChange }: Diagnost
                 >
                   {tagChipLabel(tagCount)}
                 </button>
+              )
+              return hint === null ? (
+                chip
+              ) : (
+                <Tooltip key={tagCount.tag} content={hint}>
+                  {chip}
+                </Tooltip>
               )
             })}
           </div>

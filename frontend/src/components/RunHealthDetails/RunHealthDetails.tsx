@@ -1,8 +1,10 @@
 import type { UseQueryResult } from '@tanstack/react-query'
 import type { RunDiagnostics, RunPerformanceSummary } from '../../api/client'
 import { formatFractionAsPercent } from '../../utils/formatFractionAsPercent'
+import { TERM_HINTS } from '../../utils/labels'
 import { KeyValueList } from '../KeyValueList/KeyValueList'
 import { Skeleton } from '../Skeleton/Skeleton'
+import { TermLabel } from '../TermLabel/TermLabel'
 import { healthCountRows, latencyRows, throughputRows, tokenRows } from './RunHealthDetails.helper'
 
 interface RunHealthDetailsProps {
@@ -26,7 +28,10 @@ export function RunHealthDetails({ truncationRate, performance, diagnostics }: R
     <div className="space-y-3">
       <KeyValueList
         rows={[
-          { label: 'Truncated', value: formatFractionAsPercent(truncationRate) },
+          {
+            label: <TermLabel hint={TERM_HINTS.truncated}>Truncated</TermLabel>,
+            value: formatFractionAsPercent(truncationRate),
+          },
           ...healthCountRows(health),
           ...latencyRows(performance.latency_seconds),
           ...tokenRows(performance.output_tokens),

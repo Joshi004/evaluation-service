@@ -42,7 +42,9 @@ export function ScoreValue({
         </span>
       )}
       {samples !== null && samples !== undefined && (
-        <span className="ml-1 text-xs text-muted-foreground">n={samples}</span>
+        <span className="ml-1 text-xs text-muted-foreground">
+          {samples} sample{samples === 1 ? '' : 's'}
+        </span>
       )}
     </span>
   )

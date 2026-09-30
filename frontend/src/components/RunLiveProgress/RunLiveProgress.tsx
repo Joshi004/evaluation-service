@@ -51,7 +51,7 @@ export function RunLiveProgress({ run }: RunLiveProgressProps) {
                   ),
                 },
                 { label: 'SLURM job', value: endpoint.slurm_job_id ?? '\u2014' },
-                { label: 'Partition', value: endpoint.partition ?? '\u2014' },
+                { label: 'Cluster partition', value: endpoint.partition ?? '\u2014' },
                 { label: 'Expires', value: <RelativeTime timestamp={endpoint.expires_at} /> },
               ]}
             />
