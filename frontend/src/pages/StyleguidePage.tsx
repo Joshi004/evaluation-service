@@ -431,7 +431,15 @@ export function StyleguidePage() {
         </Section>
 
         <Section title="EmptyState & ErrorState">
-          <EmptyState message="No runs match these filters yet." />
+          <EmptyState
+            title="No runs match"
+            description="Try a different search, or clear your filters."
+            actions={
+              <Button variant="secondary" size="sm">
+                Clear filters
+              </Button>
+            }
+          />
           <ErrorState
             message="Couldn't load this run."
             details="FileNotFoundError: [Errno 2] No such file or directory: '.../ifeval.json'"

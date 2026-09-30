@@ -67,7 +67,10 @@ export function CandidateBrowser({
       )}
 
       {!isLoading && !isError && !hasBrowsed && (
-        <EmptyState message="Click Browse the cluster to list evaluable directories, or paste an absolute path below." />
+        <EmptyState
+          title="Not browsed yet"
+          description="Click Browse the cluster above to list evaluable directories, or paste an absolute path below."
+        />
       )}
 
       {!isLoading && !isError && hasBrowsed && (
@@ -79,15 +82,23 @@ export function CandidateBrowser({
             placeholder="Filter by name or path…"
           />
 
-          {filteredCandidates.length === 0 && (
-            <EmptyState
-              message={
-                candidates && candidates.length > 0
-                  ? 'No candidates match this filter'
-                  : 'No candidates found on the cluster'
-              }
-            />
-          )}
+          {filteredCandidates.length === 0 &&
+            (candidates && candidates.length > 0 ? (
+              <EmptyState
+                title="No candidates match"
+                description="Try a different search."
+                actions={
+                  <Button variant="secondary" size="sm" onClick={() => setFilterText('')}>
+                    Clear filter
+                  </Button>
+                }
+              />
+            ) : (
+              <EmptyState
+                title="No candidates found"
+                description="Nothing evaluable was found on the cluster. Try a different path, or paste an absolute path below."
+              />
+            ))}
 
           {filteredCandidates.length > 0 && (
             <ul className="divide-y divide-border rounded-md border border-border">

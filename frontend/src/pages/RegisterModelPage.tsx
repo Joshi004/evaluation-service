@@ -27,6 +27,7 @@ import {
   defaultServingProfileChoice,
   type ServingProfileChoice,
 } from '../components/ServingProfilePicker/ServingProfilePicker.helper'
+import { Skeleton } from '../components/Skeleton/Skeleton'
 import { Spinner } from '../components/Spinner/Spinner'
 import { Stepper } from '../components/Stepper/Stepper'
 import { TextInput } from '../components/TextInput/TextInput'
@@ -226,9 +227,11 @@ export function RegisterModelPage() {
             )}
 
             {recommendation && servingProfiles.isLoading && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Spinner />
-                Loading serving profiles…
+              <div className="space-y-3">
+                <Skeleton className="h-14 w-full" />
+                <Skeleton className="h-5 w-56" />
+                <Skeleton className="h-9 w-full" />
+                <Skeleton className="h-5 w-40" />
               </div>
             )}
 

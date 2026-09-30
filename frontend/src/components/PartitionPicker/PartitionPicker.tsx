@@ -2,6 +2,7 @@ import { useClusterPartitions } from '../../api/queries/cluster'
 import { describeError } from '../../utils/describeError'
 import { Button } from '../Button/Button'
 import { SelectField } from '../SelectField/SelectField'
+import { Skeleton } from '../Skeleton/Skeleton'
 import { buildPartitionOptions } from './PartitionPicker.helper'
 
 interface PartitionPickerProps {
@@ -49,7 +50,7 @@ export function PartitionPicker({ value, onValueChange }: PartitionPickerProps) 
           </option>
         ))}
       </SelectField>
-      {partitionsQuery.isLoading && <p className="mt-1 text-xs text-muted-foreground">Loading partitions…</p>}
+      {partitionsQuery.isLoading && <Skeleton className="mt-1 h-3 w-32" />}
       {partitionsQuery.isError && (
         <p className="mt-1 text-xs text-danger">
           Could not load partitions from the cluster: {describeError(partitionsQuery.error)}

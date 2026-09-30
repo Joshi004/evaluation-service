@@ -1,3 +1,4 @@
+import { Callout } from '../Callout/Callout'
 import { JsonDetails } from '../JsonDetails/JsonDetails'
 import type { InferredField } from './InspectionSummary.helper'
 
@@ -21,31 +22,31 @@ export function InspectionSummary({ fields, missingRequirements, problems, sourc
   return (
     <div>
       {missingRequirements.length > 0 && (
-        <div className="mb-4 rounded-md border border-danger/30 bg-danger-soft p-3">
-          <p className="text-sm font-medium text-danger">This checkpoint cannot be registered</p>
-          <ul className="mt-1 space-y-0.5">
+        <Callout tone="danger" title="This checkpoint cannot be registered" className="mb-4">
+          <ul className="space-y-0.5">
             {missingRequirements.map((reason) => (
               <li key={reason} className="text-xs text-danger">
                 {reason}
               </li>
             ))}
           </ul>
-        </div>
+        </Callout>
       )}
 
       {problems.length > 0 && (
-        <div className="mb-4 rounded-md border border-warning/30 bg-warning-soft p-3">
-          <p className="text-sm font-medium text-warning">
-            {problems.length} thing{problems.length === 1 ? '' : 's'} could not be read
-          </p>
-          <ul className="mt-1 space-y-0.5">
+        <Callout
+          tone="warning"
+          title={`${problems.length} thing${problems.length === 1 ? '' : 's'} could not be read`}
+          className="mb-4"
+        >
+          <ul className="space-y-0.5">
             {problems.map((problem) => (
               <li key={problem} className="text-xs text-warning">
                 {problem}
               </li>
             ))}
           </ul>
-        </div>
+        </Callout>
       )}
 
       <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">

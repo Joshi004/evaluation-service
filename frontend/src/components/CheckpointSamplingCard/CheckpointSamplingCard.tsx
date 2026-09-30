@@ -1,6 +1,7 @@
 import type { CheckpointListItem, SamplingProfileSummary, StandardSummary } from '../../api/client'
 import { LabelOverrideField, NumberOverrideField, SelectOverrideField } from '../OverrideField/OverrideField'
 import { SelectField } from '../SelectField/SelectField'
+import { Skeleton } from '../Skeleton/Skeleton'
 import {
   samplingOverrideDraftHasChange,
   type SamplingOverrideDraft,
@@ -163,7 +164,14 @@ export function CheckpointSamplingCard({
           </p>
         </>
       ) : (
-        <p className="mt-3 text-sm text-muted-foreground">Loading sampling profile…</p>
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          {/* One block per field below (temperature through enable
+              thinking) -- eight is fixed, not a guess at an unknown
+              list length. */}
+          {Array.from({ length: 8 }, (_, index) => index).map((index) => (
+            <Skeleton key={index} className="h-14 w-full" />
+          ))}
+        </div>
       )}
 
       {hasChange && <LabelOverrideField value={labelValue} onValueChange={onLabelChange} />}

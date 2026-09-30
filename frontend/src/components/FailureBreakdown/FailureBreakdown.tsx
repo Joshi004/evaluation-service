@@ -42,7 +42,12 @@ export function FailureBreakdown({
   // GSM8K and GPQA-Diamond have no natural grouping (Phase 5) and must
   // render this message instead of an empty table.
   if (buckets.length === 0) {
-    return <EmptyState message="This benchmark has no failure breakdown — browse the samples below." />
+    return (
+      <EmptyState
+        title="No failure breakdown"
+        description="This benchmark has no natural grouping — browse the samples below instead."
+      />
+    )
   }
 
   const groups = groupBucketsByLevel(buckets)

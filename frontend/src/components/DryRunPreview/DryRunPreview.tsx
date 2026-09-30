@@ -1,4 +1,5 @@
 import type { RunPreview } from '../../api/client'
+import { Callout } from '../Callout/Callout'
 import { ErrorState } from '../ErrorState/ErrorState'
 import { Skeleton } from '../Skeleton/Skeleton'
 import { groupFindingsByCode, type CreatedItem, type GroupedFinding } from './DryRunPreview.helper'
@@ -82,11 +83,11 @@ export function DryRunPreview({ preview, isLoading, isError, error, onRetry, cre
   return (
     <div className="space-y-4">
       {groupedErrors.length > 0 && (
-        <div className="rounded-md border border-danger/30 bg-danger-soft p-3">
-          <p className="text-sm font-medium text-danger">
-            {groupedErrors.length} problem{groupedErrors.length === 1 ? '' : 's'} block running this evaluation
-          </p>
-          <ul className="mt-2 space-y-1.5">
+        <Callout
+          tone="danger"
+          title={`${groupedErrors.length} problem${groupedErrors.length === 1 ? '' : 's'} block running this evaluation`}
+        >
+          <ul className="space-y-1.5">
             {groupedErrors.map((finding) => (
               <FindingGroupItem
                 key={`${finding.code}-${finding.field}-${finding.message}`}
@@ -95,16 +96,15 @@ export function DryRunPreview({ preview, isLoading, isError, error, onRetry, cre
               />
             ))}
           </ul>
-        </div>
+        </Callout>
       )}
 
       {groupedWarnings.length > 0 && (
-        <div className="rounded-md border border-warning/30 bg-warning-soft p-3">
-          <p className="text-sm font-medium text-warning">
-            {groupedWarnings.length} warning{groupedWarnings.length === 1 ? '' : 's'} -- recorded, does not block
-            running
-          </p>
-          <ul className="mt-2 space-y-1.5">
+        <Callout
+          tone="warning"
+          title={`${groupedWarnings.length} warning${groupedWarnings.length === 1 ? '' : 's'} -- recorded, does not block running`}
+        >
+          <ul className="space-y-1.5">
             {groupedWarnings.map((finding) => (
               <FindingGroupItem
                 key={`${finding.code}-${finding.field}-${finding.message}`}
@@ -113,7 +113,7 @@ export function DryRunPreview({ preview, isLoading, isError, error, onRetry, cre
               />
             ))}
           </ul>
-        </div>
+        </Callout>
       )}
 
       {createdItems.length > 0 && (

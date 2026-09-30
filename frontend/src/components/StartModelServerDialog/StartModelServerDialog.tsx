@@ -11,6 +11,7 @@ import { Callout } from '../Callout/Callout'
 import { Dialog } from '../Dialog/Dialog'
 import { KeyValueList } from '../KeyValueList/KeyValueList'
 import { SelectField } from '../SelectField/SelectField'
+import { Skeleton } from '../Skeleton/Skeleton'
 import { Spinner } from '../Spinner/Spinner'
 import { describeStartOutcome } from './StartModelServerDialog.helper'
 
@@ -106,27 +107,30 @@ export function StartModelServerDialog({
             <label className="text-xs text-muted-foreground" htmlFor="start-model-server-select">
               Model
             </label>
-            <SelectField
-              id="start-model-server-select"
-              className="mt-1"
-              value={selectedCheckpointId ?? ''}
-              disabled={checkpoints.isLoading}
-              onChange={(event) => {
-                const rawValue = event.target.value
-                setSelectedCheckpointId(rawValue === '' ? null : Number(rawValue))
-              }}
-            >
-              <option value="">{checkpoints.isLoading ? 'Loading models\u2026' : 'Select a model\u2026'}</option>
-              {groupCheckpointsByFamily(checkpoints.data ?? []).map((group) => (
-                <optgroup key={group.key} label={group.label}>
-                  {group.checkpoints.map((checkpoint) => (
-                    <option key={checkpoint.id} value={checkpoint.id}>
-                      {checkpoint.name}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </SelectField>
+            {checkpoints.isLoading ? (
+              <Skeleton className="mt-1 h-9 w-full" />
+            ) : (
+              <SelectField
+                id="start-model-server-select"
+                className="mt-1"
+                value={selectedCheckpointId ?? ''}
+                onChange={(event) => {
+                  const rawValue = event.target.value
+                  setSelectedCheckpointId(rawValue === '' ? null : Number(rawValue))
+                }}
+              >
+                <option value="">Select a model…</option>
+                {groupCheckpointsByFamily(checkpoints.data ?? []).map((group) => (
+                  <optgroup key={group.key} label={group.label}>
+                    {group.checkpoints.map((checkpoint) => (
+                      <option key={checkpoint.id} value={checkpoint.id}>
+                        {checkpoint.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </SelectField>
+            )}
             {checkpoints.isError && (
               <p className="mt-1 text-sm text-danger">Could not load models: {describeError(checkpoints.error)}</p>
             )}

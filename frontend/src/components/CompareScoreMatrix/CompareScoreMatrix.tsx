@@ -6,7 +6,7 @@ import { formatScore, formatScoreDelta, formatScoreWithUnit } from '../../utils/
 import { computeIntervalDomain } from '../../utils/intervalDomain'
 import { TERM_HINTS } from '../../utils/labels'
 import { Badge } from '../Badge/Badge'
-import { EmptyState } from '../EmptyState/EmptyState'
+import { Callout } from '../Callout/Callout'
 import { IntervalWhisker } from '../IntervalWhisker/IntervalWhisker'
 import { ModelName } from '../ModelName/ModelName'
 import { ScoreValue } from '../ScoreValue/ScoreValue'
@@ -75,7 +75,9 @@ export function CompareScoreMatrix({ baseline, pairs }: CompareScoreMatrixProps)
       </Table>
 
       {refusalNotes.map((note) => (
-        <EmptyState key={note.runId} message={`Run #${note.runId}: ${note.reason} (${note.overlapText})`} />
+        <Callout key={note.runId} tone="info">
+          Run #{note.runId}: {note.reason} ({note.overlapText})
+        </Callout>
       ))}
     </div>
   )
@@ -157,7 +159,14 @@ function CompareDeltaCell({ isBaseline, pair }: CompareDeltaCellProps) {
     return <Skeleton className="ml-auto h-4 w-16" />
   }
   if (pair.status === 'error') {
-    return <span className="text-xs text-danger">Could not compare</span>
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs text-danger">
+        Could not compare
+        <button type="button" onClick={pair.refetch} className="font-medium text-danger hover:underline">
+          Retry
+        </button>
+      </span>
+    )
   }
   const comparison = pair.comparison
   if (!comparison || !comparison.comparable || !comparison.delta) {

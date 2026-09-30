@@ -66,6 +66,9 @@ export function RunSamplesTab() {
   function handleTagChange(tag: string | null): void {
     updateFilters({ ...filters, tag, offset: 0 })
   }
+  function handleClearFilters(): void {
+    updateFilters({ outcome: 'all', subset: null, rule: null, tag: null, q: '', offset: 0 })
+  }
   function handlePreviousPage(): void {
     updateFilters({ ...filters, offset: Math.max(0, filters.offset - SAMPLE_PAGE_SIZE) })
   }
@@ -223,7 +226,17 @@ export function RunSamplesTab() {
                   onRetry={() => samples.refetch()}
                 />
               )}
-              {samples.data && total === 0 && <EmptyState message="No samples match this filter" />}
+              {samples.data && total === 0 && (
+                <EmptyState
+                  title="No samples match"
+                  description="Try different filters, or clear them to see every sample."
+                  actions={
+                    <Button variant="secondary" size="sm" onClick={handleClearFilters}>
+                      Clear filters
+                    </Button>
+                  }
+                />
+              )}
               {samples.data && total > 0 && (
                 <>
                   <SampleList

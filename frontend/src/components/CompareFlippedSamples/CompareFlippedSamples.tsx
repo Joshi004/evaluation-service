@@ -53,7 +53,11 @@ export function CompareFlippedSamples({
       {pair.status === 'loading' && <Skeleton className="h-24 w-full" />}
 
       {pair.status === 'error' && (
-        <ErrorState message={`Could not compare run #${pair.run.id}`} details={pair.errorMessage ?? undefined} />
+        <ErrorState
+          message={`Could not compare run #${pair.run.id}`}
+          details={pair.errorMessage ?? undefined}
+          onRetry={pair.refetch}
+        />
       )}
 
       {pair.status === 'loaded' && pair.comparison && !pair.comparison.comparable && (

@@ -62,7 +62,9 @@ export function CatalogPanel({ resource }: CatalogPanelProps) {
         />
       )}
 
-      {status.data && entries.length === 0 && <EmptyState message="No catalog files or rows found." />}
+      {status.data && entries.length === 0 && (
+        <EmptyState title="No catalog entries" description="No files or database rows exist for this catalog yet." />
+      )}
 
       {status.data && entries.length > 0 && (
         <Table>

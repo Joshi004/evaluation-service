@@ -1,6 +1,10 @@
+import { Link } from 'react-router'
+import { BUTTON_LABEL_SIZE, buttonClassName } from '../components/Button/Button.helper'
+import { EmptyState } from '../components/EmptyState/EmptyState'
 import { ModelResultsTable } from '../components/ModelResultsTable/ModelResultsTable'
 import { ModelScorecard } from '../components/ModelScorecard/ModelScorecard'
 import { buildModelResults } from '../utils/modelResults'
+import { paths } from '../utils/paths'
 import { useModelPage } from './ModelDetailPage.helper'
 
 // The model page's default tab (docs/UI_REDESIGN_PLAN.md section
@@ -14,7 +18,20 @@ export function ModelResultsTab() {
   const { evaluated, notEvaluated } = buildModelResults(board, standards, checkpoint.id)
 
   if (evaluated.length === 0 && notEvaluated.length === 0) {
-    return <p className="text-sm text-muted-foreground">There are no catalog benchmarks yet.</p>
+    return (
+      <EmptyState
+        title="No results yet"
+        description="There are no catalog benchmarks to evaluate this model against yet."
+        actions={
+          <Link
+            to={paths.newEvaluation({ models: [checkpoint.id] })}
+            className={buttonClassName('secondary', BUTTON_LABEL_SIZE.sm)}
+          >
+            New evaluation
+          </Link>
+        }
+      />
+    )
   }
 
   return (

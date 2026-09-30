@@ -38,7 +38,7 @@ export function CompareRunPicker({
   const [query, setQuery] = useState('')
 
   if (runs.length === 0) {
-    return <EmptyState message="No finished runs are available here." />
+    return <EmptyState title="No finished runs" description="Finished runs will show up here once any exist." />
   }
 
   const visibleRuns = sortRunsByFinishedDesc(filterRunsByQuery(runs, query))

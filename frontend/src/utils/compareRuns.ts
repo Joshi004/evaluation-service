@@ -18,6 +18,10 @@ export interface ComparePairState {
   // a caller checks `comparison.comparable`, not a second status flag.
   comparison: RunComparison | null
   errorMessage: string | null
+  // This pair's own useQueries result carries its own refetch --
+  // retrying one failed pairwise comparison should never have to
+  // refetch every other pair alongside it.
+  refetch: () => void
 }
 
 export function buildComparePairStates(
@@ -27,11 +31,11 @@ export function buildComparePairStates(
   return otherRuns.map((run, index) => {
     const result = comparisonResults[index]
     if (result.isError) {
-      return { run, status: 'error', comparison: null, errorMessage: String(result.error) }
+      return { run, status: 'error', comparison: null, errorMessage: String(result.error), refetch: result.refetch }
     }
     if (!result.data) {
-      return { run, status: 'loading', comparison: null, errorMessage: null }
+      return { run, status: 'loading', comparison: null, errorMessage: null, refetch: result.refetch }
     }
-    return { run, status: 'loaded', comparison: result.data, errorMessage: null }
+    return { run, status: 'loaded', comparison: result.data, errorMessage: null, refetch: result.refetch }
   })
 }
