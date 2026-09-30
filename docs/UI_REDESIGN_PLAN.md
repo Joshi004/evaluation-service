@@ -1092,6 +1092,35 @@ Also confirmed: the skeleton renders while the first request is held open; a fir
 - [ ] No dead components (each folder in `src/components/` is imported somewhere).
 - [ ] READMEs match reality. Gates pass.
 
+**Verification results.** Recorded here per the implementation plan's Step 8; the criteria above are ticked with evidence in Step 10.
+
+*Gates.* `npm run lint` (oxlint) and `npm run build` (`tsc -b && vite build`) both clean. The palette `rg` with the corrected glob (no `--glob '!prototype/**'` exemption — `prototype/` no longer exists) returns nothing across all of `frontend/src`. `rg "window.confirm" frontend/src` returns 7 matches, every one inside a comment documenting the *absence* of `window.confirm` (`ConfirmDialog.tsx`, `RunCancelButton.tsx`, `CatalogDeleteButton.tsx`, `CatalogReloadButton.tsx`, `CatalogPruneButton.tsx`, `CatalogPanel.tsx`, `KillModelServerButton.tsx`) — zero real calls. A search for the literal text "Loading…" returns only `<span className="sr-only">Loading…</span>` (the 10 page-level skeletons) and historical rationale comments — zero visible loading text anywhere. A scan of every folder under `src/components/` (163 total) confirmed each has a real importer outside its own folder and outside `StyleguidePage.tsx` — zero dead components.
+
+*Theme.* Confirmed via a scripted Playwright walkthrough of the real running app (`colorScheme` emulation, every non-GET request aborted): a fresh load with the OS set to `light` renders `data-theme="light"`; a fresh load with the OS set to `dark` renders `data-theme="dark"`. Explicitly picking **Dark** from the TopBar's theme menu while the OS itself is `light` stores `dark` in `localStorage` (`evalsvc.theme.v1`) and survives a reload — `data-theme` stays `dark`, it does not revert to the OS's `light`.
+
+*Reduced motion.* Confirmed on real components, not just the styleguide demo: the Runs page's own loading `Skeleton` (`motion-safe:animate-pulse`) computes `animationName: "none"` under `reducedMotion: 'reduce'`; a sample breakdown's chevron (`motion-safe:transition-transform`) computes `transitionDuration: "0s"` under the same emulation. (Its `transitionProperty` still reads `"all"` — that's CSS's own initial value for the property, not a leak; contrasted against `reducedMotion: 'no-preference'`, where the same element computes `transitionProperty: "transform, translate, scale, rotate"` and `transitionDuration: "0.15s"`, confirming the media query is what's doing the suppressing.)
+
+*Responsive sweep.* 23 routes (every page and tab, plus a 404) × 4 widths (1024/1280/1440/1920) × 2 themes = 184 combinations, each screenshotted and asserted `document.documentElement.scrollWidth <= window.innerWidth`. Zero failures, zero console errors. The three named risks (the `xl`-size `CompareSampleDialog` with 4 real columns, the Runs toolbar at 1024px, the Leaderboard's `mode=all` matrix) were each individually re-confirmed inside this same sweep.
+
+*Appendix C walkthrough.* All 12 tasks walked keyboard-only against the real running app (Tab to focus, Enter to activate, on every step — proving each is a real focusable control, not a mouse-only handler) with every non-GET request aborted. All 12 completed inside budget:
+
+| # | Task | Budget | Used | Evidence |
+|---|---|---|---|---|
+| 1 | Best model at IFEval | 2 | 1 | "By benchmark" already defaulted to IFEval (its 5 done runs are the most of any standard); rank 1 = `merged_global_step_810` at 85.4%. |
+| 2 | Why run 13 lost points | 3 | 2 | Score cell → run 13 → Samples tab; reads "79 of 541 samples failed." |
+| 3 | Run 9 vs. run 15 | 4 | 3 | Pinned both from `/runs`; tray's Compare → `/compare?runs=9,15`. |
+| 4 | Checkpoint vs. its parent | 4 | 3 | **Response override**: real seed data has no `parent_checkpoint_id` set on any checkpoint. Checkpoint 3's was set to 2 (a `route.fetch()` + minimal JSON mutation, not a from-scratch fabrication) — the two already share two real done setups. Lineage tab showed both (IFBench −2.3 pts, IFEval +0.4 pts, both within margin of error) with a Compare link each; followed one to `/compare?runs=16,12`. |
+| 5 | Run IFBench on Qwen3-4B | 4 | 3 | A genuinely empty cell in real data (checkpoint 1 has zero IFBench runs) → wizard reached the Review step; **"Run evaluation" was never clicked**. |
+| 6 | What IFEval measures / how it's scored | 2 | 2 | Benchmarks → IFEval card. (IFBench's own card describes itself as "a follow-up to IFEval", so a name match has to anchor on `^IFEval` or it lands on the wrong card first.) Both "What it measures" and "How it's scored" headings render. |
+| 7 | Anything running or broken now | 1 | 1 | The Runs sidebar item carries no badge (0 active runs) and the TopBar reads "All systems ok" without navigating anywhere; the 1-click fallback into `/runs` confirms 0 rows show a Running/Queued phase. |
+| 8 | Why run 8 failed | 2 | 2 | Runs → run 8; the default (Overview) tab shows failure content immediately. |
+| 9 | Register a checkpoint | 2 | 2 | Models → Register a model; reached the form — **its submit button was never clicked**. |
+| 10 | Kill a stuck model server | 2 | 2 | **Response override**: real data has zero live endpoints (`GET /endpoints` → `[]`). Fabricated one row reading `url: null`, `created_at` 47 minutes ago (a `route.fetch()` + minimal JSON mutation on the empty real response), which renders as "Starting · 46m" — the stuck-server case this task describes. Endpoints → Kill opened the ConfirmDialog ("Kill the model server for Qwen3-4B-allternary-ep03?"); **"Kill server" was never clicked**. |
+| 11 | Share a filtered view | 1 | 1 | Copy link on a filtered Leaderboard (`?family=Qwen3-4B`) copied that exact URL to the clipboard. |
+| 12 | Run 15's sampling settings | 3 | 3 | Runs → run 15 → Configuration tab; shows Temperature 1, Top-p 0.95, Top-k 20, Min-p 0, and the rest of the sampling profile. |
+
+`docker logs evaluation-service-backend-1` for the walkthrough's time window shows zero non-GET requests — nothing this script did, including the two response-override tasks, ever reached the real backend.
+
 ---
 
 ## 9. Backlog (deliberately not in the 14 phases)
