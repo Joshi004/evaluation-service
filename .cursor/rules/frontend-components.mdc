@@ -31,6 +31,17 @@ src/components/Button/
 
 This convention is for `src/components/` specifically. `src/pages/` stays flat (`src/pages/LeaderboardPage.tsx`) — pages are route-level containers, not reusable components.
 
+## Pages — `src/pages/`
+
+Two things still carry over from the components convention above, without the folder:
+
+- A page can have a flat sibling `PageName.helper.ts` for its non-DOM logic, the same rule as `Button.helper.ts` above (e.g. `RunReportPage.tsx` + `RunReportPage.helper.ts`).
+- A nested-route tab (a detail page's own child route — `models/:modelId/runs`, `runs/:runId/config`, ...) is its own flat `*Tab.tsx` page in `src/pages/`, not a subcomponent nested inside the parent page's file or folder (e.g. `ModelResultsTab.tsx`, `ModelRunsTab.tsx`, `ModelConfigTab.tsx`, `ModelLineageTab.tsx` alongside `ModelDetailPage.tsx`). The parent page owns the header and tab strip and renders the active tab through its own `<Outlet />`; a tab reads data the parent already loaded through outlet context instead of re-fetching it.
+
 ## Shared utilities — `src/utils/`
 
 Logic used by only one component lives in that component's `*.helper.ts`. Once a second component needs the same logic, promote it to a flat file in `src/utils/` (e.g. `src/utils/formatDate.ts`) so both import it from one place instead of duplicating it.
+
+## Providers and hooks
+
+A context provider mounted once in `main.tsx` (`ThemeProvider`, `CompareTrayProvider`, ...) follows the components folder convention above — `ProviderName/ProviderName.tsx`, plus a sibling `.helper.ts` for logic specific to that provider (e.g. `CompareTrayProvider.helper.ts`'s sessionStorage read/write). The context object itself and the `useX()` hook that reads it live in `src/utils/useX.ts` instead (e.g. `useTheme.ts`, `useCompareTray.ts`) — not a `.helper.ts` inside the provider's own folder — for two reasons: oxlint's `react/only-export-components` rule (`frontend/.oxlintrc.json`) requires a component file to export only components, and the hook needs to be callable from every unrelated component folder that consumes it (`ThemeMenu`, `AddToCompareButton`, the sidebar badge, ...) without reaching into `components/ProviderName/`. The hook throws rather than returning a nullable value when called outside its provider — every provider here is mounted once, above the router, so a missing provider is a wiring mistake, not a state worth handling gracefully.

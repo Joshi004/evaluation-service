@@ -2,16 +2,14 @@
 
 A shared evaluation service: one place to register a checkpoint, run it
 against a standard benchmark recipe, and see the result on a leaderboard
-next to everyone else's numbers.
-
-This repository currently contains **the basic application structure
-only** — no business logic yet. See the design docs for what's actually
-being built and why:
+next to everyone else's numbers. The full pipeline works end to end
+today — see [Status](#status) below for exactly how far. See the design
+docs for what's built, what isn't, and why:
 
 - [`docs/EVAL_SERVICE_PLAN.md`](docs/EVAL_SERVICE_PLAN.md) — the build plan and tech stack
-- [`docs/IMPLEMENTATION_PHASES.md`](docs/IMPLEMENTATION_PHASES.md) — the seven-phase build order; the current source of truth for what to build next
-- [`docs/DATA_MODEL_V1.md`](docs/DATA_MODEL_V1.md) — the Postgres schema being built, the recipe hash rule, and how a run moves
-- [`docs/CLUSTER_VALIDATION.md`](docs/CLUSTER_VALIDATION.md) — hands-on validation of the SLURM cluster
+- [`docs/CURRENT_STATE_ANALYSIS.md`](docs/CURRENT_STATE_ANALYSIS.md) — an honest status and gap analysis: what actually works end to end, what doesn't yet, and how far it is from matching the other teams' benchmark coverage
+- [`docs/DATA_MODEL_V1.md`](docs/DATA_MODEL_V1.md) — the Postgres schema actually built, the recipe hash rule, and how a run moves
+- [`docs/UI_REDESIGN_PLAN.md`](docs/UI_REDESIGN_PLAN.md) — the frontend's information architecture and its phase-by-phase redesign log
 - [`docs/BENCHMARK_UNIFICATION_RESEARCH.md`](docs/BENCHMARK_UNIFICATION_RESEARCH.md) — how the four teams evaluate today
 
 ## Stack
@@ -62,8 +60,9 @@ docker compose up --build backend
 
 ### Database migrations
 
-Alembic is initialized with zero migrations. Once models exist under
-`backend/app/models/`, generate a migration with:
+Five migrations exist under `backend/alembic/versions/`, covering the
+core tables and their additions since. After changing a model under
+`backend/app/models/`, generate the next one with:
 
 ```bash
 docker compose exec backend alembic revision --autogenerate -m "..."
@@ -75,7 +74,7 @@ docker compose exec backend alembic upgrade head
 ```
 docker-compose.yml
 .env.example
-docs/                 design docs — plan, data model, cluster validation, research
+docs/                 design docs — plan, data model, current status, UI redesign, research
 catalog/              version-controlled catalog YAML — standards, sampling profiles, serving profiles
 backend/              FastAPI control-plane API — see backend/README.md
 frontend/             React + Vite UI — see frontend/README.md
@@ -83,6 +82,12 @@ frontend/             React + Vite UI — see frontend/README.md
 
 ## Status
 
-Phase 1 of `docs/IMPLEMENTATION_PHASES.md`: the seven-table schema, seed
-data, and read-only APIs for checkpoints and the leaderboard are
-implemented. No cluster/SSH access anywhere yet.
+The full pipeline works end to end for one harness (EvalScope) and five
+benchmarks (IFEval, IFBench, GSM8K, GPQA-Diamond, MMLU-Pro): register a
+checkpoint, submit a run, the backend SSHes into the SLURM cluster,
+starts a vLLM server, runs the harness against it over a tunnel, parses
+the report, and the leaderboard reads the result from Postgres. Five
+migrations are applied. The frontend's UI redesign
+(`docs/UI_REDESIGN_PLAN.md`, 14 phases) is complete. `app/services/reconciler/`
+and `app/services/s3/` are still stubs — see `docs/CURRENT_STATE_ANALYSIS.md`
+for the full gap analysis against the other evaluation teams.

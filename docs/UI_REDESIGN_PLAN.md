@@ -1,6 +1,6 @@
 # UI Redesign Plan — from "a UI for the API" to an evaluation service
 
-**Status:** Proposed. Section 5 lists the decisions that need your confirmation; each has a recommended default, so nothing blocks.
+**Status:** Done. All 14 phases are implemented; §8.14 has the final phase's own verification results and Appendix B records what replaced what.
 **Date:** 29 Sep 2026
 **Scope:** the whole `frontend/` app (13 routes), plus four small, additive backend changes (Phase 3).
 **Not in scope:** the harness, workers, SLURM/endpoint logic, hashing/resolution semantics, auth, automated tests.
@@ -506,7 +506,7 @@ Defaults are used unless you say otherwise.
 **Design-system rules** (introduced in Phase 1, enforced afterwards)
 
 9. Only semantic token utilities (`bg-card`, `text-muted-foreground`, …). No raw palette classes and no hex values in new or changed files. Check:
-   `rg "(slate|gray|zinc|neutral|stone|red|green|emerald|amber|yellow|orange|blue|sky|indigo|violet|purple|pink|rose)-[0-9]{2,3}" frontend/src --glob '!prototype/**'` must return nothing for every file the phase touched.
+   `rg "(slate|gray|zinc|neutral|stone|red|green|emerald|amber|yellow|orange|blue|sky|indigo|violet|purple|pink|rose)-[0-9]{2,3}" frontend/src` must return nothing for every file the phase touched.
 10. Compose from primitives. If a primitive is missing, add it to `src/components/` (small) instead of hand-styling a one-off.
 11. Every data-driven view has skeleton, empty and error states (§4.5).
 12. Shareable state lives in the URL (§4.5).
@@ -1086,11 +1086,11 @@ Also confirmed: the skeleton renders while the first request is held open; a fir
 10. Walk through Appendix C and record results.
 
 **Acceptance criteria**
-- [ ] Light and dark themes are both coherent; toggle persists; first load follows OS setting.
-- [ ] All Appendix C tasks are completable within the stated clicks.
-- [ ] `rg` checks for raw palette classes and `window.confirm` return nothing outside the prototype.
-- [ ] No dead components (each folder in `src/components/` is imported somewhere).
-- [ ] READMEs match reality. Gates pass.
+- [x] Light and dark themes are both coherent; toggle persists; first load follows OS setting. Confirmed via Playwright: a fresh load follows the OS's `light`/`dark` signal exactly, and explicitly picking **Dark** while the OS itself is `light` survives a reload (see *Theme* under Verification results above).
+- [x] All Appendix C tasks are completable within the stated clicks. All 12 walked keyboard-only against the real running app; every one finished at or under its budget (see the table under Verification results above).
+- [x] `rg` checks for raw palette classes and `window.confirm` return nothing outside the prototype. `prototype/` is deleted, so both checks now run over all of `frontend/src` with no exemption needed: the palette check returns nothing; `window.confirm` returns 7 matches, every one a comment documenting its own absence (`ConfirmDialog.tsx`, `RunCancelButton.tsx`, `CatalogDeleteButton.tsx`, `CatalogReloadButton.tsx`, `CatalogPruneButton.tsx`, `CatalogPanel.tsx`, `KillModelServerButton.tsx`) — zero real calls.
+- [x] No dead components (each folder in `src/components/` is imported somewhere). All 163 folders under `src/components/` confirmed to have a real importer outside their own folder and outside `StyleguidePage.tsx`.
+- [x] READMEs match reality. Gates pass. `frontend/README.md` (real structure, scripts, gates), root `README.md` (status, doc links, 5 migrations) and `backend/README.md` (structure, migrations) all refreshed in Step 10. `npm run lint` and `npm run build` both clean throughout Phase 14.
 
 **Verification results.** Recorded here per the implementation plan's Step 8; the criteria above are ticked with evidence in Step 10.
 
@@ -1230,7 +1230,7 @@ Other phases depend on these staying stable. Do not rename them without updating
 | `pages/ComparePage.tsx` | Rewritten (Phase 8); `FlipList` and `ComparisonBucketTable` kept |
 | `pages/EndpointsPage.tsx` | Replaced by `InfrastructurePage` (Phase 13) |
 | `StatusBadge`, `AvailabilityBadge`, `EmptyState` | Restyled in place (Phase 1), props preserved |
-| `prototype/` | Untouched until Phase 14 decision (D5) |
+| `prototype/` | Deleted (Phase 14, D5) |
 
 ---
 
