@@ -59,7 +59,11 @@ export function MultiSelectMenu({ trigger, groups, selected, onChange, align = '
                     onCheckedChange={() => onChange(toggleMultiSelectValue(selected, option.value))}
                     onSelect={(event) => event.preventDefault()}
                     className={cn(
-                      'flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-foreground outline-none',
+                      'flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-foreground',
+                      // No plain outline-none -- Menu.tsx's own Item has the
+                      // full reasoning for why that would break this same
+                      // focus-visible outline instead of just hiding it at rest.
+                      'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring',
                       'data-[highlighted]:bg-muted',
                     )}
                   >

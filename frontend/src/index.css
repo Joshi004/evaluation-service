@@ -2,13 +2,17 @@
 @import '@fontsource-variable/inter';
 
 /*
- * Design tokens (docs/UI_REDESIGN_PLAN.md Phase 1, §4.6). Semantic CSS
- * variables carry the actual colour values; @theme inline maps them
- * into Tailwind so utilities like `bg-card` and `text-muted-foreground`
- * follow whichever theme is active, instead of a value baked in once
- * at build time. Dark is the default; [data-theme="light"] is reachable
- * today by setting the attribute in devtools -- Phase 14 adds the
- * toggle UI.
+ * Design tokens. Semantic CSS variables carry the actual colour
+ * values; @theme inline maps them into Tailwind so utilities like
+ * `bg-card` and `text-muted-foreground` follow whichever theme is
+ * active, instead of a value baked in once at build time. Dark is the
+ * default absent a stored preference or an OS "light" signal (see
+ * ThemeProvider); `[data-theme='dark']` is included in that same
+ * selector below, not left implicit on :root alone, so the styleguide
+ * can force one theme on a nested element even while the page root is
+ * the other. `color-scheme` on each theme's own selector carries the
+ * choice to native form controls too (checkboxes, date pickers), which
+ * don't read these custom properties directly.
  *
  * Radius and shadow intentionally reuse Tailwind's own scale rather
  * than redefining it: v4's stock `rounded-md` (6px) / `rounded-lg`
@@ -22,7 +26,10 @@
  * scale doesn't have -- the 13px table size.
  */
 
-:root {
+:root,
+[data-theme='dark'] {
+  color-scheme: dark;
+
   /* Surfaces */
   --background: oklch(0.14 0.014 260);
   --card: oklch(0.19 0.014 260);
@@ -32,24 +39,33 @@
   /* Text */
   --foreground: oklch(0.96 0.005 260);
   --muted-foreground: oklch(0.66 0.014 260);
-  --subtle-foreground: oklch(0.6 0.014 260);
+  --subtle-foreground: oklch(0.63 0.014 260);
 
   /* Lines. `border` is a deliberately subtle divider -- WCAG's 3:1
      non-text-contrast rule is for boundaries required to identify a
      component or state, not decorative ones, and most dark-themed
      products (this codebase's own StatusBadge/EmptyState included)
      already ship borders this quiet. `border-strong` and `ring` are
-     the functional tier and clear 3:1 against `card` (see the phase
-     summary for the computed ratios). */
+     the functional tier and clear 3:1 against `card` (4.31:1 and
+     5.80:1). */
   --border: oklch(0.32 0.014 260);
   --border-strong: oklch(0.58 0.016 260);
-  --ring: oklch(0.56 0.19 265);
+  --ring: oklch(0.66 0.17 265);
 
-  /* Brand */
-  --primary: oklch(0.56 0.19 265);
-  --primary-hover: oklch(0.5 0.2 265);
+  /* Brand. `primary` is a lighter indigo than the rest of this file's
+     dark tones so text sized to WCAG's normal-text ratio can sit
+     directly on it (5.80:1 on `card` as text, 4.78:1 on
+     `primary-soft`) -- the darker value used before this measured
+     3.15:1 on `primary-soft` and 3.82:1 on `card`, below the 4.5:1
+     floor. `primary-foreground` flips to dark text on top of that
+     lighter fill (6.18:1) instead of the near-white text a darker
+     primary could carry; `primary-hover` lightens further rather than
+     darkening, the same direction `primary` itself just moved, so
+     hovering never drags the pair back toward the ratio just fixed. */
+  --primary: oklch(0.66 0.17 265);
+  --primary-hover: oklch(0.72 0.17 265);
   --primary-soft: oklch(0.27 0.08 265);
-  --primary-foreground: oklch(0.99 0.005 265);
+  --primary-foreground: oklch(0.15 0.02 265);
 
   /* Status. Text sits in the solid colour, on the matching -soft
      background (the pattern StatusBadge/AvailabilityBadge already use
@@ -86,6 +102,8 @@
 }
 
 [data-theme='light'] {
+  color-scheme: light;
+
   --background: oklch(0.99 0.002 260);
   --card: oklch(1 0 0);
   --popover: oklch(1 0 0);
@@ -93,7 +111,10 @@
 
   --foreground: oklch(0.21 0.014 260);
   --muted-foreground: oklch(0.48 0.014 260);
-  --subtle-foreground: oklch(0.55 0.014 260);
+  /* 0.52, not the 0.55 dark's own subtle-foreground scales to --
+     against light's much brighter `muted` (0.95 vs dark's 0.24) the
+     same offset undershoots 4.5:1; 0.52 clears it at 4.76:1. */
+  --subtle-foreground: oklch(0.52 0.014 260);
 
   --border: oklch(0.88 0.008 260);
   --border-strong: oklch(0.62 0.012 260);

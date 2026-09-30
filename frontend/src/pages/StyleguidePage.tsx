@@ -173,10 +173,7 @@ export function StyleguidePage() {
   const [selectedBenchmarks, setSelectedBenchmarks] = useState<string[]>(['ifeval'])
 
   return (
-    <div
-      data-theme={theme === 'light' ? 'light' : undefined}
-      className="min-h-screen bg-background p-8 text-foreground"
-    >
+    <div data-theme={theme} className="min-h-screen bg-background p-8 text-foreground">
       <div className="mx-auto max-w-5xl space-y-10">
         <PageHeader
           title="Styleguide"

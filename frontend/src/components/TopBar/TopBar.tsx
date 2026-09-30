@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 import { IconButton } from '../IconButton/IconButton'
 import { buttonClassName, BUTTON_LABEL_SIZE } from '../Button/Button.helper'
 import { SystemStatus } from '../SystemStatus/SystemStatus'
+import { ThemeMenu } from '../ThemeMenu/ThemeMenu'
 import { paths } from '../../utils/paths'
 
 interface TopBarProps {
@@ -11,12 +12,11 @@ interface TopBarProps {
   onOpenDrawer: () => void
 }
 
-// §4.4.1's top bar: a menu button (opens Sidebar's drawer, only
-// rendered below 768px where the persistent sidebar is hidden), the
-// breadcrumb slot -- today just the current page's name, resolved
-// centrally by AppShell so none of the 13 existing pages need to feed
-// it one themselves -- the New evaluation primary action, and
-// SystemStatus.
+// The top bar: a menu button (opens Sidebar's drawer, only rendered
+// below 768px where the persistent sidebar is hidden), the breadcrumb
+// slot -- today just the current page's name, resolved centrally by
+// AppShell so none of the pages need to feed it one themselves -- the
+// New evaluation primary action, SystemStatus and the theme switcher.
 export function TopBar({ breadcrumb, onOpenDrawer }: TopBarProps) {
   return (
     <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
@@ -39,6 +39,7 @@ export function TopBar({ breadcrumb, onOpenDrawer }: TopBarProps) {
       </Link>
 
       <SystemStatus />
+      <ThemeMenu />
     </header>
   )
 }

@@ -5,6 +5,29 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Evaluation Service</title>
+    <script>
+      // Sets the theme before first paint, so there is no flash of the
+      // wrong theme while React mounts. Duplicates ThemeProvider's own
+      // resolution logic in plain JS on purpose -- this runs before any
+      // bundle loads, so it can't import that module. Keep this block
+      // in sync by hand with src/utils/theme.ts (the storage key, the
+      // three preference values, and the system-preference fallback
+      // all have to match exactly).
+      try {
+        var storedPreference = localStorage.getItem('evalsvc.theme.v1')
+        var preference =
+          storedPreference === 'light' || storedPreference === 'dark' || storedPreference === 'system'
+            ? storedPreference
+            : 'system'
+        var prefersLightOS = window.matchMedia('(prefers-color-scheme: light)').matches
+        document.documentElement.dataset.theme =
+          preference === 'system' ? (prefersLightOS ? 'light' : 'dark') : preference
+      } catch {
+        // No persisted or resolvable preference -- index.css's own
+        // :root default (dark) applies, same as if this script had
+        // never run.
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
