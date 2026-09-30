@@ -1,15 +1,33 @@
 // Typed route builders -- the one place every page and component gets a
 // path string from, instead of each hand-writing its own template
 // literal (docs/UI_REDESIGN_PLAN.md Phase 2, Appendix A: this contract
-// is owned here and used by every later phase). Some targets below
-// don't have a mounted route yet -- model/benchmark point at Phase
-// 11/12 detail pages -- but the builder exists now so later phases
-// extend this file instead of inventing a second path module.
+// is owned here and used by every later phase). `benchmark` below
+// doesn't have a mounted route yet -- it points at Phase 12's detail
+// page -- but the builder exists now so that phase extends this file
+// instead of inventing a second path module.
 export const paths = {
   leaderboard: () => '/',
-  models: () => '/models',
+  // `filters` jumps straight into one family (the model page header's
+  // own family chip, Phase 11) -- every other call site keeps calling
+  // this with no arguments, same as `newEvaluation`/`runs` above.
+  models: (filters?: { family?: string }) => {
+    const family = filters?.family
+    if (family === undefined) {
+      return '/models'
+    }
+    const search = new URLSearchParams()
+    search.set('family', family)
+    return `/models?${search.toString()}`
+  },
   modelRegister: () => '/models/register',
   model: (modelId: number | string) => `/models/${modelId}`,
+  // Phase 11 (docs/UI_REDESIGN_PLAN.md §8.11): the model page's three
+  // non-index tabs. There is no `modelResults` builder -- the Results
+  // tab is the bare `model()` path, the same "index tab has no suffix"
+  // convention `run()` already uses for the run report's Overview tab.
+  modelRuns: (modelId: number | string) => `/models/${modelId}/runs`,
+  modelConfig: (modelId: number | string) => `/models/${modelId}/config`,
+  modelLineage: (modelId: number | string) => `/models/${modelId}/lineage`,
   benchmarks: () => '/benchmarks',
   benchmark: (benchmarkId: number | string) => `/benchmarks/${benchmarkId}`,
   profilesSampling: () => '/profiles/sampling',

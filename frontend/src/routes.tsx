@@ -4,8 +4,13 @@ import { Page, PageWide } from './components/Page/Page'
 import { RedirectPreservingSearch } from './components/RedirectPreservingSearch/RedirectPreservingSearch'
 import { paths } from './utils/paths'
 import { LeaderboardPage } from './pages/LeaderboardPage'
-import { CheckpointDetailPage } from './pages/CheckpointDetailPage'
-import { RegisterCheckpointPage } from './pages/RegisterCheckpointPage'
+import { ModelsPage } from './pages/ModelsPage'
+import { ModelDetailPage } from './pages/ModelDetailPage'
+import { ModelResultsTab } from './pages/ModelResultsTab'
+import { ModelRunsTab } from './pages/ModelRunsTab'
+import { ModelConfigTab } from './pages/ModelConfigTab'
+import { ModelLineageTab } from './pages/ModelLineageTab'
+import { RegisterModelPage } from './pages/RegisterModelPage'
 import { StandardsPage } from './pages/StandardsPage'
 import { SamplingProfilesPage } from './pages/SamplingProfilesPage'
 import { ServingProfilesPage } from './pages/ServingProfilesPage'
@@ -45,16 +50,22 @@ export function AppRoutes() {
           }
         />
 
+        {/*
+         * PageWide, not Page (Phase 11, docs/UI_REDESIGN_PLAN.md
+         * §8.11): the family-grouped cards/table view needs the full
+         * width the same way the Leaderboard's own matrix and the Runs
+         * page's own table do.
+         */}
         <Route
           path="models"
           element={
-            <Page>
-              <CheckpointDetailPage />
-            </Page>
+            <PageWide>
+              <ModelsPage />
+            </PageWide>
           }
         />
         {/*
-         * No nav item -- reached only via the "Register checkpoint"
+         * No nav item -- reached only via the "Register a model"
          * button on the models page. Its four steps live in this
          * page's own component state, not further router segments
          * (R-D30): a deep link to step 3 has nothing to render without
@@ -64,19 +75,34 @@ export function AppRoutes() {
           path="models/register"
           element={
             <Page>
-              <RegisterCheckpointPage />
+              <RegisterModelPage />
             </Page>
           }
         />
         {/*
-         * Temporary (Phase 6, docs/UI_REDESIGN_PLAN.md §8.6): the
-         * Leaderboard's row header and "Run history" links already
-         * point at paths.model(id), a page Phase 11 has not built yet.
-         * Redirecting its whole subtree to the models list keeps those
-         * links from 404ing in the meantime; Phase 11 replaces this
-         * with the real ModelDetailPage route.
+         * The model page (Phase 11, docs/UI_REDESIGN_PLAN.md §8.11):
+         * ModelDetailPage owns the header and the tab strip; each child
+         * route below is one tab, rendered into its own <Outlet> and
+         * reading the already-loaded checkpoint through its outlet
+         * context (ModelDetailPage.helper.ts's useModelPage) -- mirrors
+         * the run report's own routes above. PageWide, not Page: the
+         * Results tab's scorecard grid and the Runs tab's table both
+         * need the full width the same way the Leaderboard and Runs
+         * pages do.
          */}
-        <Route path="models/:modelId/*" element={<RedirectPreservingSearch to={paths.models()} />} />
+        <Route
+          path="models/:modelId"
+          element={
+            <PageWide>
+              <ModelDetailPage />
+            </PageWide>
+          }
+        >
+          <Route index element={<ModelResultsTab />} />
+          <Route path="runs" element={<ModelRunsTab />} />
+          <Route path="config" element={<ModelConfigTab />} />
+          <Route path="lineage" element={<ModelLineageTab />} />
+        </Route>
 
         <Route
           path="benchmarks"
@@ -112,7 +138,7 @@ export function AppRoutes() {
          * than a further path segment -- a step has nothing to show
          * without the axis chosen in an earlier one, the same "no
          * server response to deep-link to" reasoning
-         * RegisterCheckpointPage's own wizard steps already follow.
+         * RegisterModelPage's own wizard steps already follow.
          */}
         <Route
           path="evaluate/new"

@@ -15,7 +15,8 @@
 // every call site passes `null` once a value equals whatever this file
 // just resolved as the default.
 import type { BenchmarkColumn, LeaderboardBoard, ModelRow, SetupOption } from '../utils/buildLeaderboard'
-import { groupColumnsByCategory, NO_FAMILY_KEY } from '../utils/buildLeaderboard'
+import { groupColumnsByCategory } from '../utils/buildLeaderboard'
+import { NO_FAMILY_KEY } from '../utils/familyGroups'
 import { readBooleanParam, readEnumParam, readListParam, readStringParam } from '../utils/useUrlState'
 
 export type LeaderboardLens = 'overview' | 'benchmark'

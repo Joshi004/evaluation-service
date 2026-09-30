@@ -100,8 +100,8 @@ export interface CheckpointRunSummary {
 }
 
 // GET /api/v1/checkpoints/{id} -- see app/schemas/checkpoints.py's
-// CheckpointDetail. Fetched lazily by CheckpointInferredPanel when a
-// checkpoints-page row is expanded (Phase 8), not on the list itself.
+// CheckpointDetail. Fetched by useCheckpoint when the model detail
+// page (ModelDetailPage, Phase 11) loads, not on the /models list.
 export interface CheckpointDetail extends CheckpointListItem {
   generation_config: Record<string, unknown> | null
   registered_by: string | null

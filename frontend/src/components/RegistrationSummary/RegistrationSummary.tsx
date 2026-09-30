@@ -1,4 +1,5 @@
 import type { RegisterCheckpointRequest, ServingProfileSummary } from '../../api/client'
+import { KeyValueList } from '../KeyValueList/KeyValueList'
 import { describeServingProfileSelection } from './RegistrationSummary.helper'
 
 interface RegistrationSummaryProps {
@@ -19,26 +20,16 @@ export function RegistrationSummary({
   profiles,
   parentCheckpointName,
 }: RegistrationSummaryProps) {
-  const rows: Array<{ label: string; value: string }> = [
-    { label: 'Candidate', value: candidateDisplayName },
-    { label: 'Name', value: request.name },
-    { label: 'Family', value: request.family ?? '—' },
-    { label: 'Parent checkpoint', value: parentCheckpointName ?? '—' },
-    {
-      label: 'Serving profile',
-      value: describeServingProfileSelection(request.serving_profile, profiles),
-    },
-    { label: 'Registered by', value: request.registered_by ?? '—' },
-  ]
-
   return (
-    <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
-      {rows.map((row) => (
-        <div key={row.label}>
-          <dt className="text-xs text-slate-500">{row.label}</dt>
-          <dd className="text-sm text-slate-200">{row.value}</dd>
-        </div>
-      ))}
-    </dl>
+    <KeyValueList
+      rows={[
+        { label: 'Candidate', value: candidateDisplayName },
+        { label: 'Name', value: request.name },
+        { label: 'Family', value: request.family ?? '\u2014' },
+        { label: 'Parent checkpoint', value: parentCheckpointName ?? '\u2014' },
+        { label: 'Serving profile', value: describeServingProfileSelection(request.serving_profile, profiles) },
+        { label: 'Registered by', value: request.registered_by ?? '\u2014' },
+      ]}
+    />
   )
 }

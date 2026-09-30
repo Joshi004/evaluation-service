@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import type { ReactNode } from 'react'
+import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react'
 import { Search, Trash2 } from 'lucide-react'
-import { MemoryRouter } from 'react-router'
 import { Button } from '../components/Button/Button'
 import { IconButton } from '../components/IconButton/IconButton'
 import { CopyButton } from '../components/CopyButton/CopyButton'
@@ -30,6 +29,7 @@ import { Skeleton } from '../components/Skeleton/Skeleton'
 import { Spinner } from '../components/Spinner/Spinner'
 import { EmptyState } from '../components/EmptyState/EmptyState'
 import { ErrorState } from '../components/ErrorState/ErrorState'
+import { JsonDetails } from '../components/JsonDetails/JsonDetails'
 import { KeyValueList } from '../components/KeyValueList/KeyValueList'
 import { Table, TableCell, TableHeaderCell } from '../components/Table/Table'
 import { AvailabilityBadge } from '../components/AvailabilityBadge/AvailabilityBadge'
@@ -130,6 +130,25 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   )
 }
 
+// TabNav and RunFailureReason below render real react-router
+// Link/NavLink elements, and /styleguide already sits inside the
+// app's one real BrowserRouter (main.tsx) -- there is no second,
+// isolated router to render them into here. Stopping the click during
+// the capture phase, before it reaches the Link's own handler,
+// contains the click without one: preventDefault blocks the anchor's
+// native "follow this href", and stopPropagation keeps react-router's
+// click handler (which does not check defaultPrevented -- it always
+// navigates on a plain left click) from running at all. Scoped to
+// clicks that land on an <a> so it doesn't also swallow
+// RunFailureReason's own "Details" popover trigger, which isn't one.
+function preventRealNavigation(event: ReactMouseEvent): void {
+  const clickedElement = event.target as Element
+  if (clickedElement.closest('a')) {
+    event.preventDefault()
+    event.stopPropagation()
+  }
+}
+
 // Dev-only design-system reference (registered in routes.tsx only when
 // import.meta.env.DEV). Shows every Phase 1 primitive so a change to a
 // token or a primitive's class list is visible in one place, in either
@@ -215,19 +234,22 @@ export function StyleguidePage() {
 
         {/* Phase 7 (docs/UI_REDESIGN_PLAN.md §8.7): a NavLink-based tab
             strip for path-based tabs (the run report's own tabs;
-            Phases 11-12's Model and Benchmark detail pages reuse it) --
-            wrapped in its own MemoryRouter so clicking through the demo
-            never navigates the real page away from /styleguide. */}
+            Phases 11-12's Model and Benchmark detail pages reuse it).
+            "Overview" points at this page's own real path so it reads
+            as the active tab (NavLink matches against the real,
+            current URL, and that URL genuinely is /styleguide right
+            now); the other two are inert sibling paths, safe to leave
+            unmatched since preventRealNavigation absorbs the click. */}
         <Section title="TabNav">
-          <MemoryRouter initialEntries={['/overview']}>
+          <div onClickCapture={preventRealNavigation}>
             <TabNav
               items={[
-                { to: '/overview', label: 'Overview', end: true },
-                { to: '/samples', label: 'Samples', badge: 79 },
-                { to: '/config', label: 'Configuration' },
+                { to: '/styleguide', label: 'Overview', end: true },
+                { to: '/styleguide/samples', label: 'Samples', badge: 79 },
+                { to: '/styleguide/config', label: 'Configuration' },
               ]}
             />
-          </MemoryRouter>
+          </div>
         </Section>
 
         {/* Phase 10 (docs/UI_REDESIGN_PLAN.md §8.10): SidePanel is
@@ -455,6 +477,14 @@ export function StyleguidePage() {
           </Table>
         </Section>
 
+        {/* Phase 11 (docs/UI_REDESIGN_PLAN.md §8.11): a collapsible,
+            copyable "raw JSON, verbatim" view -- shared by
+            InspectionSummary's own config.json disclosure and a
+            model's own Configuration tab (generation_config). */}
+        <Section title="JsonDetails">
+          <JsonDetails summary="config.json (verbatim)" value={{ model_type: 'qwen3', torch_dtype: 'bfloat16' }} />
+        </Section>
+
         {/* Phase 4 (docs/UI_REDESIGN_PLAN.md §8.4, item 6/7): the seven
             domain display components every later phase composes from,
             each shown against real data from the running stack. */}
@@ -511,13 +541,11 @@ export function StyleguidePage() {
             />
             {/* RunFailureReason's own "Open logs" link would otherwise
                 navigate the real page away from /styleguide -- the same
-                reason TabNav above gets its own MemoryRouter. */}
-            <MemoryRouter initialEntries={['/runs/8']}>
-              <div className="flex flex-wrap items-start gap-6">
-                <RunFailureReason run={RUN_8_EXAMPLE} />
-                <RunFailureReason run={UNRECOGNISED_ERROR_RUN_EXAMPLE} />
-              </div>
-            </MemoryRouter>
+                reason TabNav above uses preventRealNavigation. */}
+            <div className="flex flex-wrap items-start gap-6" onClickCapture={preventRealNavigation}>
+              <RunFailureReason run={RUN_8_EXAMPLE} />
+              <RunFailureReason run={UNRECOGNISED_ERROR_RUN_EXAMPLE} />
+            </div>
           </div>
         </Section>
 

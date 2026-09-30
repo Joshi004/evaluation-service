@@ -1002,12 +1002,12 @@ Also confirmed: the skeleton renders while the first request is held open; a fir
 **Out of scope.** Editing a model after registration, a lineage graph (backlog), removing models.
 
 **Acceptance criteria**
-- [ ] `/models` groups Qwen3.5 models together even though their stored family strings differ in case and hyphenation.
-- [ ] Model 2's page shows IFEval under two setups (≈85.0 and ≈63.0), IFBench, and GSM8K as "Not evaluated" with **Run it**; ranks match the leaderboard.
-- [ ] Runs tab lists that model's runs including failed ones with friendly reasons.
-- [ ] Configuration tab shows every field the old expanded row showed.
-- [ ] Register flow reaches step 4 in the browser without submitting (**do not click Register**).
-- [ ] Gates pass.
+- [x] `/models` groups Qwen3.5 models together even though their stored family strings differ in case and hyphenation (confirmed on screen: `/models` renders a "Qwen-3.5 (2 spellings)" section containing both `merged_global_step_810` (stored family `Qwen-3.5`) and `Qwen3.5-0.8B-Th…v11c-s810` (stored family `QWen3.5`), and a separate "Qwen3-4B" section for checkpoint 1's own family. `familyGroups.ts`'s `familyKey` lower-cases and strips non-alphanumerics, so both spellings collapse to the same key).
+- [x] Model 2's page shows IFEval under two setups (≈85.0 and ≈63.0), IFBench, and GSM8K as "Not evaluated" with **Run it**; ranks match the leaderboard (confirmed on screen: `/models/2` renders IFEval `qwen3_5_think` 85.0% ±3.0 "#2 of 2 ≈", IFEval `greedy` 63.0% ±4.1 "#1 of 1", IFBench 47.0% ±5.6 "#1 of 2", and GSM8K/GPQA-Diamond/MMLU-Pro as "Not evaluated" cards with **Run it**; ranks come from the same `buildLeaderboard(rows, checkpoints, standards)` call the Leaderboard page itself makes, never a second computation).
+- [x] Runs tab lists that model's runs including failed ones with friendly reasons (confirmed on screen: `/models/2/runs` lists all 9 runs; `?status=failed` narrows to the 6 failed rows, each reading "The run ended without a results report" behind its own Details disclosure; an "Open in Runs" button links to `/runs?model=2`).
+- [x] Configuration tab shows every field the old expanded row showed (confirmed on screen: `/models/2/config` renders all nine inferred fields — model type, architecture, base model, context length, torch dtype, quantization, weight format, shard count, size — with "Not stated" for the three that are null, plus `config.json` and `generation_config` as collapsible `JsonDetails`; also default serving/sampling profiles with fingerprint chips, registration path/registered-by/date/parent, and a Weights section with status, checked time, detail and **Check weights**).
+- [x] Register flow reaches step 4 in the browser without submitting (**do not click Register**) (confirmed via a scripted Chrome DevTools Protocol walkthrough of the real running app: **Browse the cluster** → selected `Qwen3-0.6B` → step 2's inspection loaded with the name prefilled and every inferred field reading "Not stated" where null → typing "qwen 3.5" into the family field surfaced `Matches existing family "Qwen-3.5" — use that spelling.` → step 3's serving-profile recommendation and `ParentModelPicker` (selected `Qwen3-4B-allternary-ep03`) → step 4's summary listed all six rows correctly. **Register was not clicked**; `GET /checkpoints` before and after the walkthrough both returned exactly the same 3 checkpoints).
+- [x] Gates pass (`npm run lint` and `npm run build`, both clean; the §6 rule 9 palette check returns nothing for the 55 `.ts`/`.tsx` files this phase materially changed. One touched file, `CatalogPanel.tsx`, keeps pre-existing raw palette classes outside the one comment line this phase edited in it — restyling it is Phase 12's own explicit task, not this phase's. `rg "CheckpointDetailPage|CheckpointInferredPanel|RegisterCheckpointPage" frontend/src` returns nothing).
 
 **Pitfalls.** `POST …/validate` and candidate browsing touch the cluster over SSH — never trigger them in verification or on mount.
 
@@ -1160,6 +1160,15 @@ Other phases depend on these staying stable. Do not rename them without updating
 | `SidePanel` (right-docked Dialog sibling), `Stepper` (page-state step indicator) | 10 | 11, 12 |
 | URL params — Runs: `status`, `model`, `benchmark`, `by`, `since`, `q`, `batch`, `view` | 9 | 10 |
 | `RunsTable` (batch-grouped or flat, given a run list and a view mode) | 9 | 11 |
+| `familyGroups.ts` (`groupCheckpointsByFamily`, `findMatchingFamily`; `NO_FAMILY_KEY` relocated here from `buildLeaderboard.ts`) | 11 | 11 |
+| `modelResults.ts` (`buildModelResults`, `findSharedSetups`) | 11 | 11 |
+| `CompareWithModelButton` | 11 | 11 |
+| `useValidateCheckpoint()` | 11 | 11 |
+| `useRememberedName()` | 11 | 10, 11 |
+| `RunStatusFilter` | 11 | 9, 11 |
+| `paths.modelRuns`, `paths.modelConfig`, `paths.modelLineage` | 11 | 11 |
+| URL params — Models: `q`, `family`, `weights`, `view` | 11 | 11 |
+| URL params — model Runs: `status` | 11 | 11 |
 
 ---
 

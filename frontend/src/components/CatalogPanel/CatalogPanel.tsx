@@ -58,7 +58,7 @@ export function CatalogPanel({ resourcePath, listQueryKey, entryNoun, renderRowV
   })
 
   // One mutation instance shared by every row's Delete button, the same
-  // pattern CheckpointDetailPage's "Check availability" button uses
+  // pattern the old checkpoints list's "Check availability" button used
   // (S-T30): TanStack keeps the last mutate() argument on `variables`
   // even after it settles, which is what a per-row pending/error state
   // needs without a second piece of state to keep in sync.

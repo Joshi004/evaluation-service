@@ -8,6 +8,7 @@
 import type { CheckpointListItem, ConfidenceInterval, LeaderboardRow, StandardSummary } from '../api/client'
 import { benchmarkDisplayName, benchmarkVersion } from './benchmarkDisplayName'
 import { familyKey } from './familyKey'
+import { groupCheckpointsByFamily } from './familyGroups'
 import { rankScores, type RankedScore } from './rankScores'
 
 // Rows are every registered model (so a model with no results yet still
@@ -66,10 +67,6 @@ export interface BenchmarkColumn {
   // disambiguate something.
   hasMultipleStandardVersions: boolean
 }
-
-// Used by the URL's `family=none` value (§8.6's URL contract) for
-// checkpoints with no family string at all.
-export const NO_FAMILY_KEY = 'none'
 
 export interface FamilyOption {
   key: string
@@ -245,32 +242,14 @@ function buildModelRows(rows: LeaderboardRow[], checkpoints: CheckpointListItem[
   return models.sort((a, b) => a.name.localeCompare(b.name))
 }
 
+// Delegates to familyGroups.ts's shared rule (Phase 11,
+// docs/UI_REDESIGN_PLAN.md §8.11) so the Leaderboard's own family
+// filter always shows the same label the Models list and the
+// registration wizard's family input would show for the same
+// checkpoints -- "most common spelling, ties to most recently
+// registered" replaces this file's earlier "first spelling seen wins".
 function buildFamilyOptions(checkpoints: CheckpointListItem[]): FamilyOption[] {
-  const labelByKey = new Map<string, string>()
-  let hasCheckpointWithNoFamily = false
-
-  for (const checkpoint of checkpoints) {
-    if (checkpoint.family === null) {
-      hasCheckpointWithNoFamily = true
-      continue
-    }
-    const key = familyKey(checkpoint.family)
-    // First spelling seen wins. Showing the single most common
-    // spelling is Phase 11's own acceptance criterion for the Models
-    // page; this filter only needs one stable, readable label per key.
-    if (!labelByKey.has(key)) {
-      labelByKey.set(key, checkpoint.family)
-    }
-  }
-
-  const options = [...labelByKey.entries()]
-    .map(([key, label]) => ({ key, label }))
-    .sort((a, b) => a.label.localeCompare(b.label))
-
-  if (hasCheckpointWithNoFamily) {
-    options.push({ key: NO_FAMILY_KEY, label: 'No family' })
-  }
-  return options
+  return groupCheckpointsByFamily(checkpoints).map((group) => ({ key: group.key, label: group.label }))
 }
 
 export function buildLeaderboard(

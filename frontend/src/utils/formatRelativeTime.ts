@@ -1,6 +1,6 @@
 // A timestamp as "3 hours ago" up to 7 days old, then a short date
-// (§4.5's "Time" pattern) -- promoted from CheckpointDetailPage.helper.ts
-// once RelativeTime (Phase 4) became a second user. How stale
+// (§4.5's "Time" pattern) -- promoted from the old checkpoints list's
+// own helper once RelativeTime (Phase 4) became a second user. How stale
 // something is matters more than its exact wall-clock time up close;
 // past a week, a reader wants to know *when*, not count days.
 const RELATIVE_TIME_FORMATTER = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' })

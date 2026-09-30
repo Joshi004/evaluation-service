@@ -8,11 +8,16 @@
 
 import type { RunListItem, StandardSummary } from '../api/client'
 import { benchmarkDisplayName } from '../utils/benchmarkDisplayName'
-import { isActiveRunStatus } from '../utils/runStatus'
+import {
+  countRunsByStatus,
+  matchesRunsStatusFilter,
+  RUNS_STATUS_FILTER_VALUES,
+  type RunsStatusCounts,
+  type RunsStatusFilter,
+} from '../utils/runStatus'
 import { readEnumParam, readNumberParam, readStringParam, type UrlParamValue } from '../utils/useUrlState'
 
-const STATUS_VALUES = ['active', 'done', 'failed', 'cancelled', 'all'] as const
-export type RunsStatusFilter = (typeof STATUS_VALUES)[number]
+export type { RunsStatusCounts, RunsStatusFilter }
 
 const SINCE_VALUES = ['24h', '7d', '30d', 'all'] as const
 export type RunsSincePreset = (typeof SINCE_VALUES)[number]
@@ -77,7 +82,7 @@ export const RUNS_URL_DEFAULTS: RunsUrlParams = {
 }
 
 export function resolveRunsView(params: URLSearchParams): ResolvedRunsView {
-  const status = readEnumParam(params, 'status', STATUS_VALUES, 'all')
+  const status = readEnumParam(params, 'status', RUNS_STATUS_FILTER_VALUES, 'all')
   const modelId = readNumberParam(params, 'model')
   const benchmark = readStringParam(params, 'benchmark')
   const submittedBy = readStringParam(params, 'by')
@@ -96,16 +101,6 @@ const SINCE_WINDOW_MS: Record<Exclude<RunsSincePreset, 'all'>, number> = {
   '24h': 24 * 60 * 60 * 1000,
   '7d': 7 * 24 * 60 * 60 * 1000,
   '30d': 30 * 24 * 60 * 60 * 1000,
-}
-
-function matchesStatusFilter(run: RunListItem, status: RunsStatusFilter): boolean {
-  if (status === 'all') {
-    return true
-  }
-  if (status === 'active') {
-    return isActiveRunStatus(run.status)
-  }
-  return run.status === status
 }
 
 function matchesSincePreset(run: RunListItem, since: RunsSincePreset, now: Date): boolean {
@@ -152,30 +147,20 @@ function matchesRunsFiltersExceptStatus(run: RunListItem, filters: RunsFilters, 
 }
 
 export function filterRuns(runs: RunListItem[], filters: RunsFilters, now: Date): RunListItem[] {
-  return runs.filter((run) => matchesStatusFilter(run, filters.status) && matchesRunsFiltersExceptStatus(run, filters, now))
-}
-
-export interface RunsStatusCounts {
-  active: number
-  done: number
-  failed: number
-  cancelled: number
-  all: number
+  return runs.filter(
+    (run) => matchesRunsStatusFilter(run, filters.status) && matchesRunsFiltersExceptStatus(run, filters, now),
+  )
 }
 
 // Each count is "how many runs would show if this chip were picked,
 // given every other filter already on" (§8.9's own plan: "status
 // counts follow the other filters") -- with no filters at all, this is
-// simply how many runs the service has of each status.
+// simply how many runs the service has of each status. Delegates the
+// actual counting to runStatus.ts's countRunsByStatus once the other
+// filters have narrowed the list.
 export function countRunsByStatusFilter(runs: RunListItem[], filters: RunsFilters, now: Date): RunsStatusCounts {
   const otherwiseVisible = runs.filter((run) => matchesRunsFiltersExceptStatus(run, filters, now))
-  return {
-    active: otherwiseVisible.filter((run) => isActiveRunStatus(run.status)).length,
-    done: otherwiseVisible.filter((run) => run.status === 'done').length,
-    failed: otherwiseVisible.filter((run) => run.status === 'failed').length,
-    cancelled: otherwiseVisible.filter((run) => run.status === 'cancelled').length,
-    all: otherwiseVisible.length,
-  }
+  return countRunsByStatus(otherwiseVisible)
 }
 
 // GET /runs already orders by created_at desc, but two runs submitted

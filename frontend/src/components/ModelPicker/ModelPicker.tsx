@@ -4,8 +4,9 @@ import { AvailabilityBadge } from '../AvailabilityBadge/AvailabilityBadge'
 import { Checkbox } from '../Checkbox/Checkbox'
 import { ModelName } from '../ModelName/ModelName'
 import { SearchInput } from '../SearchInput/SearchInput'
+import { groupCheckpointsByFamily } from '../../utils/familyGroups'
 import { toggleId } from '../../utils/toggleId'
-import { filterCheckpointsByQuery, groupCheckpointsByFamily } from './ModelPicker.helper'
+import { filterCheckpointsByQuery } from './ModelPicker.helper'
 
 interface ModelPickerProps {
   checkpoints: CheckpointListItem[]

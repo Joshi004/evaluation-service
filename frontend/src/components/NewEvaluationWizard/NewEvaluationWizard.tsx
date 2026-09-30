@@ -28,7 +28,7 @@ import {
 import { indexById } from '../../utils/indexById'
 import { paths } from '../../utils/paths'
 import { useDebouncedValue } from '../../utils/useDebouncedValue'
-import { useLocalStorageState } from '../../utils/useLocalStorageState'
+import { useRememberedName } from '../../utils/useRememberedName'
 import {
   buildCreateRunsRequest,
   computeSubmitBlockReason,
@@ -82,7 +82,7 @@ export function NewEvaluationWizard({
   // never touched keeps tracking the current selection; typing into it
   // once takes ownership of the field.
   const [batchNameOverride, setBatchNameOverride] = useState<string | null>(null)
-  const [submittedBy, setSubmittedBy] = useLocalStorageState('evalsvc.submitted-by.v1', '')
+  const [submittedBy, setSubmittedBy] = useRememberedName()
   const [partition, setPartition] = useState<string | null>(null)
 
   // Debounced on the raw drafts, not the derived overrides -- see

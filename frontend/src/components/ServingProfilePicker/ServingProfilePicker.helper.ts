@@ -7,7 +7,6 @@ import type {
   ServingProfileSelection,
   ServingProfileSummary,
 } from '../../api/client'
-import { servingProfileDisplayName } from '../../utils/servingProfileDisplayName'
 
 export type ServingProfileChoice =
   | { kind: 'recommended' }
@@ -180,22 +179,4 @@ export function buildServingProfileSelection(
   }
   const config = buildConfigFromDraft(choice.draft)
   return config === null ? null : { customised: config }
-}
-
-// A one-line "what this profile actually does" for the accept/pick
-// options -- the fields a human uses to tell profiles apart at a
-// glance, mirroring ServingProfileSummary's own docstring framing.
-export function describeProfileGlance(profile: ServingProfileSummary): string {
-  const parts = [
-    servingProfileDisplayName(profile.label, profile.hash),
-    `${profile.engine} ${profile.engine_version}`,
-    `${profile.gpus} GPU${profile.gpus === 1 ? '' : 's'}`,
-  ]
-  if (profile.max_model_len !== null) {
-    parts.push(`max_model_len ${profile.max_model_len.toLocaleString()}`)
-  }
-  if (profile.reasoning_parser !== null) {
-    parts.push(`reasoning_parser ${profile.reasoning_parser}`)
-  }
-  return parts.join(' · ')
 }

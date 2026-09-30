@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import type { UseQueryResult } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 import type { RunListItem } from '../../api/client'
@@ -17,6 +16,7 @@ import {
 } from '../../pages/RunsPage.helper'
 import { Button } from '../Button/Button'
 import { IconButton } from '../IconButton/IconButton'
+import { RunStatusFilter } from '../RunStatusFilter/RunStatusFilter'
 import { RunsLiveIndicator } from '../RunsLiveIndicator/RunsLiveIndicator'
 import { SearchInput } from '../SearchInput/SearchInput'
 import { SegmentedControl } from '../SegmentedControl/SegmentedControl'
@@ -50,17 +50,6 @@ const VIEW_MODE_OPTIONS = [
   { value: 'flat', label: 'Flat list' },
 ]
 
-// Not exported -- only this toolbar's own status segments need a
-// count alongside their label.
-function statusOptionLabel(label: string, count: number): ReactNode {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      {label}
-      <span className="text-muted-foreground">{count}</span>
-    </span>
-  )
-}
-
 // §8.9's own toolbar: status chips with their counts and the live
 // indicator on one row, then search, the four dropdown filters, the
 // batch chip, Clear filters and the By batch / Flat list toggle on a
@@ -88,17 +77,7 @@ export function RunsToolbar({
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <SegmentedControl
-          value={filters.status}
-          onValueChange={(value) => onStatusChange(value as RunsStatusFilter)}
-          options={[
-            { value: 'active', label: statusOptionLabel('Active', statusCounts.active) },
-            { value: 'done', label: statusOptionLabel('Done', statusCounts.done) },
-            { value: 'failed', label: statusOptionLabel('Failed', statusCounts.failed) },
-            { value: 'cancelled', label: statusOptionLabel('Cancelled', statusCounts.cancelled) },
-            { value: 'all', label: statusOptionLabel('All', statusCounts.all) },
-          ]}
-        />
+        <RunStatusFilter value={filters.status} counts={statusCounts} onChange={onStatusChange} />
         <RunsLiveIndicator
           pollIntervalMs={runsPollIntervalMs(runsQuery.data)}
           isRefetchError={runsQuery.isRefetchError}

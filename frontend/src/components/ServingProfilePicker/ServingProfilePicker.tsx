@@ -1,7 +1,9 @@
 import type { ServingProfileRecommendation, ServingProfileSummary } from '../../api/client'
 import { servingProfileDisplayName } from '../../utils/servingProfileDisplayName'
+import { describeProfileGlance } from '../../utils/servingProfileSummary'
+import { SelectField } from '../SelectField/SelectField'
+import { TextInput } from '../TextInput/TextInput'
 import {
-  describeProfileGlance,
   draftFromProfile,
   resolveSelectedProfile,
   type ServingProfileChoice,
@@ -14,9 +16,6 @@ interface ServingProfilePickerProps {
   choice: ServingProfileChoice
   onChoiceChange: (choice: ServingProfileChoice) => void
 }
-
-const INPUT_CLASS_NAME =
-  'mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-200'
 
 interface DraftFieldProps {
   label: string
@@ -33,14 +32,14 @@ interface DraftFieldProps {
 function DraftField({ label, value, onValueChange, type = 'text', step, placeholder }: DraftFieldProps) {
   return (
     <label className="block">
-      <span className="text-xs text-slate-500">{label}</span>
-      <input
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <TextInput
         type={type}
         step={step}
         placeholder={placeholder}
         value={value}
         onChange={(event) => onValueChange(event.target.value)}
-        className={INPUT_CLASS_NAME}
+        className="mt-1 w-full"
       />
     </label>
   )
@@ -52,12 +51,7 @@ function DraftField({ label, value, onValueChange, type = 'text', step, placehol
 // rather than owning any of this state itself (R-D31's controlled-input
 // idiom) -- the parent is what assembles the final
 // RegisterCheckpointRequest.
-export function ServingProfilePicker({
-  recommendation,
-  profiles,
-  choice,
-  onChoiceChange,
-}: ServingProfilePickerProps) {
+export function ServingProfilePicker({ recommendation, profiles, choice, onChoiceChange }: ServingProfilePickerProps) {
   const effectiveProfile = resolveSelectedProfile(choice, recommendation, profiles)
 
   function switchToCustomised() {
@@ -72,9 +66,9 @@ export function ServingProfilePicker({
 
   return (
     <div className="space-y-4">
-      <div className="rounded border border-slate-800 bg-slate-950 p-3">
-        <p className="text-xs text-slate-500">Recommendation</p>
-        <p className="mt-1 text-sm text-slate-300">{recommendation.reason}</p>
+      <div className="rounded-md border border-border bg-muted p-3">
+        <p className="text-xs text-muted-foreground">Recommendation</p>
+        <p className="mt-1 text-sm text-foreground">{recommendation.reason}</p>
       </div>
 
       <label className="flex items-start gap-2">
@@ -86,16 +80,12 @@ export function ServingProfilePicker({
           disabled={recommendation.profile === null}
           onChange={() => onChoiceChange({ kind: 'recommended' })}
         />
-        <span className="text-sm text-slate-200">
+        <span className="text-sm text-foreground">
           Accept the recommendation
           {recommendation.profile && (
-            <span className="block text-xs text-slate-500">
-              {describeProfileGlance(recommendation.profile)}
-            </span>
+            <span className="block text-xs text-muted-foreground">{describeProfileGlance(recommendation.profile)}</span>
           )}
-          {!recommendation.profile && (
-            <span className="block text-xs text-slate-600">No profile is recommended</span>
-          )}
+          {!recommendation.profile && <span className="block text-xs text-subtle-foreground">No profile is recommended</span>}
         </span>
       </label>
 
@@ -107,9 +97,9 @@ export function ServingProfilePicker({
           checked={choice.kind === 'existing'}
           onChange={() => onChoiceChange({ kind: 'existing', profileId: null })}
         />
-        <span className="w-full text-sm text-slate-200">
+        <span className="w-full text-sm text-foreground">
           Pick an existing profile
-          <select
+          <SelectField
             value={choice.kind === 'existing' && choice.profileId !== null ? choice.profileId : ''}
             disabled={choice.kind !== 'existing'}
             onChange={(event) =>
@@ -118,7 +108,7 @@ export function ServingProfilePicker({
                 profileId: event.target.value === '' ? null : Number(event.target.value),
               })
             }
-            className={`${INPUT_CLASS_NAME} disabled:opacity-50`}
+            className="mt-1"
           >
             <option value="">Select a profile…</option>
             {profiles.map((profile) => (
@@ -126,7 +116,7 @@ export function ServingProfilePicker({
                 {servingProfileDisplayName(profile.label, profile.hash)}
               </option>
             ))}
-          </select>
+          </SelectField>
         </span>
       </label>
 
@@ -138,22 +128,17 @@ export function ServingProfilePicker({
           checked={choice.kind === 'customised'}
           onChange={switchToCustomised}
         />
-        <span className="text-sm text-slate-200">
+        <span className="text-sm text-foreground">
           Customise
-          <span className="block text-xs text-slate-500">
-            An identical configuration reuses the matching existing profile; a changed one creates a
-            new one.
+          <span className="block text-xs text-muted-foreground">
+            An identical configuration reuses the matching existing profile; a changed one creates a new one.
           </span>
         </span>
       </label>
 
       {draft && (
-        <div className="ml-6 grid grid-cols-2 gap-3 rounded border border-slate-800 bg-slate-950 p-3 sm:grid-cols-3">
-          <DraftField
-            label="Engine"
-            value={draft.engine}
-            onValueChange={(value) => updateDraft(draft, { engine: value })}
-          />
+        <div className="ml-6 grid grid-cols-2 gap-3 rounded-md border border-border bg-muted p-3 sm:grid-cols-3">
+          <DraftField label="Engine" value={draft.engine} onValueChange={(value) => updateDraft(draft, { engine: value })} />
           <DraftField
             label="Engine version"
             value={draft.engine_version}
@@ -195,11 +180,7 @@ export function ServingProfilePicker({
             value={draft.reasoning_parser}
             onValueChange={(value) => updateDraft(draft, { reasoning_parser: value })}
           />
-          <DraftField
-            label="Dtype"
-            value={draft.dtype}
-            onValueChange={(value) => updateDraft(draft, { dtype: value })}
-          />
+          <DraftField label="Dtype" value={draft.dtype} onValueChange={(value) => updateDraft(draft, { dtype: value })} />
           <DraftField
             label="Quantization"
             placeholder="none"
@@ -214,10 +195,9 @@ export function ServingProfilePicker({
             onValueChange={(value) => updateDraft(draft, { gpu_memory_utilization: value })}
           />
           {Object.keys(draft.engine_options).length > 0 && (
-            <p className="col-span-full text-xs text-slate-600">
+            <p className="col-span-full text-xs text-subtle-foreground">
               {Object.keys(draft.engine_options).length} additional engine option
-              {Object.keys(draft.engine_options).length === 1 ? '' : 's'} carried over unchanged (not
-              editable here).
+              {Object.keys(draft.engine_options).length === 1 ? '' : 's'} carried over unchanged (not editable here).
             </p>
           )}
         </div>

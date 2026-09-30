@@ -26,8 +26,12 @@ interface InferredMetadataFields {
   size_bytes: number | null
 }
 
+// "Not stated" rather than "—" (Phase 11, docs/UI_REDESIGN_PLAN.md
+// §8.11): null here means the server genuinely could not read this off
+// the checkpoint (R-D20), which reads as more than an empty dash in
+// both the Configuration tab and the registration wizard's own step 2.
 function formatNullable(value: string | number | null): string {
-  return value === null ? '—' : String(value)
+  return value === null ? 'Not stated' : String(value)
 }
 
 // Decimal (GB = 10^9 bytes), matching how `du` on the cluster and disk
@@ -35,7 +39,7 @@ function formatNullable(value: string | number | null): string {
 // system for no benefit here.
 export function formatSizeBytes(sizeBytes: number | null): string {
   if (sizeBytes === null) {
-    return '—'
+    return 'Not stated'
   }
   if (sizeBytes >= 1_000_000_000) {
     return `${(sizeBytes / 1_000_000_000).toFixed(1)} GB`
@@ -50,7 +54,7 @@ function inferredFields(metadata: InferredMetadataFields): InferredField[] {
     { label: 'Base model', value: formatNullable(metadata.base_model) },
     {
       label: 'Context length',
-      value: metadata.context_length === null ? '—' : metadata.context_length.toLocaleString(),
+      value: metadata.context_length === null ? 'Not stated' : metadata.context_length.toLocaleString(),
     },
     { label: 'Torch dtype', value: formatNullable(metadata.torch_dtype) },
     { label: 'Quantization', value: formatNullable(metadata.quantization) },
@@ -67,7 +71,7 @@ export function inferredFieldsFromInspection(inspection: CheckpointInspection): 
 // The checkpoint-detail counterpart of inferredFieldsFromInspection --
 // same nine fields, read from the stored CheckpointInferredMetadata
 // (app/schemas/checkpoints.py) instead of a fresh inspection, for
-// CheckpointInferredPanel's expandable row on the checkpoints page.
+// ModelConfigTab's "What the checkpoint says" section (Phase 11).
 export function inferredFieldsFromCheckpoint(inferred: CheckpointInferredMetadata): InferredField[] {
   return inferredFields(inferred)
 }

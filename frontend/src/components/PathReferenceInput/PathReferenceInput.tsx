@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import type { CheckpointCandidate } from '../../api/client'
+import { Button } from '../Button/Button'
+import { TextInput } from '../TextInput/TextInput'
 import { candidateFromPath, pathReferenceError } from './PathReferenceInput.helper'
 
 interface PathReferenceInputProps {
@@ -20,32 +22,27 @@ export function PathReferenceInput({ selectedReference, onSelect }: PathReferenc
   const candidate = candidateFromPath(path)
 
   return (
-    <div className="rounded border border-slate-800 bg-slate-950/50 p-3">
+    <div className="rounded-md border border-border bg-card p-3">
       <label className="block">
-        <span className="text-xs text-slate-500">Or paste an absolute path on the cluster</span>
+        <span className="text-xs text-muted-foreground">Or paste an absolute path on the cluster</span>
         <div className="mt-1 flex gap-2">
-          <input
-            type="text"
+          <TextInput
             value={path}
             onChange={(event) => setPath(event.target.value)}
             placeholder="/home/jihye.back/slm/experiments/.../merged_global_step_810"
-            className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 font-mono text-sm text-slate-200"
+            className="w-full font-mono"
+            invalid={error !== null}
           />
-          <button
-            type="button"
-            disabled={candidate === null}
-            onClick={() => candidate && onSelect(candidate)}
-            className="shrink-0 rounded bg-emerald-600 px-3 py-1 text-sm font-medium text-white disabled:opacity-50"
-          >
+          <Button size="sm" className="shrink-0" disabled={candidate === null} onClick={() => candidate && onSelect(candidate)}>
             Use this path
-          </button>
+          </Button>
         </div>
       </label>
 
-      {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
+      {error && <p className="mt-1 text-xs text-danger">{error}</p>}
 
       {candidate !== null && candidate.reference === selectedReference && (
-        <p className="mt-1 text-xs text-emerald-400">Selected</p>
+        <p className="mt-1 text-xs text-success">Selected</p>
       )}
     </div>
   )
