@@ -11,7 +11,7 @@ import { PageHeader } from '../components/PageHeader/PageHeader'
 import { Spinner } from '../components/Spinner/Spinner'
 import { StartModelServerDialog } from '../components/StartModelServerDialog/StartModelServerDialog'
 import { SystemHealthCard } from '../components/SystemHealthCard/SystemHealthCard'
-import { describeStartFailure } from './InfrastructurePage.helper'
+import { describeStartFailure } from '../utils/describeStartFailure'
 
 // Owns the one useEndpoints() poll, the one useCheckpoints() catalog
 // read, and the one useStartEndpoint mutation -- ModelServerList and

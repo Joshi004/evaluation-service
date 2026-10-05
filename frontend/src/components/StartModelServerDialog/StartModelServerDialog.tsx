@@ -30,6 +30,12 @@ interface StartModelServerDialogProps {
   // comment) so they still fire after this dialog closes; this
   // component only ever calls `.mutate()`.
   startEndpoint: UseMutationResult<EndpointListItem, Error, number>
+  // ChatPage's own "Start a model server" entry point already knows
+  // which model it's for -- preselecting it skips a redundant second
+  // pick of the same model the caller just chose to chat with.
+  // InfrastructurePage's own callers never pass this, so its dialog
+  // keeps opening to a blank picker exactly as before.
+  initialCheckpointId?: number | null
 }
 
 // 1s while a start is in flight, so the elapsed time visibly ticks;
@@ -49,12 +55,21 @@ export function StartModelServerDialog({
   servingProfiles,
   liveEndpoints,
   startEndpoint,
+  initialCheckpointId = null,
 }: StartModelServerDialogProps) {
   // Lives on this component, not inside the Dialog primitive's own
   // subtree, so it survives the dialog closing while a start is still
   // in flight -- if that start then fails, reopening falls back to the
   // form with the same model still selected (one click to retry).
-  const [selectedCheckpointId, setSelectedCheckpointId] = useState<number | null>(null)
+  // Seeded from initialCheckpointId once, on this component's own
+  // first mount, like every other lazy useState initializer in this
+  // file: ChatPage.tsx's own list view can ask to preselect a
+  // *different* model each time it opens this dialog, so it renders
+  // this component with `key={initialCheckpointId}` to force a fresh
+  // instance (and a fresh seed) whenever the target model changes,
+  // while still reusing the same instance -- and its retry-friendly
+  // state -- across a close/reopen for the same model.
+  const [selectedCheckpointId, setSelectedCheckpointId] = useState<number | null>(initialCheckpointId)
 
   const now = useNow(startEndpoint.isPending ? PENDING_TICK_INTERVAL_MS : IDLE_TICK_INTERVAL_MS)
 

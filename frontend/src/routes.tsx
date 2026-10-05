@@ -54,6 +54,7 @@ const ComparePage = lazy(() => import('./pages/ComparePage').then((m) => ({ defa
 const InfrastructurePage = lazy(() =>
   import('./pages/InfrastructurePage').then((m) => ({ default: m.InfrastructurePage })),
 )
+const ChatPage = lazy(() => import('./pages/ChatPage').then((m) => ({ default: m.ChatPage })))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })))
 // The dev-only styleguide route below never renders in a production
 // build, but a bare `lazy(() => import(...))` call still leaves
@@ -293,6 +294,30 @@ export function AppRoutes() {
           element={
             <Page>
               <InfrastructurePage />
+            </Page>
+          }
+        />
+
+        {/*
+         * Manual chat against a running model server. One page handles
+         * both URLs: /chat lists models (live server, or saved history
+         * with none running), /chat/:modelId is one model's
+         * conversation. Page, not PageWide -- a message thread reads
+         * naturally at the same width as a form, not a wide table.
+         */}
+        <Route
+          path="chat"
+          element={
+            <Page>
+              <ChatPage />
+            </Page>
+          }
+        />
+        <Route
+          path="chat/:modelId"
+          element={
+            <Page>
+              <ChatPage />
             </Page>
           }
         />

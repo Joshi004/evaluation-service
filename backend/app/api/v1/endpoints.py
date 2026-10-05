@@ -1,14 +1,17 @@
 """Served-endpoint resource: list every endpoint that hasn't expired
-yet, start (or reuse) one for a checkpoint, and kill one.
+yet, start (or reuse) one for a checkpoint, kill one, and chat with
+one.
 """
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.controllers import endpoints as endpoints_controller
 from app.db import get_db
-from app.schemas.endpoints import CreateEndpointRequest, EndpointListItem
+from app.schemas.endpoints import ChatRequest, CreateEndpointRequest, EndpointListItem
 from app.services.cluster.ports import ReadinessTimeoutError, ServerDiedError
+from app.services.endpoints.chat import EndpointExpiredError, EndpointNotReadyError
 
 router = APIRouter()
 
@@ -51,3 +54,34 @@ async def kill_endpoint(endpoint_id: int, db: AsyncSession = Depends(get_db)) ->
     killed = await endpoints_controller.kill_endpoint(db, endpoint_id)
     if not killed:
         raise HTTPException(status_code=404, detail="Endpoint not found")
+
+
+@router.post("/{endpoint_id}/chat")
+async def chat_with_endpoint(
+    endpoint_id: int, request: ChatRequest, db: AsyncSession = Depends(get_db)
+) -> StreamingResponse:
+    """Server-Sent Events -- mirrors `stream_run_logs`
+    (`app/api/v1/runs.py`): the traffic is one-directional, and a
+    thinking profile's reply can run for minutes, which a plain
+    response risks a browser or proxy timing out on first. `db` here is
+    only for the lookup inside `start_chat_stream` -- the stream itself
+    never touches this request's session (same reasoning as
+    `stream_run_logs`'s own module, `app/services/runs/logs.py`'s
+    docstring).
+    """
+    try:
+        events = await endpoints_controller.start_chat_stream(db, endpoint_id, request)
+    except EndpointNotReadyError as exc:
+        raise HTTPException(status_code=409, detail="This model server is still starting.") from exc
+    except EndpointExpiredError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail="This model server has expired. Start a new one to continue chatting.",
+        ) from exc
+    if events is None:
+        raise HTTPException(status_code=404, detail="Endpoint not found")
+    return StreamingResponse(
+        events,
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )

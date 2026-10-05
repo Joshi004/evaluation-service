@@ -78,6 +78,17 @@ export const THINK_HANDLING_LABELS: Record<string, string> = {
   as_is: 'Score as-is',
 }
 
+// vLLM's own finish_reason values worth calling out in the chat
+// playground -- 'stop' (a normal end of reply) and null (still
+// streaming) show nothing, so only 'length' has an entry. Reuses
+// TERM_HINTS.truncated below for its tooltip: a chat reply cut off at
+// max_tokens is the exact same mechanical failure an eval run's own
+// truncation_rate already names, not a second concept needing its own
+// wording.
+export const CHAT_FINISH_REASON_LABELS: Record<string, string> = {
+  length: 'Truncated',
+}
+
 // One-line explanations for jargon that appears in the UI. Keyed
 // loosely by concept, not by every place a term appears.
 export const TERM_HINTS = {

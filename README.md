@@ -87,7 +87,10 @@ benchmarks (IFEval, IFBench, GSM8K, GPQA-Diamond, MMLU-Pro): register a
 checkpoint, submit a run, the backend SSHes into the SLURM cluster,
 starts a vLLM server, runs the harness against it over a tunnel, parses
 the report, and the leaderboard reads the result from Postgres. Five
-migrations are applied. The frontend's UI redesign
+migrations are applied. A model with a running server can also be
+chatted with directly from the Chat page — a manual playground for
+checking a model by hand, independent of any benchmark run, with
+per-model history saved in the browser. The frontend's UI redesign
 (`docs/UI_REDESIGN_PLAN.md`, 14 phases) is complete. `app/services/reconciler/`
 and `app/services/s3/` are still stubs — see `docs/CURRENT_STATE_ANALYSIS.md`
 for the full gap analysis against the other evaluation teams.

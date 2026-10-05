@@ -3,6 +3,7 @@ resource (app.api.v1.endpoints -> app.controllers.endpoints -> here),
 per .cursor/rules/backend-layering.mdc.
 """
 
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from sqlalchemy import select
@@ -66,6 +67,55 @@ async def get_checkpoint_and_serving_profile(
         return None
     checkpoint, serving_profile = row
     return checkpoint, serving_profile
+
+
+@dataclass(frozen=True)
+class LiveEndpointForChat:
+    """Just enough of a live endpoint to proxy a chat request against
+    it: `served_model_name` is `checkpoint.name` (`serve_job.py`'s own
+    `SERVED_NAME`, the same value `task_config.py` sends as `model` for
+    a real eval run), and `slurm_job_id` -- not just `url` -- is what
+    lets the chat proxy rebuild the SSH tunnel itself if the backend's
+    own `uvicorn --reload` dropped it since (`tunnel.py`'s own
+    module-level `_open_tunnels` state). `url`/`expires_at` are carried
+    through, not resolved into a single boolean here, because "still
+    starting" (`url is None`) and "expired" are two different reasons
+    to refuse a chat request, and the controller -- not this query --
+    is what turns each into its own 409.
+    """
+
+    id: int
+    slurm_job_id: int | None
+    url: str | None
+    expires_at: datetime
+    served_model_name: str
+
+
+async def get_live_endpoint_for_chat(
+    db: AsyncSession, endpoint_id: int
+) -> LiveEndpointForChat | None:
+    """None if no such endpoint row exists at all -- the controller
+    404s. Deliberately does not filter on `expires_at` or `url` the way
+    `find_reusable_endpoint` does: a chat request against an expired or
+    still-starting endpoint should 409 with a reason, not look
+    identical to a 404 for an id that was never real.
+    """
+    stmt = (
+        select(Endpoint, Checkpoint.name)
+        .join(Checkpoint, Endpoint.checkpoint_id == Checkpoint.id)
+        .where(Endpoint.id == endpoint_id)
+    )
+    row = (await db.execute(stmt)).first()
+    if row is None:
+        return None
+    endpoint, checkpoint_name = row
+    return LiveEndpointForChat(
+        id=endpoint.id,
+        slurm_job_id=endpoint.slurm_job_id,
+        url=endpoint.url,
+        expires_at=endpoint.expires_at,
+        served_model_name=checkpoint_name,
+    )
 
 
 async def find_reusable_endpoint(

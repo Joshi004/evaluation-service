@@ -13,6 +13,10 @@ dependencies = [
     "alembic>=1.14",
     "pyyaml>=6.0",
     "asyncssh>=2.24",
+    # The model chat proxy (app/services/endpoints/chat.py) is this
+    # process's only outbound HTTP caller -- every other cluster call
+    # goes over SSH (asyncssh), not HTTP.
+    "httpx>=0.27",
 ]
 
 [tool.uv]

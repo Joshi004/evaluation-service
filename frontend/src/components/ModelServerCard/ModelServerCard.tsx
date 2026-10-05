@@ -1,7 +1,10 @@
+import { Link } from 'react-router'
+import { MessageSquare } from 'lucide-react'
 import type { EndpointListItem } from '../../api/client'
 import { cn } from '../../utils/cn'
 import { paths } from '../../utils/paths'
 import { Badge } from '../Badge/Badge'
+import { BUTTON_LABEL_SIZE, buttonClassName } from '../Button/Button.helper'
 import { Card } from '../Card/Card'
 import { CopyButton } from '../CopyButton/CopyButton'
 import { KeyValueList } from '../KeyValueList/KeyValueList'
@@ -71,7 +74,20 @@ export function ModelServerCard({ endpoint, now }: ModelServerCardProps) {
         <p className="text-xs text-muted-foreground">
           Started <RelativeTime timestamp={endpoint.created_at} />
         </p>
-        <KillModelServerButton endpoint={endpoint} />
+        <div className="flex items-center gap-2">
+          {/* Only once actually serving -- chatting against a still-
+              starting endpoint has no url to proxy through yet. */}
+          {endpoint.url !== null && (
+            <Link
+              to={paths.chat(endpoint.checkpoint_id)}
+              className={buttonClassName('secondary', BUTTON_LABEL_SIZE.sm)}
+            >
+              <MessageSquare className="h-4 w-4" aria-hidden="true" />
+              Chat
+            </Link>
+          )}
+          <KillModelServerButton endpoint={endpoint} />
+        </div>
       </div>
     </Card>
   )

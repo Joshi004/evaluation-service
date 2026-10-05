@@ -1,5 +1,5 @@
 import type { ComponentType, SVGProps } from 'react'
-import { Trophy, Box, GitCompare, Plus, Activity, Target, SlidersHorizontal, Server } from 'lucide-react'
+import { Trophy, Box, GitCompare, Plus, Activity, Target, SlidersHorizontal, Server, MessageSquare } from 'lucide-react'
 import { paths } from '../../utils/paths'
 
 export interface NavItem {
@@ -31,6 +31,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'New evaluation', to: paths.newEvaluation(), icon: Plus },
       { label: 'Runs', to: paths.runs(), icon: Activity },
+      { label: 'Chat', to: paths.chat(), icon: MessageSquare },
     ],
   },
   {

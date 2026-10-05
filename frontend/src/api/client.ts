@@ -272,6 +272,70 @@ export interface EndpointListItem {
   created_at: string
 }
 
+// The manual chat playground -- see app/schemas/endpoints.py's own
+// Chat* shapes, which these mirror field-for-field. There is no
+// `system` role here; a system prompt is `ChatRequest.system_prompt`,
+// sent at most once per request.
+export type ChatRole = 'user' | 'assistant'
+
+export interface ChatMessage {
+  role: ChatRole
+  content: string
+}
+
+// Every field `ChatSamplingSettings` (backend) requires, matched
+// exactly -- see that schema's own docstring for why `min_p` has no
+// place here and every other field is required, not defaulted.
+export interface ChatSamplingSettings {
+  temperature: number
+  top_p: number
+  top_k: number
+  presence_penalty: number
+  repetition_penalty: number
+  max_tokens: number
+  enable_thinking: boolean
+  // null means "let vLLM draw its own per-request seed" -- Regenerate
+  // relies on that for a fresh sample each time.
+  seed: number | null
+}
+
+export interface ChatRequest {
+  system_prompt: string | null
+  messages: ChatMessage[]
+  settings: ChatSamplingSettings
+}
+
+// The four Server-Sent Events kinds POST /endpoints/{id}/chat can send,
+// discriminated by `type` -- mirrors app/schemas/endpoints.py's
+// Chat*Event models exactly, so api/chatStream.ts's own parser can
+// switch on `type` with no further mapping.
+export interface ChatReasoningEvent {
+  type: 'reasoning'
+  delta: string
+}
+
+export interface ChatContentEvent {
+  type: 'content'
+  delta: string
+}
+
+// finish_reason is vLLM's own value verbatim ("stop", "length", ...);
+// utils/labels.ts turns "length" into the same truncation vocabulary an
+// eval run's own failure states already use.
+export interface ChatDoneEvent {
+  type: 'done'
+  finish_reason: string | null
+  prompt_tokens: number | null
+  completion_tokens: number | null
+}
+
+export interface ChatErrorEvent {
+  type: 'error'
+  message: string
+}
+
+export type ChatStreamEvent = ChatReasoningEvent | ChatContentEvent | ChatDoneEvent | ChatErrorEvent
+
 // One (checkpoint, comparison_hash) pair with its most recent finished
 // primary metric -- see app/schemas/leaderboard.py. `comparison_hash` is
 // what the leaderboard actually groups by: two rows only collapse to
@@ -1173,14 +1237,24 @@ export class ApiError extends Error {
   }
 }
 
+// Shared with api/chatStream.ts, whose own fetch call can't reuse
+// apiFetch below directly -- a streaming POST's success path reads
+// response.body itself rather than response.json(), so only this
+// error-shaping logic is common between the two. Exported rather than
+// duplicated, so a backend error detail is surfaced the same way
+// everywhere it's read.
+export async function errorFromResponse(response: Response, path: string, method: string): Promise<ApiError> {
+  const body: unknown = await response.json().catch(() => null)
+  return new ApiError(
+    extractErrorDetail(body) ?? `${method} ${path} failed with ${response.status}`,
+    response.status,
+  )
+}
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, init)
   if (!response.ok) {
-    const body: unknown = await response.json().catch(() => null)
-    throw new ApiError(
-      extractErrorDetail(body) ?? `${init?.method ?? 'GET'} ${path} failed with ${response.status}`,
-      response.status,
-    )
+    throw await errorFromResponse(response, path, init?.method ?? 'GET')
   }
   // DELETE /endpoints/:id returns 204 with no body -- .json() would
   // throw on the empty response.

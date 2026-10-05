@@ -2,11 +2,14 @@
 See .cursor/rules/backend-layering.mdc.
 """
 
+from collections.abc import AsyncIterator
+from datetime import UTC, datetime
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.schemas.endpoints import EndpointListItem
-from app.services.endpoints import lifecycle
+from app.schemas.endpoints import ChatRequest, EndpointListItem
+from app.services.endpoints import chat, lifecycle
 from app.services.endpoints import queries as endpoints_service
 
 settings = get_settings()
@@ -56,3 +59,25 @@ async def kill_endpoint(db: AsyncSession, endpoint_id: int) -> bool:
     """True if a row was found and killed; False -- the router 404s."""
     endpoint = await lifecycle.kill_endpoint(db, endpoint_id)
     return endpoint is not None
+
+
+async def start_chat_stream(
+    db: AsyncSession, endpoint_id: int, request: ChatRequest
+) -> AsyncIterator[str] | None:
+    """None means no endpoint with this id exists -- the router 404s.
+    `chat.EndpointNotReadyError` / `chat.EndpointExpiredError` propagate
+    past this unchanged; the router maps both to 409. Checking both
+    here, rather than inside `chat.stream_chat_events` itself, is what
+    lets a request that can never succeed fail before a database
+    session is held across a stream at all -- the same "no session open
+    across a slow cluster call" shape `lifecycle.py`'s own module
+    docstring documents for the endpoint lifecycle.
+    """
+    target = await endpoints_service.get_live_endpoint_for_chat(db, endpoint_id)
+    if target is None:
+        return None
+    if target.url is None:
+        raise chat.EndpointNotReadyError()
+    if target.expires_at <= datetime.now(UTC):
+        raise chat.EndpointExpiredError()
+    return chat.stream_chat_events(target, request)

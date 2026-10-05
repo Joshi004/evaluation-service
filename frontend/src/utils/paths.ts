@@ -110,4 +110,9 @@ export const paths = {
   // tray already holds.
   compare: (runIds?: number[]) => (runIds && runIds.length > 0 ? `/compare?runs=${runIds.join(',')}` : '/compare'),
   infrastructure: () => '/infrastructure',
+  // Bare call is the model list (also the sidebar's own link);
+  // `modelId` goes straight to that model's own conversation --
+  // ModelServerCard's own Chat button and the chat list page's own
+  // rows both pass it.
+  chat: (modelId?: number | string) => (modelId === undefined ? '/chat' : `/chat/${modelId}`),
 }
