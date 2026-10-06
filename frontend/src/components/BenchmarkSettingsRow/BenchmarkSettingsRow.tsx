@@ -9,6 +9,7 @@ import { Badge } from '../Badge/Badge'
 import { Button } from '../Button/Button'
 import { SidePanel } from '../SidePanel/SidePanel'
 import {
+  effectiveStandardProtocol,
   standardDraftFor,
   standardOverrideDraftHasChange,
   type SubmitOverrideDrafts,
@@ -33,8 +34,11 @@ interface BenchmarkSettingsRowProps {
   onDraftsChange: (drafts: SubmitOverrideDrafts) => void
 }
 
-// One benchmark's Settings-step row: name, version and its recommended
-// protocol at a glance, plus a "Customize protocol" panel reusing
+// One benchmark's Settings-step row: name, version and its *effective*
+// protocol at a glance -- the catalog's own published shape, or
+// whatever this row's own "Customize protocol" panel has typed in
+// place of it (effectiveStandardProtocol merges the two the same way a
+// real submit would) -- plus that panel itself, reusing
 // StandardOverrideCard. Unlike ModelSettingsRow, there is no inline
 // select here -- a benchmark's shape has no "which named alternative"
 // choice the way a sampling or serving profile does, only individual
@@ -53,7 +57,8 @@ export function BenchmarkSettingsRow({
 }: BenchmarkSettingsRowProps) {
   const [isPanelOpen, setIsPanelOpen] = useState(false)
   const version = benchmarkVersion(standard.label)
-  const isCustomized = standardOverrideDraftHasChange(standardDraftFor(drafts, standard.id))
+  const draft = standardDraftFor(drafts, standard.id)
+  const isCustomized = standardOverrideDraftHasChange(draft)
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-3">
@@ -62,7 +67,7 @@ export function BenchmarkSettingsRow({
           <span className="text-sm font-medium text-foreground">{standard.display_name ?? standard.benchmark}</span>
           {version && <Badge tone="neutral">{version}</Badge>}
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">{protocolSummary(standard)}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{protocolSummary(effectiveStandardProtocol(standard, draft))}</p>
       </div>
 
       <div className="flex items-center gap-2">

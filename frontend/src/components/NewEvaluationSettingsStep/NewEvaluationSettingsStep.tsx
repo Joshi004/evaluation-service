@@ -24,6 +24,12 @@ interface NewEvaluationSettingsStepProps {
   onDraftsChange: (drafts: SubmitOverrideDrafts) => void
   preview: RunPreview | undefined
   isPreviewFetching: boolean
+  // Resolved from the wizard's own *debounced* drafts
+  // (NewEvaluationWizard.tsx's debouncedRequestOverrides) -- the same
+  // snapshot `preview` was computed from -- and forwarded straight
+  // through to SetupAlignmentList, the only reader on this step.
+  standardLabelByStandardId: Record<number, string>
+  samplingLabelByCheckpointId: Record<number, string>
   leaderboardQuery: UseQueryResult<LeaderboardRow[]>
 }
 
@@ -44,6 +50,8 @@ export function NewEvaluationSettingsStep({
   onDraftsChange,
   preview,
   isPreviewFetching,
+  standardLabelByStandardId,
+  samplingLabelByCheckpointId,
   leaderboardQuery,
 }: NewEvaluationSettingsStepProps) {
   return (
@@ -94,6 +102,9 @@ export function NewEvaluationSettingsStep({
         preview={preview}
         isPreviewFetching={isPreviewFetching}
         samplingProfiles={samplingProfiles}
+        standardsById={standardsById}
+        standardLabelByStandardId={standardLabelByStandardId}
+        samplingLabelByCheckpointId={samplingLabelByCheckpointId}
         leaderboardQuery={leaderboardQuery}
       />
     </div>

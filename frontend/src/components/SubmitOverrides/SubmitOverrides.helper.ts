@@ -39,8 +39,10 @@
 import type {
   CheckpointListItem,
   SamplingOverrides,
+  SamplingProfileConfig,
   SamplingProfileSummary,
   ServingOverrides,
+  ServingProfileConfig,
   ServingProfileSummary,
   StandardOverrides,
   StandardSummary,
@@ -415,6 +417,73 @@ function buildServingOverrides(draft: ServingOverrideDraft): ServingOverrides {
   }
 
   return overrides
+}
+
+// What a card's own one-line summary should show right now -- the base
+// config each field's placeholder came from, with whatever this draft
+// has actually typed merged back on top. Reuses the same
+// build*Overrides sparse objects above rather than re-parsing each
+// draft string a second time, so a summary can never show a value a
+// real submit wouldn't also send. `??`, never `||`: a deliberately
+// typed `0` (temperature 0, 0-shot) is a real override, not "unset".
+export function effectiveStandardProtocol(
+  standard: StandardSummary,
+  draft: StandardOverrideDraft,
+): Pick<StandardSummary, 'sample_limit' | 'few_shot' | 'repeats'> {
+  const overrides = buildStandardOverrides(draft)
+  return {
+    sample_limit: overrides.sample_limit ?? standard.sample_limit,
+    few_shot: overrides.few_shot ?? standard.few_shot,
+    repeats: overrides.repeats ?? standard.repeats,
+  }
+}
+
+// Mirrors effectiveStandardProtocol above, over the sampling axis.
+// `seed` has no override field at all (OverrideField/OverrideField.tsx
+// renders no seed input), so it always passes the base profile's own
+// value through unchanged.
+export function effectiveSamplingConfig(
+  baseProfile: SamplingProfileConfig,
+  draft: SamplingOverrideDraft,
+): SamplingProfileConfig {
+  const overrides = buildSamplingOverrides(draft)
+  return {
+    temperature: overrides.temperature ?? baseProfile.temperature,
+    top_p: overrides.top_p ?? baseProfile.top_p,
+    top_k: overrides.top_k ?? baseProfile.top_k,
+    min_p: overrides.min_p ?? baseProfile.min_p,
+    presence_penalty: overrides.presence_penalty ?? baseProfile.presence_penalty,
+    repetition_penalty: overrides.repetition_penalty ?? baseProfile.repetition_penalty,
+    max_tokens: overrides.max_tokens ?? baseProfile.max_tokens,
+    enable_thinking: overrides.enable_thinking ?? baseProfile.enable_thinking,
+    seed: baseProfile.seed,
+  }
+}
+
+// Mirrors effectiveStandardProtocol above, over the serving axis.
+// `engine`/`engine_version`/`engine_options` have no override fields
+// either -- ServingOverrides (api/client.ts) deliberately excludes
+// them since the cluster's own serve script pins the vLLM binary --
+// so all three always pass the base profile's own value through
+// unchanged.
+export function effectiveServingConfig(
+  baseProfile: ServingProfileConfig,
+  draft: ServingOverrideDraft,
+): ServingProfileConfig {
+  const overrides = buildServingOverrides(draft)
+  return {
+    engine: baseProfile.engine,
+    engine_version: baseProfile.engine_version,
+    gpus: overrides.gpus ?? baseProfile.gpus,
+    tensor_parallel_size: overrides.tensor_parallel_size ?? baseProfile.tensor_parallel_size,
+    pipeline_parallel_size: overrides.pipeline_parallel_size ?? baseProfile.pipeline_parallel_size,
+    max_model_len: overrides.max_model_len ?? baseProfile.max_model_len,
+    reasoning_parser: overrides.reasoning_parser ?? baseProfile.reasoning_parser,
+    dtype: overrides.dtype ?? baseProfile.dtype,
+    quantization: overrides.quantization ?? baseProfile.quantization,
+    gpu_memory_utilization: overrides.gpu_memory_utilization ?? baseProfile.gpu_memory_utilization,
+    engine_options: baseProfile.engine_options,
+  }
 }
 
 // Whether a card has anything to name at all -- a label only makes

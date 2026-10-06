@@ -271,6 +271,8 @@ export function NewEvaluationWizard({
           onDraftsChange={setOverrideDrafts}
           preview={preview.data}
           isPreviewFetching={preview.isFetching}
+          standardLabelByStandardId={debouncedRequestOverrides.standardLabelByStandardId}
+          samplingLabelByCheckpointId={debouncedRequestOverrides.samplingLabelByCheckpointId}
           leaderboardQuery={leaderboardQuery}
         />
       )}

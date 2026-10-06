@@ -1,11 +1,21 @@
 // "Full dataset · 0-shot · 4 repeats" -- the one-line summary of a
-// benchmark's evaluation shape, shown on its Choose-step card and its
-// Settings-step row so a reader sees what "the recommended settings"
-// actually are without opening Customize protocol. Only the three
-// fields that change what gets measured are surfaced; think_handling
-// and any per-field sampling mandate stay in that panel, the same
-// split CheckpointSamplingCard.tsx's own mandate notes already draw.
+// benchmark's evaluation shape, shown on its Choose-step card (the
+// catalog's own published defaults) and its Settings-step row (the
+// *effective* values -- SubmitOverrides.helper.ts's own
+// effectiveStandardProtocol, once any field has been customized) so a
+// reader sees the shape that will actually run without opening
+// Customize protocol. Only the three fields that change what gets
+// measured are surfaced; think_handling and any per-field sampling
+// mandate stay in that panel, the same split
+// CheckpointSamplingCard.tsx's own mandate notes already draw.
 import type { StandardSummary } from '../api/client'
+
+// Just the three fields protocolSummary renders -- narrower than the
+// full StandardSummary so a caller with only the *effective* shape
+// (the catalog row merged with a draft's own overrides, not a real
+// catalog row at all) can still call this without fabricating the
+// other two dozen StandardSummary fields.
+export type ProtocolSummaryFields = Pick<StandardSummary, 'sample_limit' | 'few_shot' | 'repeats'>
 
 // sample_limit's own resolved default can legitimately be null -- the
 // catalog's own convention for "the full dataset" (mirrors
@@ -36,7 +46,7 @@ function formatRepeats(repeats: number): string {
   return repeats === 1 ? '1 repeat' : `${repeats} repeats`
 }
 
-export function protocolSummary(standard: StandardSummary, scoredSampleCount?: number | null): string {
+export function protocolSummary(standard: ProtocolSummaryFields, scoredSampleCount?: number | null): string {
   return [
     formatSampleLimit(standard.sample_limit, scoredSampleCount),
     formatFewShot(standard.few_shot),

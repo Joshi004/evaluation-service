@@ -24,7 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.models import Checkpoint, Endpoint, ServingProfile
 from app.services.cluster import get_cluster_runtime
-from app.services.cluster.ports import ServeJobSpec
+from app.services.cluster.ports import JobHandle, ServeJobSpec
 from app.services.endpoints import queries
 from app.services.serving_profiles.render import render_engine_args
 
@@ -47,7 +47,7 @@ async def start_or_reuse_endpoint(
     partition would cost real GPU-minutes for no measurement benefit.
     """
     reusable = await queries.find_reusable_endpoint(db, checkpoint.id, serving_profile.id)
-    if reusable is not None:
+    if reusable is not None and await _reconnect_if_still_running(db, reusable):
         logger.info(
             "reusing endpoint %d for checkpoint %d (requested partition %r, endpoint is on %r)",
             reusable.id,
@@ -99,6 +99,42 @@ async def start_or_reuse_endpoint(
     updated = await queries.set_endpoint_url(db, endpoint.id, url)
     assert updated is not None
     return updated
+
+
+async def _reconnect_if_still_running(db: AsyncSession, endpoint: Endpoint) -> bool:
+    """Whether a reusable row's server can actually take requests. The
+    row alone can't tell a healthy server from one whose tunnel dropped
+    (a lost login-node SSH connection or a backend reload closes every
+    tunnel) or whose job already ended.
+
+    True: SLURM still reports the serve job RUNNING and its tunnel is
+    open. `open_serving_tunnel` is a no-op for a tunnel that's still up
+    and rebuilds one that dropped, always on the row's own `url` (the
+    local port is derived from the job id), so the row needs no update.
+
+    False: SLURM no longer runs the job. The row is expired and its
+    tunnel closed, so it stops being listed or handed out, and the
+    caller starts a new server instead.
+    """
+    assert endpoint.slurm_job_id is not None, (
+        "a reusable endpoint always has a slurm_job_id (set before url, in that order)"
+    )
+    runtime = get_cluster_runtime()
+    job_states = await runtime.job_status([endpoint.slurm_job_id])
+    job_state = job_states[endpoint.slurm_job_id]
+    if job_state.state != "RUNNING":
+        logger.warning(
+            "endpoint %d: serve job %d is %s, not RUNNING -- expiring it instead of reusing it",
+            endpoint.id,
+            endpoint.slurm_job_id,
+            job_state.state,
+        )
+        await runtime.close_serving_tunnel(endpoint.id)
+        await queries.expire_endpoint(db, endpoint.id)
+        return False
+
+    await runtime.open_serving_tunnel(endpoint.id, JobHandle(job_id=endpoint.slurm_job_id))
+    return True
 
 
 async def kill_endpoint(db: AsyncSession, endpoint_id: int) -> Endpoint | None:

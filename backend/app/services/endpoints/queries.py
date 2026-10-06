@@ -125,7 +125,10 @@ async def find_reusable_endpoint(
     5): a cold start is 350s of H100 time, so reusing a live endpoint is
     worth real money. `url IS NOT NULL` is what keeps a row from a failed
     start (SERVER_DIED / READINESS_TIMEOUT) from ever being handed back
-    out -- there's no status column, this predicate is the whole check.
+    out -- there's no status column. Passing this predicate doesn't prove
+    the server is still reachable, so `lifecycle.start_or_reuse_endpoint`
+    confirms that with SLURM next; the commit closes this read's
+    transaction before that cluster call (Trap T2).
     """
     stmt = (
         select(Endpoint)
@@ -138,7 +141,9 @@ async def find_reusable_endpoint(
         .order_by(Endpoint.expires_at.desc())
         .limit(1)
     )
-    return (await db.execute(stmt)).scalar_one_or_none()
+    reusable = (await db.execute(stmt)).scalar_one_or_none()
+    await db.commit()
+    return reusable
 
 
 async def create_endpoint_row(

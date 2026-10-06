@@ -23,6 +23,8 @@ import { ModelName } from '../ModelName/ModelName'
 import { SelectField } from '../SelectField/SelectField'
 import { SidePanel } from '../SidePanel/SidePanel'
 import {
+  effectiveSamplingConfig,
+  effectiveServingConfig,
   samplingDraftFor,
   samplingOverrideDraftHasChange,
   servingDraftFor,
@@ -56,7 +58,11 @@ interface ModelSettingsRowProps {
 // "Base profile" selects are the same underlying
 // choice (`drafts.samplingProfileIdByCheckpointId`/
 // `servingProfileIdByCheckpointId`) rendered twice -- changing either
-// one is exactly the same edit.
+// one is exactly the same edit. The one-line summary under each select
+// is the *effective* config -- the base profile merged with whatever
+// this row's own Customize panel has typed (effectiveSamplingConfig/
+// effectiveServingConfig), not the base profile alone, so it never
+// shows a value a real submit wouldn't also send.
 export function ModelSettingsRow({
   checkpoint,
   selectedCheckpoints,
@@ -78,9 +84,17 @@ export function ModelSettingsRow({
   const samplingOptions = samplingProfileOptions(samplingProfileChoice, samplingProfiles, samplingProfilesById)
   const servingOptions = servingProfileOptions(servingProfileChoice, servingProfiles, servingProfilesById)
 
+  const samplingDraft = samplingDraftFor(drafts, checkpoint.id)
+  const servingDraft = servingDraftFor(drafts, checkpoint.id)
   const isCustomized =
-    samplingOverrideDraftHasChange(samplingDraftFor(drafts, checkpoint.id)) ||
-    servingOverrideDraftHasChange(servingDraftFor(drafts, checkpoint.id))
+    samplingOverrideDraftHasChange(samplingDraft) || servingOverrideDraftHasChange(servingDraft)
+
+  // null only while the base profile is still loading (same fallback
+  // baseSamplingProfile/baseServingProfile already give) -- merges this
+  // row's own Customize draft onto that base so the summary line below
+  // never shows a value a real submit wouldn't also send.
+  const effectiveSampling = baseSamplingProfile ? effectiveSamplingConfig(baseSamplingProfile, samplingDraft) : null
+  const effectiveServing = baseServingProfile ? effectiveServingConfig(baseServingProfile, servingDraft) : null
 
   return (
     <div className="rounded-lg border border-border bg-card p-3">
@@ -115,8 +129,8 @@ export function ModelSettingsRow({
             ]}
             className="mt-1 w-full"
           />
-          {baseSamplingProfile && (
-            <p className="mt-1 text-xs text-muted-foreground">{samplingSummary(baseSamplingProfile)}</p>
+          {effectiveSampling && (
+            <p className="mt-1 text-xs text-muted-foreground">{samplingSummary(effectiveSampling)}</p>
           )}
         </label>
 
@@ -140,9 +154,9 @@ export function ModelSettingsRow({
             ]}
             className="mt-1 w-full"
           />
-          {baseServingProfile && (
+          {effectiveServing && (
             <p className="mt-1 text-xs text-muted-foreground">
-              {baseServingProfile.gpus} GPU{baseServingProfile.gpus === 1 ? '' : 's'} · {baseServingProfile.dtype}
+              {effectiveServing.gpus} GPU{effectiveServing.gpus === 1 ? '' : 's'} · {effectiveServing.dtype}
             </p>
           )}
         </label>
