@@ -2,16 +2,8 @@ import type { LeaderboardSetupsMode, ResolvedLeaderboardView } from '../../pages
 import { resolveSetupForBenchmark } from '../../pages/LeaderboardPage.helper'
 import type { BenchmarkColumn, SetupOption } from '../../utils/buildLeaderboard'
 
-// One leaf column in Like-for-like mode (the column's own resolved
-// setup); one per setup in All-setups mode.
-export function leafSetupsForColumn(
-  column: BenchmarkColumn,
-  mode: LeaderboardSetupsMode,
-  setupOverrides: Record<string, string>,
-): SetupOption[] {
-  return mode === 'all' ? column.setups : [resolveSetupForBenchmark(column, setupOverrides)]
-}
-
+// One leaf column per benchmark in Best-score mode; one per setup in
+// All-setups mode.
 export function totalLeafColumns(columns: BenchmarkColumn[], mode: LeaderboardSetupsMode): number {
   return columns.reduce((sum, column) => sum + (mode === 'all' ? column.setups.length : 1), 0)
 }
@@ -30,6 +22,8 @@ export const HEADER_ROW2_TOP_CLASS = 'top-9'
 // h-9 + h-11 = 36px + 44px = 80px = 20 spacing units
 export const HEADER_ROW3_TOP_CLASS = 'top-20'
 
+// All-setups mode only: whether this sub-column is the one the
+// benchmark's own sort currently reads.
 export function isActiveLeafSetup(column: BenchmarkColumn, setup: SetupOption, view: ResolvedLeaderboardView): boolean {
   return resolveSetupForBenchmark(column, view.setupOverrides).comparisonHash === setup.comparisonHash
 }

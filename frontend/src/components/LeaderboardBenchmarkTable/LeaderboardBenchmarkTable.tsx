@@ -1,19 +1,16 @@
 import { Link } from 'react-router'
-import {
-  DENSITY_CELL_PADDING,
-  resolveSetupForBenchmark,
-  type ResolvedLeaderboardView,
-} from '../../pages/LeaderboardPage.helper'
-import { buildRankedRows, type BenchmarkColumn, type ModelRow, type RankedRow, type SetupOption } from '../../utils/buildLeaderboard'
+import { DENSITY_CELL_PADDING, type ResolvedLeaderboardView } from '../../pages/LeaderboardPage.helper'
+import { benchmarkVersion } from '../../utils/benchmarkDisplayName'
+import { buildRankedRows, type BenchmarkColumn, type ModelRow, type RankedRow } from '../../utils/buildLeaderboard'
 import { cn } from '../../utils/cn'
 import { compareCandidateFromLeaderboardCell } from '../../utils/compareTray'
 import { formatFractionAsPercent } from '../../utils/formatFractionAsPercent'
 import { computeIntervalDomain } from '../../utils/intervalDomain'
 import { TERM_HINTS } from '../../utils/labels'
 import { paths } from '../../utils/paths'
-import { samplingProfileDisplayName } from '../../utils/samplingProfileDisplayName'
 import { servingProfileDisplayName } from '../../utils/servingProfileDisplayName'
 import { AddToCompareButton } from '../AddToCompareButton/AddToCompareButton'
+import { Badge } from '../Badge/Badge'
 import { EmptyState } from '../EmptyState/EmptyState'
 import { IntervalWhisker } from '../IntervalWhisker/IntervalWhisker'
 import { LeaderboardNotEvaluatedList } from '../LeaderboardNotEvaluatedList/LeaderboardNotEvaluatedList'
@@ -21,6 +18,7 @@ import { ModelName } from '../ModelName/ModelName'
 import { RelativeTime } from '../RelativeTime/RelativeTime'
 import { ScoreValue } from '../ScoreValue/ScoreValue'
 import { SelectField } from '../SelectField/SelectField'
+import { SetupChip } from '../SetupChip/SetupChip'
 import { Table, TableCell, TableHeaderCell } from '../Table/Table'
 import { TermLabel } from '../TermLabel/TermLabel'
 import { Tooltip } from '../Tooltip/Tooltip'
@@ -34,19 +32,18 @@ interface LeaderboardBenchmarkTableProps {
   filteredModels: ModelRow[]
   view: ResolvedLeaderboardView
   onBenchmarkChange: (benchmark: string) => void
-  onSetupChange: (benchmark: string, comparisonHash: string) => void
 }
 
-// A ranked board for exactly one benchmark and setup -- the depth
-// complement to Overview's breadth. `view.sortColumn` is the benchmark
-// on display; the same URL field Overview uses to pick its sorted
-// column, so switching lenses keeps the same benchmark in focus.
+// A ranked board for exactly one benchmark: each model's best result,
+// with the setup it came from -- the depth complement to Overview's
+// breadth. `view.sortColumn` is the benchmark on display; the same URL
+// field Overview uses to pick its sorted column, so switching lenses
+// keeps the same benchmark in focus.
 export function LeaderboardBenchmarkTable({
   allColumns,
   filteredModels,
   view,
   onBenchmarkChange,
-  onSetupChange,
 }: LeaderboardBenchmarkTableProps) {
   const column = view.sortColumn
 
@@ -59,10 +56,13 @@ export function LeaderboardBenchmarkTable({
     )
   }
 
-  const setup = resolveSetupForBenchmark(column, view.setupOverrides)
-  const rankedRows = buildRankedRows(setup, filteredModels)
-  const notEvaluatedModels = buildNotEvaluatedModels(setup, filteredModels)
+  const rankedRows = buildRankedRows(column.bestResultsByCheckpointId, filteredModels)
+  const notEvaluatedModels = buildNotEvaluatedModels(column, filteredModels)
   const domain = computeIntervalDomain(rankedRows.map((row) => row.cell))
+  // `column.setups` is never empty (see buildLeaderboard.ts); its first
+  // entry is the benchmark's default setup (most models, ties -> most
+  // recent), the one a "Run it" link should evaluate against.
+  const runItStandardId = column.setups[0].standardId
 
   return (
     <div className="space-y-4">
@@ -76,25 +76,10 @@ export function LeaderboardBenchmarkTable({
           ]}
           aria-label="Benchmark"
         />
-        <SelectField
-          className="w-56"
-          value={setup.comparisonHash}
-          onValueChange={(value) => onSetupChange(column.benchmark, value)}
-          groups={[
-            {
-              options: column.setups.map((candidate) => ({
-                value: candidate.comparisonHash,
-                label: samplingProfileDisplayName(candidate.samplingProfileLabel, candidate.samplingProfileHash),
-                hint: `${candidate.modelCount} model${candidate.modelCount === 1 ? '' : 's'}`,
-              })),
-            },
-          ]}
-          aria-label="Setup"
-        />
       </div>
 
       {rankedRows.length === 0 ? (
-        <EmptyState title="No results on this setup yet" description="Run an evaluation to see ranked results here." />
+        <EmptyState title="No results on this benchmark yet" description="Run an evaluation to see ranked results here." />
       ) : (
         <Table>
           <thead>
@@ -113,6 +98,9 @@ export function LeaderboardBenchmarkTable({
               <TableHeaderCell className="text-right">
                 <TermLabel hint={TERM_HINTS.truncated}>Truncated</TermLabel>
               </TableHeaderCell>
+              <TableHeaderCell>
+                <TermLabel hint={TERM_HINTS.setup}>Setup</TermLabel>
+              </TableHeaderCell>
               <TableHeaderCell>Serving profile</TableHeaderCell>
               <TableHeaderCell>Evaluated</TableHeaderCell>
               <TableHeaderCell />
@@ -123,7 +111,6 @@ export function LeaderboardBenchmarkTable({
               <LeaderboardBenchmarkRow
                 key={row.model.checkpointId}
                 column={column}
-                setup={setup}
                 row={row}
                 domain={domain}
                 density={view.density}
@@ -133,21 +120,20 @@ export function LeaderboardBenchmarkTable({
         </Table>
       )}
 
-      <LeaderboardNotEvaluatedList standardId={setup.standardId} models={notEvaluatedModels} />
+      <LeaderboardNotEvaluatedList standardId={runItStandardId} models={notEvaluatedModels} />
     </div>
   )
 }
 
 interface LeaderboardBenchmarkRowProps {
   column: BenchmarkColumn
-  setup: SetupOption
   row: RankedRow
   domain: { min: number; max: number }
   density: ResolvedLeaderboardView['density']
 }
 
-function LeaderboardBenchmarkRow({ column, setup, row, domain, density }: LeaderboardBenchmarkRowProps) {
-  const { model, cell } = row
+function LeaderboardBenchmarkRow({ column, row, domain, density }: LeaderboardBenchmarkRowProps) {
+  const { model, setup, cell } = row
   const padding = DENSITY_CELL_PADDING[density]
 
   return (
@@ -182,6 +168,14 @@ function LeaderboardBenchmarkRow({ column, setup, row, domain, density }: Leader
       </TableCell>
       <TableCell className={cn('text-right tabular-nums', padding)}>{cell.nSamples ?? '—'}</TableCell>
       <TableCell className={cn('text-right tabular-nums', padding)}>{formatFractionAsPercent(cell.truncationRate)}</TableCell>
+      <TableCell className={padding}>
+        <div className="flex items-center gap-1.5">
+          <SetupChip samplingProfileLabel={setup.samplingProfileLabel} samplingProfileHash={setup.samplingProfileHash} />
+          {column.hasMultipleStandardVersions && (
+            <Badge tone="neutral">{benchmarkVersion(setup.standardLabel) ?? 'custom'}</Badge>
+          )}
+        </div>
+      </TableCell>
       <TableCell className={padding}>{servingProfileDisplayName(cell.servingProfileLabel, cell.servingProfileHash)}</TableCell>
       <TableCell className={padding}>
         <RelativeTime timestamp={cell.finishedAt} />

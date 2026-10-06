@@ -32,12 +32,14 @@ cp .env.example .env      # optional — only needed to override a default
 docker compose up --build
 ```
 
-Then:
+Then open the **host** ports from `.env` (`FRONTEND_PORT` and `BACKEND_PORT`). Vite and uvicorn still listen on 5173 and 8000 inside their containers; Compose publishes those as the `.env` values. This checkout uses:
 
-- Frontend: http://localhost:5173
-- Backend API docs: http://localhost:8000/docs
-- Health check: http://localhost:8000/api/v1/health — reports whether the
+- Frontend: http://localhost:5190
+- Backend API docs: http://localhost:8010/docs
+- Health check: http://localhost:8010/api/v1/health — reports whether the
   API can actually reach Postgres, not just that the container started
+
+`docker compose up` prints the same host URLs. A `.env` copied straight from `.env.example` uses 5173 and 8000 instead; if you change either port, use the new values.
 
 Stop everything with `docker compose down`. Add `-v` to also drop the
 named Postgres volume (deletes all local data).

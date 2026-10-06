@@ -3,19 +3,18 @@ import {
   ariaSortFor,
   DENSITY_CELL_PADDING,
   nextSortState,
-  resolveSetupForBenchmark,
   type ResolvedLeaderboardView,
   type SortDirection,
 } from '../../pages/LeaderboardPage.helper'
 import { benchmarkVersion } from '../../utils/benchmarkDisplayName'
-import { groupColumnsByCategory, type BenchmarkColumn, type ModelRow, type SetupOption } from '../../utils/buildLeaderboard'
+import { groupColumnsByCategory, type BenchmarkColumn, type ModelRow } from '../../utils/buildLeaderboard'
 import { cn } from '../../utils/cn'
 import { paths } from '../../utils/paths'
 import { samplingProfileDisplayName } from '../../utils/samplingProfileDisplayName'
 import { Badge } from '../Badge/Badge'
 import { LeaderboardScoreCell } from '../LeaderboardScoreCell/LeaderboardScoreCell'
+import { bestCellContent, setupCellContent } from '../LeaderboardScoreCell/LeaderboardScoreCell.helper'
 import { ModelName } from '../ModelName/ModelName'
-import { SelectField } from '../SelectField/SelectField'
 import { TableCell, TableHeaderCell } from '../Table/Table'
 import {
   HEADER_ROW1_HEIGHT_CLASS,
@@ -25,7 +24,6 @@ import {
   HEADER_ROW3_HEIGHT_CLASS,
   HEADER_ROW3_TOP_CLASS,
   isActiveLeafSetup,
-  leafSetupsForColumn,
   totalLeafColumns,
 } from './LeaderboardOverviewTable.helper'
 
@@ -80,38 +78,25 @@ export function LeaderboardOverviewTable({ columns, models, view, onSortChange, 
             ))}
           </tr>
           <tr>
-            {columns.map((column) => {
-              const activeSetup = resolveSetupForBenchmark(column, view.setupOverrides)
-              return (
-                <TableHeaderCell
-                  key={column.benchmark}
-                  colSpan={view.mode === 'all' ? column.setups.length : 1}
-                  aria-sort={view.mode === 'like' ? ariaSortFor(column.benchmark, view) : undefined}
-                  className={cn(HEADER_ROW_CLASSES, HEADER_ROW2_HEIGHT_CLASS, HEADER_ROW2_TOP_CLASS)}
-                >
-                  <div className="flex h-full items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleHeaderClick(column)}
-                      className="flex items-center gap-1 text-left font-medium text-foreground hover:text-primary"
-                    >
-                      {column.displayName}
-                      {column.hasMultipleStandardVersions && (
-                        <Badge tone="neutral">{benchmarkVersion(activeSetup.standardLabel) ?? 'custom'}</Badge>
-                      )}
-                      <SortIcon active={view.sortBenchmark === column.benchmark} dir={view.dir} />
-                    </button>
-                    {view.mode === 'like' && column.setups.length > 1 && (
-                      <SetupPickerMenu
-                        column={column}
-                        activeSetup={activeSetup}
-                        onSelect={(hash) => onSetupChange(column.benchmark, hash)}
-                      />
-                    )}
-                  </div>
-                </TableHeaderCell>
-              )
-            })}
+            {columns.map((column) => (
+              <TableHeaderCell
+                key={column.benchmark}
+                colSpan={view.mode === 'all' ? column.setups.length : 1}
+                aria-sort={view.mode === 'best' ? ariaSortFor(column.benchmark, view) : undefined}
+                className={cn(HEADER_ROW_CLASSES, HEADER_ROW2_HEIGHT_CLASS, HEADER_ROW2_TOP_CLASS)}
+              >
+                <div className="flex h-full items-center">
+                  <button
+                    type="button"
+                    onClick={() => handleHeaderClick(column)}
+                    className="flex items-center gap-1 text-left font-medium text-foreground hover:text-primary"
+                  >
+                    {column.displayName}
+                    <SortIcon active={view.sortBenchmark === column.benchmark} dir={view.dir} />
+                  </button>
+                </div>
+              </TableHeaderCell>
+            ))}
           </tr>
           {view.mode === 'all' && (
             <tr>
@@ -133,6 +118,12 @@ export function LeaderboardOverviewTable({ columns, models, view, onSortChange, 
                         )}
                       >
                         {samplingProfileDisplayName(setup.samplingProfileLabel, setup.samplingProfileHash)}
+                        {/* Only when it would actually tell two sub-columns apart
+                            (e.g. ifeval/v1 and ifeval/v2 under the same sampling
+                            profile) -- see BenchmarkColumn.hasMultipleStandardVersions. */}
+                        {column.hasMultipleStandardVersions && (
+                          <Badge tone="neutral">{benchmarkVersion(setup.standardLabel) ?? 'custom'}</Badge>
+                        )}
                         <SortIcon active={active} dir={view.dir} />
                       </button>
                     </TableHeaderCell>
@@ -149,17 +140,27 @@ export function LeaderboardOverviewTable({ columns, models, view, onSortChange, 
                 <ModelName name={model.name} family={model.family} to={paths.model(model.checkpointId)} />
               </TableCell>
               {columns.flatMap((column) =>
-                leafSetupsForColumn(column, view.mode, view.setupOverrides).map((setup) => (
-                  <LeaderboardScoreCell
-                    key={`${column.benchmark}-${setup.comparisonHash}`}
-                    column={column}
-                    model={model}
-                    setup={setup}
-                    heatEnabled={view.heatEnabled}
-                    density={view.density}
-                    showOtherSetupsChip={view.mode === 'like'}
-                  />
-                )),
+                view.mode === 'all'
+                  ? column.setups.map((setup) => (
+                      <LeaderboardScoreCell
+                        key={`${column.benchmark}-${setup.comparisonHash}`}
+                        column={column}
+                        model={model}
+                        content={setupCellContent(setup, model.checkpointId)}
+                        heatEnabled={view.heatEnabled}
+                        density={view.density}
+                      />
+                    ))
+                  : [
+                      <LeaderboardScoreCell
+                        key={column.benchmark}
+                        column={column}
+                        model={model}
+                        content={bestCellContent(column, model.checkpointId)}
+                        heatEnabled={view.heatEnabled}
+                        density={view.density}
+                      />,
+                    ],
               )}
             </tr>
           ))}
@@ -177,37 +178,5 @@ function SortIcon({ active, dir }: { active: boolean; dir: SortDirection }) {
     <ArrowUp className="h-3 w-3" aria-hidden="true" />
   ) : (
     <ArrowDown className="h-3 w-3" aria-hidden="true" />
-  )
-}
-
-interface SetupPickerMenuProps {
-  column: BenchmarkColumn
-  activeSetup: SetupOption
-  onSelect: (comparisonHash: string) => void
-}
-
-// Like-for-like mode's own per-benchmark setup switch -- a SelectField
-// rather than a Menu so the active setup actually shows as selected
-// (Menu's own flat action list has no notion of "current choice"); the
-// hint carries each setup's own model count, which is what actually
-// explains why one setup is the default.
-function SetupPickerMenu({ column, activeSetup, onSelect }: SetupPickerMenuProps) {
-  return (
-    <SelectField
-      size="sm"
-      className="shrink-0"
-      value={activeSetup.comparisonHash}
-      onValueChange={onSelect}
-      groups={[
-        {
-          options: column.setups.map((setup) => ({
-            value: setup.comparisonHash,
-            label: samplingProfileDisplayName(setup.samplingProfileLabel, setup.samplingProfileHash),
-            hint: `${setup.modelCount} model${setup.modelCount === 1 ? '' : 's'}`,
-          })),
-        },
-      ]}
-      aria-label={`${column.displayName} setup`}
-    />
   )
 }

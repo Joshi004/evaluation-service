@@ -1,11 +1,14 @@
-// Non-DOM logic for CompareSetupCheck.tsx: what actually differs
-// between the baseline and one other run, and the full diff table
-// behind "Show differences".
-import type { RunDetail } from '../../api/client'
-import { samplingFieldRows, servingFieldRows, standardFieldRows, type FieldRow } from '../../utils/runConfigFieldRows'
-import { samplingProfileDisplayName } from '../../utils/samplingProfileDisplayName'
-import { servingProfileDisplayName } from '../../utils/servingProfileDisplayName'
-import { standardDisplayName } from '../../utils/standardDisplayName'
+// What actually differs between a baseline run and one or more other
+// runs, and the full field-by-field diff table behind it. Lives in
+// src/utils/ since the Leaderboard's "Other setups" hover became a
+// second caller after Compare's own setup check -- per
+// .cursor/rules/frontend-components.mdc, "once a second component
+// needs the same logic, promote it to src/utils/".
+import type { RunDetail } from '../api/client'
+import { samplingFieldRows, servingFieldRows, standardFieldRows, type FieldRow } from './runConfigFieldRows'
+import { samplingProfileDisplayName } from './samplingProfileDisplayName'
+import { servingProfileDisplayName } from './servingProfileDisplayName'
+import { standardDisplayName } from './standardDisplayName'
 
 export interface SetupDifference {
   field: 'Model' | 'Benchmark protocol' | 'Sampling profile' | 'Serving profile'

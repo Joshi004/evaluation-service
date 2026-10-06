@@ -1,14 +1,16 @@
 // Turns the API's flat (checkpoint, comparison_hash) rows into the
 // Leaderboard's own board shape: benchmarks as columns, each with one
 // SetupOption per comparison_hash, each cell ranked against its peers
-// on that same setup. The backend deliberately returns rows, not a
-// pre-pivoted grid -- this is that pivot, keyed on benchmark + setup
-// instead of the old one-column-per-hash grid.
+// on that same setup -- plus, per column, every model's single best
+// result across its setups (`bestResultsByCheckpointId`), ranked
+// against the other models' best results. The backend deliberately
+// returns rows, not a pre-pivoted grid -- this is that pivot, keyed on
+// benchmark + setup instead of the old one-column-per-hash grid.
 import type { CheckpointListItem, ConfidenceInterval, LeaderboardRow, StandardSummary } from '../api/client'
 import { benchmarkDisplayName, benchmarkVersion } from './benchmarkDisplayName'
 import { familyKey } from './familyKey'
 import { groupCheckpointsByFamily } from './familyGroups'
-import { rankScores, type RankedScore } from './rankScores'
+import { rankItems, rankScores } from './rankScores'
 
 // Rows are every registered model (so a model with no results yet still
 // gets a "Run it" row), plus a defensive fallback for a checkpoint_id a
@@ -49,12 +51,32 @@ export interface SetupOption {
   cellsByCheckpointId: Record<number, ScoreCellData>
 }
 
+// One model's result on one setup -- what a leaderboard cell needs to
+// render a score and say where it came from.
+export interface SetupResult {
+  setup: SetupOption
+  cell: ScoreCellData
+}
+
+// A model's highest score on one benchmark across every setup it has a
+// result on (ties go to the most recent run). `cell`'s rank, leader
+// flags and heat level are computed against the other models' *best*
+// results -- not the per-setup ranking a SetupOption's own cells carry.
+export interface BestResult extends SetupResult {
+  // This model's results on every other setup of the benchmark, best
+  // first -- what the hover card lists, so a reader can see what else
+  // was run and how far its score sits from the one on screen.
+  otherSetups: SetupResult[]
+}
+
 export interface BenchmarkColumn {
   benchmark: string
   displayName: string
   category: string | null
   higherIsBetter: boolean
   setups: SetupOption[]
+  // Absent for a model with no result on any setup of this benchmark.
+  bestResultsByCheckpointId: Record<number, BestResult>
   // Always `setups[0]` -- exposed separately so a caller doesn't need
   // to know that "most models, ties broken by most recent" is encoded
   // as the sort order of `setups` itself.
@@ -96,20 +118,30 @@ function higherIsBetterForBenchmark(benchmark: string, standards: StandardSummar
 // instead of defaulting everyone below the leader to the coolest one.
 const HEAT_LEVELS = 5
 
-function buildHeatLevels(ranked: RankedScore[]): Map<number, number> {
+// What buildHeatLevels needs from a ranked entry, whatever it ranks (a
+// raw leaderboard row on one setup, or a model's best result).
+interface RankPosition {
+  isLeader: boolean
+  withinLeaderMargin: boolean
+}
+
+// `ranked` must already be ordered best first (rankScores / rankItems
+// both return it that way) -- the shade given to everyone outside the
+// top tier follows that order.
+function buildHeatLevels<T extends RankPosition>(ranked: T[], checkpointIdOf: (entry: T) => number): Map<number, number> {
   const levelByCheckpointId = new Map<number, number>()
   const topTier = ranked.filter((entry) => entry.isLeader || entry.withinLeaderMargin)
   const rest = ranked.filter((entry) => !entry.isLeader && !entry.withinLeaderMargin)
 
   for (const entry of topTier) {
-    levelByCheckpointId.set(entry.row.checkpoint_id, HEAT_LEVELS)
+    levelByCheckpointId.set(checkpointIdOf(entry), HEAT_LEVELS)
   }
 
   const remainingLevels = HEAT_LEVELS - 1
   rest.forEach((entry, index) => {
     const worstFraction = rest.length <= 1 ? 0 : index / (rest.length - 1)
     const level = Math.max(1, remainingLevels - Math.round(worstFraction * (remainingLevels - 1)))
-    levelByCheckpointId.set(entry.row.checkpoint_id, level)
+    levelByCheckpointId.set(checkpointIdOf(entry), level)
   })
 
   return levelByCheckpointId
@@ -117,7 +149,7 @@ function buildHeatLevels(ranked: RankedScore[]): Map<number, number> {
 
 function buildSetupOption(comparisonHash: string, setupRows: LeaderboardRow[], higherIsBetter: boolean): SetupOption {
   const ranked = rankScores(setupRows, comparisonHash, higherIsBetter)
-  const heatLevelByCheckpointId = buildHeatLevels(ranked)
+  const heatLevelByCheckpointId = buildHeatLevels(ranked, (entry) => entry.row.checkpoint_id)
 
   const cellsByCheckpointId: Record<number, ScoreCellData> = {}
   for (const { row, rank, isLeader, withinLeaderMargin } of ranked) {
@@ -169,6 +201,67 @@ function compareSetupsByDefaultPriority(a: SetupOption, b: SetupOption): number 
   return new Date(b.latestFinishedAt).getTime() - new Date(a.latestFinishedAt).getTime()
 }
 
+interface ModelBestPick {
+  checkpointId: number
+  best: SetupResult
+  otherSetups: SetupResult[]
+}
+
+// Each model's single best result across `setups` (ties go to the most
+// recent run), then every model's best ranked against the others' --
+// so a cell's star and heat tint say "highest score this model has on
+// the benchmark", not "highest on one particular setup". Takes the
+// setups as an argument, rather than reading a column, so the
+// Benchmark page can run it over just one standard version's setups.
+export function buildBestResults(setups: SetupOption[], higherIsBetter: boolean): Record<number, BestResult> {
+  const resultsByCheckpointId = new Map<number, SetupResult[]>()
+  for (const setup of setups) {
+    for (const [checkpointIdKey, cell] of Object.entries(setup.cellsByCheckpointId)) {
+      const checkpointId = Number(checkpointIdKey)
+      const results = resultsByCheckpointId.get(checkpointId) ?? []
+      results.push({ setup, cell })
+      resultsByCheckpointId.set(checkpointId, results)
+    }
+  }
+
+  function compareResultsBestFirst(a: SetupResult, b: SetupResult): number {
+    if (a.cell.value !== b.cell.value) {
+      return higherIsBetter ? b.cell.value - a.cell.value : a.cell.value - b.cell.value
+    }
+    return new Date(b.cell.finishedAt).getTime() - new Date(a.cell.finishedAt).getTime()
+  }
+
+  const picks: ModelBestPick[] = []
+  for (const [checkpointId, results] of resultsByCheckpointId) {
+    const [best, ...otherSetups] = [...results].sort(compareResultsBestFirst)
+    picks.push({ checkpointId, best, otherSetups })
+  }
+
+  const ranked = rankItems(
+    picks,
+    higherIsBetter,
+    (pick) => pick.best.cell.value,
+    (pick) => pick.best.cell.confidenceInterval,
+  )
+  const heatLevelByCheckpointId = buildHeatLevels(ranked, (entry) => entry.item.checkpointId)
+
+  const bestResultsByCheckpointId: Record<number, BestResult> = {}
+  for (const { item, rank, isLeader, withinLeaderMargin } of ranked) {
+    bestResultsByCheckpointId[item.checkpointId] = {
+      setup: item.best.setup,
+      cell: {
+        ...item.best.cell,
+        rank,
+        isLeader,
+        withinLeaderMargin,
+        heatLevel: heatLevelByCheckpointId.get(item.checkpointId) ?? 1,
+      },
+      otherSetups: item.otherSetups,
+    }
+  }
+  return bestResultsByCheckpointId
+}
+
 function groupBy<T>(items: T[], keyOf: (item: T) => string): Map<string, T[]> {
   const groups = new Map<string, T[]>()
   for (const item of items) {
@@ -199,6 +292,7 @@ function buildColumn(benchmark: string, benchmarkRows: LeaderboardRow[], standar
     category: standards.find((candidate) => candidate.benchmark === benchmark)?.category ?? null,
     higherIsBetter,
     setups,
+    bestResultsByCheckpointId: buildBestResults(setups, higherIsBetter),
     // Safe without a fallback: buildColumn only ever runs for a
     // benchmark that had at least one row (it comes from grouping
     // `rows` itself), so `setups` is never empty.
@@ -291,21 +385,27 @@ export function groupColumnsByCategory(columns: BenchmarkColumn[]): BenchmarkCat
 
 export interface RankedRow {
   model: ModelRow
+  // The setup this model's score came from -- rows on one board can
+  // come from different setups, so each row says which.
+  setup: SetupOption
   cell: ScoreCellData
 }
 
-// Every model with a result on this setup, best rank first --
-// `cell.rank` already comes from rankScores (above), so this is just
-// "join it back to the model list and order by it", not a second
+// Every model with a result on the benchmark, best rank first --
+// `cell.rank` already comes from buildBestResults (above), so this is
+// just "join it back to the model list and order by it", not a second
 // ranking computation. Shared by LeaderboardBenchmarkTable and
 // BenchmarkLeaderboardPreview -- both need this board's own rank,
 // never one either page recomputes itself.
-export function buildRankedRows(setup: SetupOption, models: ModelRow[]): RankedRow[] {
+export function buildRankedRows(
+  bestResultsByCheckpointId: Record<number, BestResult>,
+  models: ModelRow[],
+): RankedRow[] {
   const rows: RankedRow[] = []
   for (const model of models) {
-    const cell = setup.cellsByCheckpointId[model.checkpointId]
-    if (cell) {
-      rows.push({ model, cell })
+    const best = bestResultsByCheckpointId[model.checkpointId]
+    if (best) {
+      rows.push({ model, setup: best.setup, cell: best.cell })
     }
   }
   return rows.sort((a, b) => a.cell.rank - b.cell.rank)

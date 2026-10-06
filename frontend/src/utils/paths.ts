@@ -4,21 +4,20 @@
 export const paths = {
   // Bare '/' for every existing call site (the sidebar link, the
   // not-found page's "Back to Leaderboard"); a `target` opens straight
-  // into the By-benchmark lens on one setup (the Benchmark detail
-  // page's own "View full ranking" link). The three params written here
-  // (`lens`, `sort`, `setup.<benchmark>`) must match
-  // LeaderboardPage.helper.ts's own URL contract exactly -- duplicated
-  // as literals rather than imported, since this module is a leaf
-  // every layer (including pages) imports, and a page helper must
-  // never import back from utils/paths.ts's own directory.
-  leaderboard: (target?: { benchmark: string; comparisonHash: string }) => {
+  // into the By-benchmark lens on one benchmark (the Benchmark detail
+  // page's own "View full ranking" link). The two params written here
+  // (`lens`, `sort`) must match LeaderboardPage.helper.ts's own URL
+  // contract exactly -- duplicated as literals rather than imported,
+  // since this module is a leaf every layer (including pages) imports,
+  // and a page helper must never import back from utils/paths.ts's own
+  // directory.
+  leaderboard: (target?: { benchmark: string }) => {
     if (!target) {
       return '/'
     }
     const search = new URLSearchParams()
     search.set('lens', 'benchmark')
     search.set('sort', target.benchmark)
-    search.set(`setup.${target.benchmark}`, target.comparisonHash)
     return `/?${search.toString()}`
   },
   // `filters` jumps straight into one family (the model page header's

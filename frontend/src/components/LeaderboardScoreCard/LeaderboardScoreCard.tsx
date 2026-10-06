@@ -1,6 +1,6 @@
 import { Star } from 'lucide-react'
 import { Link } from 'react-router'
-import type { BenchmarkColumn, ModelRow, ScoreCellData, SetupOption } from '../../utils/buildLeaderboard'
+import type { BenchmarkColumn, ModelRow, ScoreCellData, SetupOption, SetupResult } from '../../utils/buildLeaderboard'
 import { compareCandidateFromLeaderboardCell } from '../../utils/compareTray'
 import { formatFractionAsPercent } from '../../utils/formatFractionAsPercent'
 import { TERM_HINTS } from '../../utils/labels'
@@ -8,6 +8,8 @@ import { paths } from '../../utils/paths'
 import { servingProfileDisplayName } from '../../utils/servingProfileDisplayName'
 import { AddToCompareButton } from '../AddToCompareButton/AddToCompareButton'
 import { BUTTON_LABEL_SIZE, buttonClassName } from '../Button/Button.helper'
+import { LeaderboardOtherSetups } from '../LeaderboardOtherSetups/LeaderboardOtherSetups'
+import { leaderStarLabel, type RankScope } from '../LeaderboardScoreCell/LeaderboardScoreCell.helper'
 import { RelativeTime } from '../RelativeTime/RelativeTime'
 import { ScoreValue } from '../ScoreValue/ScoreValue'
 import { SetupChip } from '../SetupChip/SetupChip'
@@ -19,14 +21,19 @@ interface LeaderboardScoreCardProps {
   model: ModelRow
   setup: SetupOption
   cell: ScoreCellData
+  // This model's results on the benchmark's other setups -- empty in
+  // All-setups mode, where each setup is already its own sub-column.
+  otherSetups: SetupResult[]
+  rankScope: RankScope
 }
 
 // The Overview cell's hover/focus card content: score with its
 // interval and sample count, a passed/failed count, every field that
-// tells the setup apart, and four actions. Renders inside HoverCard,
-// which supplies the hover/focus/Tab behaviour -- this component only
+// tells the setup apart, the model's other setups on this benchmark
+// (when it has any), and four actions. Renders inside HoverCard, which
+// supplies the hover/focus/Tab behaviour -- this component only
 // renders content.
-export function LeaderboardScoreCard({ column, model, setup, cell }: LeaderboardScoreCardProps) {
+export function LeaderboardScoreCard({ column, model, setup, cell, otherSetups, rankScope }: LeaderboardScoreCardProps) {
   // `round(score * samples)` is only valid for a pass-rate primary
   // metric -- the same assumption behind the Wilson interval itself
   // (report_summary.py's own guard), true for every benchmark today.
@@ -40,7 +47,7 @@ export function LeaderboardScoreCard({ column, model, setup, cell }: Leaderboard
       <div className="flex items-start justify-between gap-3">
         <ScoreValue value={cell.value} interval={cell.confidenceInterval} samples={cell.nSamples} className="text-base" />
         {(cell.isLeader || cell.withinLeaderMargin) && (
-          <Tooltip content={cell.isLeader ? 'Leads this setup' : 'Within margin of error of the leader'}>
+          <Tooltip content={leaderStarLabel(rankScope, cell.isLeader)}>
             <span tabIndex={0}>
               <Star className="h-4 w-4 text-warning" aria-hidden="true" />
             </span>
@@ -76,6 +83,10 @@ export function LeaderboardScoreCard({ column, model, setup, cell }: Leaderboard
           <RelativeTime timestamp={cell.finishedAt} />
         </dd>
       </dl>
+
+      {otherSetups.length > 0 && (
+        <LeaderboardOtherSetups column={column} shown={{ setup, cell }} otherSetups={otherSetups} />
+      )}
 
       <div className="flex flex-wrap items-center gap-3 border-t border-border pt-3">
         <Link to={paths.run(cell.evalRunId)} className={buttonClassName('secondary', BUTTON_LABEL_SIZE.sm)}>

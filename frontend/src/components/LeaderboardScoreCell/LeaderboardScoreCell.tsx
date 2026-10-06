@@ -1,47 +1,37 @@
 import { Star } from 'lucide-react'
 import { Link } from 'react-router'
 import { DENSITY_CELL_PADDING, type LeaderboardDensity } from '../../pages/LeaderboardPage.helper'
-import type { BenchmarkColumn, ModelRow, SetupOption } from '../../utils/buildLeaderboard'
+import type { BenchmarkColumn, ModelRow } from '../../utils/buildLeaderboard'
 import { cn } from '../../utils/cn'
 import { paths } from '../../utils/paths'
-import { samplingProfileDisplayName } from '../../utils/samplingProfileDisplayName'
 import { HoverCard } from '../HoverCard/HoverCard'
 import { LeaderboardScoreCard } from '../LeaderboardScoreCard/LeaderboardScoreCard'
-import { Popover } from '../Popover/Popover'
 import { ScoreValue } from '../ScoreValue/ScoreValue'
 import { TableCell } from '../Table/Table'
-import { HEAT_BACKGROUND_CLASSES, otherSetupsForModel } from './LeaderboardScoreCell.helper'
+import { HEAT_BACKGROUND_CLASSES, leaderStarLabel, type ScoreCellContent } from './LeaderboardScoreCell.helper'
 
 interface LeaderboardScoreCellProps {
   column: BenchmarkColumn
   model: ModelRow
-  setup: SetupOption
+  // Already resolved for the current mode (LeaderboardScoreCell.helper.ts)
+  // -- this component renders; it does not decide which result a cell shows.
+  content: ScoreCellContent
   heatEnabled: boolean
   density: LeaderboardDensity
-  // False in All-setups mode: every setup is already its own visible
-  // sub-column there, so a "+N other setup" chip would just point at
-  // something already on screen.
-  showOtherSetupsChip: boolean
 }
 
 // One Overview matrix cell: a score with its ★, an optional heat tint,
-// an optional "+N other setup" chip, or a "Run it" link when this
-// model has no result on this setup.
-export function LeaderboardScoreCell({
-  column,
-  model,
-  setup,
-  heatEnabled,
-  density,
-  showOtherSetupsChip,
-}: LeaderboardScoreCellProps) {
-  const cell = setup.cellsByCheckpointId[model.checkpointId]
+// a quiet "+N" marker when this model also ran other setups of the
+// benchmark (the hover card lists them), or a "Run it" link when this
+// model has nothing to show here.
+export function LeaderboardScoreCell({ column, model, content, heatEnabled, density }: LeaderboardScoreCellProps) {
+  const { result, otherSetups, rankScope, runItStandardId } = content
 
-  if (!cell) {
+  if (!result) {
     return (
       <TableCell className={cn('text-right', DENSITY_CELL_PADDING[density])}>
         <Link
-          to={paths.newEvaluation({ models: [model.checkpointId], benchmarks: [setup.standardId] })}
+          to={paths.newEvaluation({ models: [model.checkpointId], benchmarks: [runItStandardId] })}
           className="text-xs font-medium text-primary hover:underline"
         >
           Run it
@@ -50,8 +40,9 @@ export function LeaderboardScoreCell({
     )
   }
 
+  const { setup, cell } = result
   const star = cell.isLeader || cell.withinLeaderMargin
-  const otherSetups = showOtherSetupsChip ? otherSetupsForModel(column, model.checkpointId, setup.comparisonHash) : []
+  const otherSetupsLabel = `${otherSetups.length} other setup${otherSetups.length === 1 ? '' : 's'}`
 
   return (
     <TableCell
@@ -61,40 +52,7 @@ export function LeaderboardScoreCell({
         heatEnabled && HEAT_BACKGROUND_CLASSES[cell.heatLevel],
       )}
     >
-      <div className="flex items-center justify-end gap-2">
-        {otherSetups.length > 0 && (
-          <Popover
-            align="end"
-            trigger={
-              <button
-                type="button"
-                className="rounded-full border border-border px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground hover:border-border-strong hover:text-foreground"
-              >
-                +{otherSetups.length} other setup{otherSetups.length > 1 ? 's' : ''}
-              </button>
-            }
-          >
-            <p className="mb-2 text-xs font-medium text-foreground">Also evaluated under</p>
-            <ul className="space-y-1.5">
-              {otherSetups.map((otherSetup) => {
-                const otherCell = otherSetup.cellsByCheckpointId[model.checkpointId]
-                return (
-                  <li key={otherSetup.comparisonHash}>
-                    <Link
-                      to={paths.run(otherCell.evalRunId)}
-                      className="flex items-center justify-between gap-4 text-xs hover:underline"
-                    >
-                      <span className="text-muted-foreground">
-                        {samplingProfileDisplayName(otherSetup.samplingProfileLabel, otherSetup.samplingProfileHash)}
-                      </span>
-                      <ScoreValue value={otherCell.value} />
-                    </Link>
-                  </li>
-                )
-              })}
-            </ul>
-          </Popover>
-        )}
+      <div className="flex items-center justify-end">
         <HoverCard
           trigger={
             // A link, not a button: hovering or focusing it opens the
@@ -106,17 +64,32 @@ export function LeaderboardScoreCell({
               to={paths.run(cell.evalRunId)}
               className="inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-foreground hover:bg-muted"
             >
+              {otherSetups.length > 0 && (
+                <>
+                  <span className="mr-0.5 text-[11px] font-medium text-subtle-foreground" aria-hidden="true">
+                    +{otherSetups.length}
+                  </span>
+                  <span className="sr-only">{otherSetupsLabel}</span>
+                </>
+              )}
               {star && (
                 <>
                   <Star className="h-3.5 w-3.5 text-warning" aria-hidden="true" />
-                  <span className="sr-only">{cell.isLeader ? 'Leads this setup' : 'Within margin of error of the leader'}</span>
+                  <span className="sr-only">{leaderStarLabel(rankScope, cell.isLeader)}</span>
                 </>
               )}
               <ScoreValue value={cell.value} interval={cell.confidenceInterval} />
             </Link>
           }
         >
-          <LeaderboardScoreCard column={column} model={model} setup={setup} cell={cell} />
+          <LeaderboardScoreCard
+            column={column}
+            model={model}
+            setup={setup}
+            cell={cell}
+            otherSetups={otherSetups}
+            rankScope={rankScope}
+          />
         </HoverCard>
       </div>
     </TableCell>

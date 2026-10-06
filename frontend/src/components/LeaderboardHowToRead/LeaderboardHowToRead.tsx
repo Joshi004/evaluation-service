@@ -19,8 +19,13 @@ export function LeaderboardHowToRead() {
       <div className="w-80 space-y-2 text-sm text-foreground">
         <p>{TERM_HINTS.setup}</p>
         <p>
+          Each score is that model&rsquo;s best result on the benchmark. A small +N beside it means the model also
+          ran N other setups -- hover the score to see them and what changed.
+        </p>
+        <p>
           {TERM_HINTS.marginOfError} A ★ marks the leader and every row within its margin of error -- read that as
-          "within margin of error", never "statistically tied".
+          "within margin of error", never "statistically tied". Stars compare each model&rsquo;s best result, which
+          may come from different setups; switch to All setups for a strict like-for-like view.
         </p>
         <p className="text-muted-foreground">
           GPQA-Diamond repeats each question, so its samples are not fully independent and its interval is

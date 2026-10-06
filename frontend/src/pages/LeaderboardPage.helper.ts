@@ -14,18 +14,22 @@
 // key that has been set back to its default" rule by construction --
 // every call site passes `null` once a value equals whatever this file
 // just resolved as the default.
-import type { BenchmarkColumn, LeaderboardBoard, ModelRow, SetupOption } from '../utils/buildLeaderboard'
+import type { BenchmarkColumn, LeaderboardBoard, ModelRow, ScoreCellData, SetupOption } from '../utils/buildLeaderboard'
 import { groupColumnsByCategory } from '../utils/buildLeaderboard'
 import { NO_FAMILY_KEY } from '../utils/familyGroups'
 import { readBooleanParam, readEnumParam, readListParam, readStringParam } from '../utils/useUrlState'
 
 export type LeaderboardLens = 'overview' | 'benchmark'
-export type LeaderboardSetupsMode = 'like' | 'all'
+// 'best': one cell per model and benchmark, its highest score across
+// setups. 'all': one sub-column per setup, for a strict like-for-like
+// read. A link from before this rename (`mode=like`) is not one of
+// MODE_VALUES, so it falls back to the default ('best').
+export type LeaderboardSetupsMode = 'best' | 'all'
 export type LeaderboardDensity = 'comfortable' | 'compact'
 export type SortDirection = 'asc' | 'desc'
 
 const LENS_VALUES = ['overview', 'benchmark'] as const
-const MODE_VALUES = ['like', 'all'] as const
+const MODE_VALUES = ['best', 'all'] as const
 const DENSITY_VALUES = ['comfortable', 'compact'] as const
 const SETUP_PARAM_PREFIX = 'setup.'
 
@@ -120,6 +124,8 @@ export interface ResolvedLeaderboardView {
   mode: LeaderboardSetupsMode
   density: LeaderboardDensity
   heatEnabled: boolean
+  // Which sub-column is sorted per benchmark, in All-setups mode only
+  // -- Best-score mode has one cell per benchmark, so nothing to pick.
   setupOverrides: Record<string, string>
   // Which benchmark is highlighted: the sorted column in Overview, the
   // board on display in By-benchmark -- switching lens keeps the same
@@ -137,7 +143,7 @@ export function resolveLeaderboardView(params: URLSearchParams, board: Leaderboa
   const q = readStringParam(params, 'q') ?? ''
   const familyFilter = readListParam(params, 'family')
   const benchFilter = readListParam(params, 'bench')
-  const mode = readEnumParam(params, 'mode', MODE_VALUES, 'like')
+  const mode = readEnumParam(params, 'mode', MODE_VALUES, 'best')
   const density = readEnumParam(params, 'density', DENSITY_VALUES, 'comfortable')
   const heatEnabled = readBooleanParam(params, 'heat', true)
   const setupOverrides = readSetupOverrides(params)
@@ -161,9 +167,10 @@ export function resolveLeaderboardView(params: URLSearchParams, board: Leaderboa
   return { lens, q, familyFilter, benchFilter, mode, density, heatEnabled, setupOverrides, sortBenchmark, dir, visibleColumns, sortColumn }
 }
 
-// The override for this benchmark if the URL names one of its actual
-// setups, else the column's own default (most models, ties -> most
-// recent -- baked into `setups`' own sort order by buildLeaderboard.ts).
+// All-setups mode's sorted sub-column: the override for this benchmark
+// if the URL names one of its actual setups, else the column's own
+// default (most models, ties -> most recent -- baked into `setups`' own
+// sort order by buildLeaderboard.ts).
 export function resolveSetupForBenchmark(column: BenchmarkColumn, setupOverrides: Record<string, string>): SetupOption {
   const overrideHash = setupOverrides[column.benchmark]
   const overrideSetup = overrideHash ? column.setups.find((setup) => setup.comparisonHash === overrideHash) : undefined
@@ -216,12 +223,21 @@ export function filterModels(models: ModelRow[], q: string, familyFilter: string
 }
 
 // One benchmark column's score for one model, or `null` for "not
-// evaluated on this setup" -- the single place both the Overview
-// header-sort comparator and a future caller read a cell's raw value
-// from, so "missing" is decided the same way everywhere.
-function scoreFor(column: BenchmarkColumn | undefined, setupOverrides: Record<string, string>, checkpointId: number): number | null {
+// evaluated" -- the single place both the Overview header-sort
+// comparator and a future caller read a cell's raw value from, so
+// "missing" is decided the same way everywhere. Best-score mode reads
+// the model's best result; All-setups mode reads the sorted sub-column.
+function scoreFor(
+  column: BenchmarkColumn | undefined,
+  mode: LeaderboardSetupsMode,
+  setupOverrides: Record<string, string>,
+  checkpointId: number,
+): number | null {
   if (!column) {
     return null
+  }
+  if (mode === 'best') {
+    return column.bestResultsByCheckpointId[checkpointId]?.cell.value ?? null
   }
   const setup = resolveSetupForBenchmark(column, setupOverrides)
   return setup.cellsByCheckpointId[checkpointId]?.value ?? null
@@ -229,17 +245,18 @@ function scoreFor(column: BenchmarkColumn | undefined, setupOverrides: Record<st
 
 // The Overview table's row order once a header has been clicked:
 // best-first (or reversed) by the sorted column's score, with every
-// "not evaluated on this setup" row pushed to the bottom regardless of
-// direction, rather than sorting as if a missing score were zero.
+// "not evaluated" row pushed to the bottom regardless of direction,
+// rather than sorting as if a missing score were zero.
 export function compareModelRowsForSort(
   a: ModelRow,
   b: ModelRow,
   sortColumn: BenchmarkColumn | undefined,
+  mode: LeaderboardSetupsMode,
   setupOverrides: Record<string, string>,
   dir: SortDirection,
 ): number {
-  const scoreA = scoreFor(sortColumn, setupOverrides, a.checkpointId)
-  const scoreB = scoreFor(sortColumn, setupOverrides, b.checkpointId)
+  const scoreA = scoreFor(sortColumn, mode, setupOverrides, a.checkpointId)
+  const scoreB = scoreFor(sortColumn, mode, setupOverrides, b.checkpointId)
   if (scoreA === null && scoreB === null) {
     return a.name.localeCompare(b.name)
   }
@@ -310,39 +327,52 @@ export function buildLeaderboardCsvText(rows: LeaderboardCsvRow[]): string {
   return [CSV_HEADER.join(','), ...rows.map(csvRowToLine)].join('\r\n')
 }
 
+function buildCsvRow(model: ModelRow, column: BenchmarkColumn, setup: SetupOption, cell: ScoreCellData): LeaderboardCsvRow {
+  return {
+    model: model.name,
+    family: model.family ?? '',
+    benchmark: column.displayName,
+    setup: setup.samplingProfileLabel ?? setup.samplingProfileHash,
+    scorePercent: (cell.value * 100).toFixed(1),
+    ciLowPercent: cell.confidenceInterval ? (cell.confidenceInterval.lower * 100).toFixed(1) : '',
+    ciHighPercent: cell.confidenceInterval ? (cell.confidenceInterval.upper * 100).toFixed(1) : '',
+    samples: cell.nSamples === null ? '' : String(cell.nSamples),
+    truncatedPercent: cell.truncationRate === null ? '' : (cell.truncationRate * 100).toFixed(1),
+    runId: String(cell.evalRunId),
+    finishedAt: cell.finishedAt,
+  }
+}
+
 // Exactly what is on screen: the same model filter, the same lens,
 // and -- in Overview -- the same Benchmarks filter and Setups mode a
-// reader is currently looking at. "Run it" and "not evaluated" cells
-// have no score to export, so they contribute no row.
+// reader is currently looking at. Every lens but Overview's All-setups
+// mode shows one best result per model and benchmark, so that is what
+// it exports (with its own setup in the Setup column). "Run it" and
+// "not evaluated" cells have no score to export, so they contribute no
+// row.
 export function buildLeaderboardCsvRows(board: LeaderboardBoard, view: ResolvedLeaderboardView): LeaderboardCsvRow[] {
   const visibleModels = filterModels(board.models, view.q, view.familyFilter)
   const columnsToExport = view.lens === 'overview' ? view.visibleColumns : view.sortColumn ? [view.sortColumn] : []
+  const exportEverySetup = view.lens === 'overview' && view.mode === 'all'
 
   const rows: LeaderboardCsvRow[] = []
   for (const column of columnsToExport) {
-    const setupsToExport =
-      view.lens === 'overview' && view.mode === 'all' ? column.setups : [resolveSetupForBenchmark(column, view.setupOverrides)]
-
-    for (const setup of setupsToExport) {
-      const setupLabel = setup.samplingProfileLabel ?? setup.samplingProfileHash
-      for (const model of visibleModels) {
-        const cell = setup.cellsByCheckpointId[model.checkpointId]
-        if (!cell) {
-          continue
+    if (exportEverySetup) {
+      for (const setup of column.setups) {
+        for (const model of visibleModels) {
+          const cell = setup.cellsByCheckpointId[model.checkpointId]
+          if (cell) {
+            rows.push(buildCsvRow(model, column, setup, cell))
+          }
         }
-        rows.push({
-          model: model.name,
-          family: model.family ?? '',
-          benchmark: column.displayName,
-          setup: setupLabel,
-          scorePercent: (cell.value * 100).toFixed(1),
-          ciLowPercent: cell.confidenceInterval ? (cell.confidenceInterval.lower * 100).toFixed(1) : '',
-          ciHighPercent: cell.confidenceInterval ? (cell.confidenceInterval.upper * 100).toFixed(1) : '',
-          samples: cell.nSamples === null ? '' : String(cell.nSamples),
-          truncatedPercent: cell.truncationRate === null ? '' : (cell.truncationRate * 100).toFixed(1),
-          runId: String(cell.evalRunId),
-          finishedAt: cell.finishedAt,
-        })
+      }
+      continue
+    }
+
+    for (const model of visibleModels) {
+      const best = column.bestResultsByCheckpointId[model.checkpointId]
+      if (best) {
+        rows.push(buildCsvRow(model, column, best.setup, best.cell))
       }
     }
   }

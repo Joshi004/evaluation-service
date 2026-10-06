@@ -10,8 +10,8 @@ interface LeaderboardNotEvaluatedListProps {
 }
 
 // By-benchmark lens's own empty-cell equivalent: every filtered model
-// with no result on the board's current setup, each with a direct way
-// to fill the gap.
+// with no result on any setup of the board's benchmark, each with a
+// direct way to fill the gap.
 export function LeaderboardNotEvaluatedList({ standardId, models }: LeaderboardNotEvaluatedListProps) {
   if (models.length === 0) {
     return null
@@ -19,7 +19,7 @@ export function LeaderboardNotEvaluatedList({ standardId, models }: LeaderboardN
 
   return (
     <div>
-      <p className="text-sm font-medium text-foreground">Not yet evaluated on this setup ({models.length})</p>
+      <p className="text-sm font-medium text-foreground">Not yet evaluated on this benchmark ({models.length})</p>
       <ul className="mt-2 divide-y divide-border rounded-lg border border-border">
         {models.map((model) => (
           <li key={model.checkpointId} className="flex items-center justify-between gap-3 px-3 py-2">

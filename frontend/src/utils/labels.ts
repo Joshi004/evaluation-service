@@ -93,6 +93,8 @@ export const CHAT_FINISH_REASON_LABELS: Record<string, string> = {
 // loosely by concept, not by every place a term appears.
 export const TERM_HINTS = {
   setup: 'Results with the same setup are directly comparable.',
+  otherSetups:
+    'The same model\u2019s results on this benchmark under a different setup. Hover one to see what changed from the score shown -- scores under different setups are not directly comparable.',
   fingerprint:
     'A content fingerprint -- identical fingerprints were produced by the exact same configuration.',
   marginOfError:

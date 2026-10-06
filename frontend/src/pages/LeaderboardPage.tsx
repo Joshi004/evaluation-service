@@ -76,7 +76,7 @@ export function LeaderboardPage() {
     updateParams({ bench: benchmarks.length === 0 ? null : benchmarks.join(',') })
   }
   function handleModeChange(mode: LeaderboardSetupsMode): void {
-    updateParams({ mode: mode === 'like' ? null : mode })
+    updateParams({ mode: mode === 'best' ? null : mode })
   }
   function handleLensChange(lens: LeaderboardLens): void {
     updateParams({ lens: lens === 'overview' ? null : lens })
@@ -132,14 +132,14 @@ export function LeaderboardPage() {
   const filteredModels = board && view ? filterModels(board.models, view.q, view.familyFilter) : []
   const sortedModelsForOverview =
     view && view.lens === 'overview'
-      ? [...filteredModels].sort((a, b) => compareModelRowsForSort(a, b, view.sortColumn, view.setupOverrides, view.dir))
+      ? [...filteredModels].sort((a, b) => compareModelRowsForSort(a, b, view.sortColumn, view.mode, view.setupOverrides, view.dir))
       : filteredModels
 
   return (
     <div className="space-y-4">
       <PageHeader
         title="Leaderboard"
-        description="Latest result per model and setup. Scores are only ranked against the same setup."
+        description="Best result per model and benchmark. Hover a score to see its setup and any other setups it ran on."
         actions={
           <>
             <LeaderboardHowToRead />
@@ -220,7 +220,6 @@ export function LeaderboardPage() {
                   filteredModels={filteredModels}
                   view={view}
                   onBenchmarkChange={handleBenchmarkSelect}
-                  onSetupChange={handleSetupChange}
                 />
               )}
             </>

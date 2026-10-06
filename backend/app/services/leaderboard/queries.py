@@ -7,10 +7,16 @@ docs/IMPLEMENTATION_PHASES.md, kept as sa.text() rather than the ORM
 since it's meant to be read as SQL, not re-derived; Phase 3
 (docs/STANDARDS_AND_PROFILES_PHASES.md) regrouped it onto
 `comparison_hash`. There is no publish gate and no
-standard-versus-exploratory filter: every finished result is visible,
-and the UI colours by comparison hash so it's obvious at a glance which
-cells were produced the same way -- same standard AND same resolved
-sampling profile, not just the same standard.
+standard-versus-exploratory filter: every finished result on the full
+benchmark is visible, and the UI keeps track of which cells were
+produced the same way -- same standard AND same resolved sampling
+profile, not just the same standard.
+
+The one exclusion is a capped run (`standard.sample_limit` set): it
+scores only part of the benchmark, so it is a smoke test, not the
+benchmark's score, and a lucky small sample could otherwise take a
+model's headline number. Capped runs stay visible on the Runs page and
+on their own run pages.
 """
 
 from sqlalchemy import text
@@ -32,6 +38,7 @@ LEADERBOARD_QUERY = text("""
     JOIN   serving_profile  sv ON sv.id = r.serving_profile_id
     JOIN   metric           m  ON m.eval_run_id = r.id AND m.is_primary
     WHERE  r.status = 'done'
+      AND  s.sample_limit IS NULL
     ORDER  BY r.checkpoint_id, r.comparison_hash, r.finished_at DESC
 """)
 

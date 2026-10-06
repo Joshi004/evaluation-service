@@ -33,7 +33,7 @@ const LENS_OPTIONS = [
   { value: 'benchmark', label: 'By benchmark' },
 ]
 const MODE_OPTIONS = [
-  { value: 'like', label: 'Like-for-like' },
+  { value: 'best', label: 'Best score' },
   { value: 'all', label: 'All setups' },
 ]
 const DENSITY_OPTIONS = [

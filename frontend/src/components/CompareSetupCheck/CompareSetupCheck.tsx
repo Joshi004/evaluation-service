@@ -3,9 +3,9 @@ import { AlertTriangle, CircleCheck } from 'lucide-react'
 import type { RunDetail } from '../../api/client'
 import { cn } from '../../utils/cn'
 import { setupMatchForHashes } from '../../utils/compareTray'
+import { buildSetupDiffTable, differenceSummaryText, setupDifferences } from '../../utils/setupDiff'
 import { Card } from '../Card/Card'
 import { Table, TableCell, TableHeaderCell } from '../Table/Table'
-import { buildSetupDiffTable, differenceSummaryText, setupDifferences } from './CompareSetupCheck.helper'
 
 interface CompareSetupCheckProps {
   // Baseline first.
