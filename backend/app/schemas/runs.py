@@ -9,11 +9,11 @@ split below.
 from datetime import datetime
 from typing import Annotated, Any
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.schemas.compatibility import CompatibilityFinding
 from app.schemas.diagnostics import ConfidenceInterval, RunPerformanceSummary
-from app.schemas.serving_profiles import ServingProfileSummary
+from app.schemas.serving_profiles import ServingProfileSummary, validate_tool_call_parser_name
 from app.schemas.standards import SamplingFieldWarning
 
 
@@ -157,10 +157,14 @@ class ServingOverrides(BaseModel):
     """A user override of a resolved serving profile's fields -- the
     submit-time analogue of `SamplingOverrides`, over the subset of
     `ServingProfileConfig`'s eleven fields that actually change how the
-    engine launches. Deliberately excludes `engine`, `engine_version`
-    and `engine_options`: `app.services.cluster.serve_job` pins the vLLM
-    binary itself, so overriding those would move this override's hash
-    without moving what launch actually runs. Mirrors `SamplingOverrides`'
+    engine launches. Deliberately excludes `engine` and `engine_version`:
+    `app.services.cluster.serve_job` pins the vLLM binary itself, so
+    overriding those would move this override's hash without moving what
+    launch actually runs. `engine_options` as a whole is excluded too,
+    but its two tool-calling entries are exposed as the last two fields
+    below -- `merge_serving_config` (app/services/runs/submit.py)
+    translates them into `engine_options` keys, they are not
+    `ServingProfileConfig` fields themselves. Mirrors `SamplingOverrides`'
     `exclude_unset` / `extra="forbid"` discipline exactly.
     """
 
@@ -174,6 +178,21 @@ class ServingOverrides(BaseModel):
     dtype: str | None = None
     quantization: str | None = None
     gpu_memory_utilization: float | None = None
+    # `False` turns tool calling off entirely (both engine options are
+    # removed); `True` turns it on. Left unset, the base profile's own
+    # value stands.
+    enable_auto_tool_choice: bool | None = None
+    # A parser name sets it; an explicit `null` removes the base
+    # profile's one (same convention as `reasoning_parser`'s `null`
+    # under `exclude_unset`).
+    tool_call_parser: str | None = None
+
+    @field_validator("tool_call_parser")
+    @classmethod
+    def _validate_tool_call_parser(cls, value: str | None) -> str | None:
+        if value is not None:
+            validate_tool_call_parser_name(value)
+        return value
 
 
 def _require_keys_subset(

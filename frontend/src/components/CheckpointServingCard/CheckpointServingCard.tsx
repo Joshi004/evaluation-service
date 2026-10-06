@@ -1,8 +1,15 @@
 import type { CheckpointListItem, ServingProfileSummary } from '../../api/client'
-import { LabelOverrideField, NumberOverrideField, TextOverrideField } from '../OverrideField/OverrideField'
+import { isToolCallingComplete, parserOptionsFor, readToolCalling } from '../../utils/toolCalling'
+import {
+  LabelOverrideField,
+  NumberOverrideField,
+  SelectOverrideField,
+  TextOverrideField,
+} from '../OverrideField/OverrideField'
 import { SelectField } from '../SelectField/SelectField'
 import { Skeleton } from '../Skeleton/Skeleton'
 import {
+  effectiveServingConfig,
   servingOverrideDraftHasChange,
   type ServingOverrideDraft,
 } from '../SubmitOverrides/SubmitOverrides.helper'
@@ -32,7 +39,7 @@ interface CheckpointServingCardProps {
 }
 
 // One selected checkpoint's serving: which base profile it starts from
-// (its own registered default, or one picked here) plus the eight
+// (its own registered default, or one picked here) plus the ten
 // ServingOverrides fields, each defaulting to that base profile's own
 // value. Mirrors CheckpointSamplingCard.tsx exactly, one axis over --
 // serving gained a submit-time override so a different
@@ -128,13 +135,13 @@ export function CheckpointServingCard({
             value={draft.gpu_memory_utilization}
             onValueChange={(value) => onDraftChange({ ...draft, gpu_memory_utilization: value })}
           />
+          <ToolCallingOverrideFields baseProfile={baseProfile} draft={draft} onDraftChange={onDraftChange} />
         </div>
       ) : (
         <div className="mt-3 grid grid-cols-2 gap-3">
-          {/* One block per field below (GPUs through GPU memory
-              utilization) -- eight is fixed, not a guess at an unknown
-              list length. */}
-          {Array.from({ length: 8 }, (_, index) => index).map((index) => (
+          {/* One block per field above (GPUs through Tool call parser)
+              -- ten is fixed, not a guess at an unknown list length. */}
+          {Array.from({ length: 10 }, (_, index) => index).map((index) => (
             <Skeleton key={index} className="h-14 w-full" />
           ))}
         </div>
@@ -142,5 +149,54 @@ export function CheckpointServingCard({
 
       {hasChange && <LabelOverrideField value={labelValue} onValueChange={onLabelChange} />}
     </div>
+  )
+}
+
+const AUTO_TOOL_CHOICE_OPTIONS = [
+  { value: 'true', label: 'On' },
+  { value: 'false', label: 'Off' },
+]
+
+interface ToolCallingOverrideFieldsProps {
+  baseProfile: ServingProfileSummary
+  draft: ServingOverrideDraft
+  onDraftChange: (draft: ServingOverrideDraft) => void
+}
+
+// The two tool-calling fields, as cells of the card's own grid. Both
+// show the base profile's value as their "Default" option, like every
+// other field here. The parser stays disabled while tool calling would
+// be off -- either the base has it off and nothing turns it on, or this
+// draft switches it off -- since vLLM only uses a parser together with
+// auto tool choice.
+function ToolCallingOverrideFields({ baseProfile, draft, onDraftChange }: ToolCallingOverrideFieldsProps) {
+  const baseToolCalling = readToolCalling(baseProfile.engine_options)
+  const effectiveToolCalling = readToolCalling(effectiveServingConfig(baseProfile, draft).engine_options)
+  const needsParser = !isToolCallingComplete(effectiveToolCalling)
+
+  return (
+    <>
+      <SelectOverrideField
+        label="Auto tool choice"
+        options={AUTO_TOOL_CHOICE_OPTIONS}
+        defaultOptionLabel={`Default (${baseToolCalling.autoToolChoice ? 'On' : 'Off'})`}
+        value={draft.enable_auto_tool_choice}
+        onValueChange={(value) =>
+          onDraftChange({
+            ...draft,
+            enable_auto_tool_choice: value as ServingOverrideDraft['enable_auto_tool_choice'],
+          })
+        }
+      />
+      <SelectOverrideField
+        label="Tool call parser"
+        options={parserOptionsFor(baseToolCalling.parser).map((name) => ({ value: name, label: name }))}
+        defaultOptionLabel={`Default (${baseToolCalling.parser ?? 'none'})`}
+        value={draft.tool_call_parser}
+        disabled={!effectiveToolCalling.autoToolChoice}
+        onValueChange={(value) => onDraftChange({ ...draft, tool_call_parser: value })}
+        note={needsParser ? 'Choose a parser to use auto tool choice.' : undefined}
+      />
+    </>
   )
 }

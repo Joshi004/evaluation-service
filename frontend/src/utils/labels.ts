@@ -107,5 +107,7 @@ export const TERM_HINTS = {
   weights: 'Whether this model\u2019s files are actually present and complete on the cluster, checked on demand.',
   samplingProfile: 'How the model was asked to speak -- temperature, max tokens, and the rest of its decoding settings.',
   servingProfile: 'How the model\u2019s server was started -- engine, GPU count, and the rest of its deployment settings.',
+  toolCalling:
+    'Lets the model\u2019s server return function calls as structured tool calls. Only tool-using benchmarks need it.',
   superseded: 'An earlier run for this exact model and setup -- a newer run has since taken its place on the leaderboard.',
 } as const

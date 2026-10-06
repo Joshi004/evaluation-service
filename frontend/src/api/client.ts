@@ -111,9 +111,10 @@ export interface CheckpointDetail extends CheckpointListItem {
 // Serving-profile wire shapes. ServingProfileConfig is the eleven-field
 // hashable config a customisation submits -- identical to
 // ServingProfile.as_hashable_dict()'s key set. engine_options is an
-// escape hatch for uncommon engine flags; the registration wizard
-// doesn't expose it for editing, so a customisation carries it through
-// unchanged from whichever profile it started from.
+// escape hatch for uncommon engine flags. The registration wizard
+// edits only its two tool-calling entries (utils/toolCalling.ts); every
+// other option is carried through unchanged from whichever profile a
+// customisation started from.
 export interface ServingProfileConfig {
   engine: string
   engine_version: string
@@ -588,11 +589,15 @@ export interface SamplingOverrides {
 
 // A user override of a resolved serving profile's fields -- see
 // app/schemas/runs.py's ServingOverrides, the submit-time analogue of
-// SamplingOverrides. Only the eight fields that actually change how the
-// engine launches -- engine, engine_version and engine_options are
-// excluded because the cluster's serve script pins the vLLM binary
-// itself, so overriding those would move this override's hash without
-// moving what launch actually runs.
+// SamplingOverrides. The eight fields that actually change how the
+// engine launches, plus the two tool-calling options. engine and
+// engine_version are excluded because the cluster's serve script pins
+// the vLLM binary itself, so overriding those would move this override's
+// hash without moving what launch actually runs. The two tool-calling
+// fields are not ServingProfileConfig fields: the backend merges them
+// into the base profile's engine_options (utils/toolCalling.ts mirrors
+// that merge). `enable_auto_tool_choice: false` removes tool calling
+// entirely; an explicit `null` parser removes just the parser.
 export interface ServingOverrides {
   gpus?: number | null
   tensor_parallel_size?: number | null
@@ -602,6 +607,8 @@ export interface ServingOverrides {
   dtype?: string | null
   quantization?: string | null
   gpu_memory_utilization?: number | null
+  enable_auto_tool_choice?: boolean | null
+  tool_call_parser?: string | null
 }
 
 // POST /api/v1/runs body -- every (checkpoint, standard) pair in the

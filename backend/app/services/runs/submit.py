@@ -24,7 +24,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Checkpoint, SamplingProfile, ServingProfile, Standard
 from app.schemas.runs import RunSubmission
-from app.schemas.serving_profiles import ServingProfileConfig
+from app.schemas.serving_profiles import (
+    AUTO_TOOL_CHOICE_OPTION,
+    TOOL_CALL_PARSER_OPTION,
+    ServingProfileConfig,
+)
 from app.services.checkpoints import queries as checkpoints_queries
 from app.services.compatibility.validator import validate_compatibility
 from app.services.endpoints import queries as endpoints_queries
@@ -414,6 +418,9 @@ def merge_sampling_config(
     )
 
 
+_TOOL_CALLING_OVERRIDE_FIELDS = frozenset({"enable_auto_tool_choice", "tool_call_parser"})
+
+
 def merge_serving_config(
     base_serving_profile: ServingProfile, serving_overrides: dict[str, Any]
 ) -> dict[str, Any]:
@@ -424,8 +431,57 @@ def merge_serving_config(
     standard feeds into how a checkpoint is served, unlike sampling's
     `standard.sampling_overrides`. Shared with `preview.py` for the same
     reason `merge_sampling_config` is.
+
+    The two tool-calling overrides are not `ServingProfileConfig` fields
+    -- they live inside `engine_options` -- so they are taken out of the
+    flat merge here and applied to a copy of the base profile's own
+    `engine_options` instead. Left in, they would reach
+    `ServingProfileConfig(extra="forbid")` as unknown top-level keys.
     """
-    return base_serving_profile.as_hashable_dict() | serving_overrides
+    flat_overrides = {
+        field: value
+        for field, value in serving_overrides.items()
+        if field not in _TOOL_CALLING_OVERRIDE_FIELDS
+    }
+    merged_config = base_serving_profile.as_hashable_dict() | flat_overrides
+    if _TOOL_CALLING_OVERRIDE_FIELDS & serving_overrides.keys():
+        merged_config["engine_options"] = _apply_tool_calling_overrides(
+            merged_config["engine_options"], serving_overrides
+        )
+    return merged_config
+
+
+def _apply_tool_calling_overrides(
+    engine_options: dict[str, Any], serving_overrides: dict[str, Any]
+) -> dict[str, Any]:
+    """A new `engine_options` dict with the tool-calling overrides applied
+    -- the base profile's own dict is never mutated.
+
+    Turning auto tool choice off removes both keys rather than writing
+    `false`: `false` renders no flag but would still change the profile's
+    hash, which is exactly the accepted-but-ignored case
+    `ServingProfileConfig` rejects reserved keys to prevent. A parser with
+    auto tool choice off does nothing, so it goes too.
+    """
+    options = dict(engine_options)
+    enable_auto_tool_choice = serving_overrides.get("enable_auto_tool_choice")
+
+    if enable_auto_tool_choice is False:
+        options.pop(AUTO_TOOL_CHOICE_OPTION, None)
+        options.pop(TOOL_CALL_PARSER_OPTION, None)
+        return options
+
+    if enable_auto_tool_choice is True:
+        options[AUTO_TOOL_CHOICE_OPTION] = True
+
+    if "tool_call_parser" in serving_overrides:
+        tool_call_parser = serving_overrides["tool_call_parser"]
+        if tool_call_parser is None:
+            options.pop(TOOL_CALL_PARSER_OPTION, None)
+        else:
+            options[TOOL_CALL_PARSER_OPTION] = tool_call_parser
+
+    return options
 
 
 def transient_serving_profile(config: dict[str, Any]) -> ServingProfile:

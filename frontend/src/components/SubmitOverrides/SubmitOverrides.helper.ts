@@ -50,6 +50,7 @@ import type {
 import { resolveBaseSamplingProfile } from '../CheckpointSamplingCard/CheckpointSamplingCard.helper'
 import { resolveBaseServingProfile } from '../CheckpointServingCard/CheckpointServingCard.helper'
 import { suggestNextLabel } from '../../utils/suggestNextLabel'
+import { applyToolCallingOverrides } from '../../utils/toolCalling'
 
 export interface StandardOverrideDraft {
   sample_limit: string
@@ -69,11 +70,15 @@ export interface SamplingOverrideDraft {
   enable_thinking: '' | 'true' | 'false'
 }
 
-// The eight ServingOverrides fields as plain strings, all free text
-// (not a closed select) for reasoning_parser/dtype/quantization --
-// mirrors the registration wizard's own customisation form
+// The ServingOverrides fields as plain strings, all free text (not a
+// closed select) for reasoning_parser/dtype/quantization -- mirrors the
+// registration wizard's own customisation form
 // (ServingProfilePicker.helper.ts's ServingProfileDraft), which treats
-// those three the same way rather than offering a fixed option set.
+// those three the same way rather than offering a fixed option set. The
+// two tool-calling fields are selects: `enable_auto_tool_choice` is a
+// tri-state like SamplingOverrideDraft's enable_thinking, and
+// `tool_call_parser` is one of utils/toolCalling.ts's curated names.
+// '' always means "keep the base profile's value".
 export interface ServingOverrideDraft {
   gpus: string
   tensor_parallel_size: string
@@ -83,6 +88,8 @@ export interface ServingOverrideDraft {
   dtype: string
   quantization: string
   gpu_memory_utilization: string
+  enable_auto_tool_choice: '' | 'true' | 'false'
+  tool_call_parser: string
 }
 
 export const EMPTY_STANDARD_OVERRIDE_DRAFT: StandardOverrideDraft = {
@@ -112,6 +119,8 @@ export const EMPTY_SERVING_OVERRIDE_DRAFT: ServingOverrideDraft = {
   dtype: '',
   quantization: '',
   gpu_memory_utilization: '',
+  enable_auto_tool_choice: '',
+  tool_call_parser: '',
 }
 
 // Every selected standard's and checkpoint's own draft, plus which base
@@ -375,11 +384,12 @@ function buildSamplingOverrides(draft: SamplingOverrideDraft): SamplingOverrides
   return overrides
 }
 
-// Same reasoning again, over the eight ServingOverrides fields.
+// Same reasoning again, over the ten ServingOverrides fields.
 // gpus/tensor_parallel_size/pipeline_parallel_size/max_model_len parse
 // as integers, gpu_memory_utilization as a float, and
-// reasoning_parser/dtype/quantization pass through trimmed rather than
-// parsed -- they're free text, not numbers.
+// reasoning_parser/dtype/quantization/tool_call_parser pass through
+// trimmed rather than parsed -- they're free text or a fixed name, not
+// numbers.
 function buildServingOverrides(draft: ServingOverrideDraft): ServingOverrides {
   const overrides: ServingOverrides = {}
 
@@ -414,6 +424,20 @@ function buildServingOverrides(draft: ServingOverrideDraft): ServingOverrides {
   const gpuMemoryUtilization = parseOptionalFloat(draft.gpu_memory_utilization)
   if (gpuMemoryUtilization !== undefined) {
     overrides.gpu_memory_utilization = gpuMemoryUtilization
+  }
+
+  if (draft.enable_auto_tool_choice === 'false') {
+    // Off removes the parser too, so a parser picked before switching
+    // it off is deliberately not sent.
+    overrides.enable_auto_tool_choice = false
+    return overrides
+  }
+  if (draft.enable_auto_tool_choice === 'true') {
+    overrides.enable_auto_tool_choice = true
+  }
+  const toolCallParser = parseOptionalString(draft.tool_call_parser)
+  if (toolCallParser !== undefined) {
+    overrides.tool_call_parser = toolCallParser
   }
 
   return overrides
@@ -461,11 +485,13 @@ export function effectiveSamplingConfig(
 }
 
 // Mirrors effectiveStandardProtocol above, over the serving axis.
-// `engine`/`engine_version`/`engine_options` have no override fields
-// either -- ServingOverrides (api/client.ts) deliberately excludes
-// them since the cluster's own serve script pins the vLLM binary --
-// so all three always pass the base profile's own value through
-// unchanged.
+// `engine`/`engine_version` have no override fields either --
+// ServingOverrides (api/client.ts) deliberately excludes them since the
+// cluster's own serve script pins the vLLM binary -- so both always
+// pass the base profile's own value through unchanged. `engine_options`
+// passes through too, except for its two tool-calling entries, which
+// the draft can override (applyToolCallingOverrides mirrors the
+// backend's own merge).
 export function effectiveServingConfig(
   baseProfile: ServingProfileConfig,
   draft: ServingOverrideDraft,
@@ -482,7 +508,7 @@ export function effectiveServingConfig(
     dtype: overrides.dtype ?? baseProfile.dtype,
     quantization: overrides.quantization ?? baseProfile.quantization,
     gpu_memory_utilization: overrides.gpu_memory_utilization ?? baseProfile.gpu_memory_utilization,
-    engine_options: baseProfile.engine_options,
+    engine_options: applyToolCallingOverrides(baseProfile.engine_options, overrides),
   }
 }
 

@@ -101,6 +101,9 @@ interface SelectOverrideFieldProps {
   defaultOptionLabel: string
   value: string
   onValueChange: (value: string) => void
+  // For a field that only makes sense while another one is on (the
+  // serving card's tool call parser, while auto tool choice is off).
+  disabled?: boolean
   note?: string
 }
 
@@ -110,6 +113,7 @@ export function SelectOverrideField({
   defaultOptionLabel,
   value,
   onValueChange,
+  disabled = false,
   note,
 }: SelectOverrideFieldProps) {
   const isChanged = value !== ''
@@ -119,6 +123,7 @@ export function SelectOverrideField({
       <SelectField
         value={value}
         onValueChange={onValueChange}
+        disabled={disabled}
         groups={[{ options: [{ value: '', label: defaultOptionLabel }, ...options] }]}
         className="mt-1 w-full"
       />

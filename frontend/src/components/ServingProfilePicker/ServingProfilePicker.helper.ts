@@ -7,6 +7,7 @@ import type {
   ServingProfileSelection,
   ServingProfileSummary,
 } from '../../api/client'
+import { isToolCallingComplete, readToolCalling } from '../../utils/toolCalling'
 
 export type ServingProfileChoice =
   | { kind: 'recommended' }
@@ -19,9 +20,10 @@ export type ServingProfileChoice =
 // drafts, a blank field here is not "leave unchanged": this is a
 // complete config, not a sparse delta, so every field needs a concrete
 // value before it can be submitted (buildConfigFromDraft below returns
-// null until it does). engine_options is carried through opaquely
-// rather than rendered as editable inputs -- it is an escape hatch for
-// uncommon engine flags that this wizard does not expose.
+// null until it does). engine_options is carried through as an object
+// rather than rendered as free-form inputs -- it is an escape hatch for
+// uncommon engine flags. Only its two tool-calling entries are editable
+// here (ToolCallingFields); every other option passes through untouched.
 export interface ServingProfileDraft {
   engine: string
   engine_version: string
@@ -89,9 +91,9 @@ function parseFloatOrNull(raw: string): number | null {
 }
 
 // Returns null while the draft is incomplete or has an unparsable
-// number, which doubles as this form's validity check -- callers gate
-// "Next" on the result being non-null rather than running a separate
-// validation pass.
+// number or an unfinished tool-calling setup, which doubles as this
+// form's validity check -- callers gate "Next" on the result being
+// non-null rather than running a separate validation pass.
 export function buildConfigFromDraft(draft: ServingProfileDraft): ServingProfileConfig | null {
   const engine = draft.engine.trim()
   const engineVersion = draft.engine_version.trim()
@@ -113,7 +115,11 @@ export function buildConfigFromDraft(draft: ServingProfileDraft): ServingProfile
     tensorParallelSize === null ||
     pipelineParallelSize === null ||
     gpuMemoryUtilization === null ||
-    (!maxModelLenIsBlank && maxModelLen === null)
+    (!maxModelLenIsBlank && maxModelLen === null) ||
+    // Auto tool choice on with no parser would fail the backend's
+    // auto_tool_choice_needs_parser compatibility rule at submit time --
+    // caught here so "Next" stays disabled instead.
+    !isToolCallingComplete(readToolCalling(draft.engine_options))
   ) {
     return null
   }

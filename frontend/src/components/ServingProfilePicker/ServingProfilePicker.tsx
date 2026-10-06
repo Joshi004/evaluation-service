@@ -1,9 +1,11 @@
 import type { ServingProfileRecommendation, ServingProfileSummary } from '../../api/client'
 import { servingProfileDisplayName } from '../../utils/servingProfileDisplayName'
 import { describeProfileGlance } from '../../utils/servingProfileSummary'
+import { countOtherEngineOptions } from '../../utils/toolCalling'
 import { Radio } from '../Radio/Radio'
 import { SelectField } from '../SelectField/SelectField'
 import { TextInput } from '../TextInput/TextInput'
+import { ToolCallingFields } from '../ToolCallingFields/ToolCallingFields'
 import {
   draftFromProfile,
   resolveSelectedProfile,
@@ -64,6 +66,7 @@ export function ServingProfilePicker({ recommendation, profiles, choice, onChoic
   }
 
   const draft = choice.kind === 'customised' ? choice.draft : null
+  const otherEngineOptionCount = draft === null ? 0 : countOtherEngineOptions(draft.engine_options)
 
   return (
     <div className="space-y-4">
@@ -178,6 +181,10 @@ export function ServingProfilePicker({ recommendation, profiles, choice, onChoic
             value={draft.reasoning_parser}
             onValueChange={(value) => updateDraft(draft, { reasoning_parser: value })}
           />
+          <ToolCallingFields
+            engineOptions={draft.engine_options}
+            onEngineOptionsChange={(engineOptions) => updateDraft(draft, { engine_options: engineOptions })}
+          />
           <DraftField label="Dtype" value={draft.dtype} onValueChange={(value) => updateDraft(draft, { dtype: value })} />
           <DraftField
             label="Quantization"
@@ -192,10 +199,10 @@ export function ServingProfilePicker({ recommendation, profiles, choice, onChoic
             value={draft.gpu_memory_utilization}
             onValueChange={(value) => updateDraft(draft, { gpu_memory_utilization: value })}
           />
-          {Object.keys(draft.engine_options).length > 0 && (
+          {otherEngineOptionCount > 0 && (
             <p className="col-span-full text-xs text-subtle-foreground">
-              {Object.keys(draft.engine_options).length} additional engine option
-              {Object.keys(draft.engine_options).length === 1 ? '' : 's'} carried over unchanged (not editable here).
+              {otherEngineOptionCount} additional engine option
+              {otherEngineOptionCount === 1 ? '' : 's'} carried over unchanged (not editable here).
             </p>
           )}
         </div>

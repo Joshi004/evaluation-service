@@ -38,6 +38,7 @@ def validate_compatibility(
             rules.strip_needs_reasoning_parser(standard_config, sampling_config, serving_profile),
             rules.profile_exceeds_model_context(checkpoint, serving_profile),
             rules.parallelism_gpu_mismatch(serving_profile),
+            rules.auto_tool_choice_needs_parser(serving_profile),
             rules.checkpoint_unavailable(checkpoint),
         )
         if finding is not None

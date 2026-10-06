@@ -18,6 +18,7 @@ from typing import Any
 
 from app.models import Checkpoint, ServingProfile
 from app.schemas.compatibility import CompatibilityFinding
+from app.schemas.serving_profiles import AUTO_TOOL_CHOICE_OPTION, TOOL_CALL_PARSER_OPTION
 from app.services.serving_profiles.render import serving_profile_display_name
 from app.services.standards.capabilities import (
     SEED_NOT_APPLIED_WITH_REPEATS_MESSAGE,
@@ -169,6 +170,29 @@ def parallelism_gpu_mismatch(serving_profile: ServingProfile) -> CompatibilityFi
                 f"{serving_profile.gpus} GPU(s) but tensor_parallel_size "
                 f"({serving_profile.tensor_parallel_size}) x pipeline_parallel_size "
                 f"({serving_profile.pipeline_parallel_size}) = {expected_gpus}"
+            ),
+        )
+    return None
+
+
+def auto_tool_choice_needs_parser(serving_profile: ServingProfile) -> CompatibilityFinding | None:
+    """vLLM's `--enable-auto-tool-choice` only works together with a
+    `--tool-call-parser`: the parser is what turns the model's raw text
+    into structured tool calls. With the flag on and no parser, the
+    server cannot do what the flag promises, so this is caught here --
+    before a serve job spends time in the SLURM queue just to fail on
+    startup.
+    """
+    engine_options = serving_profile.engine_options
+    auto_tool_choice_on = engine_options.get(AUTO_TOOL_CHOICE_OPTION) is True
+    if auto_tool_choice_on and not engine_options.get(TOOL_CALL_PARSER_OPTION):
+        return CompatibilityFinding(
+            code="auto_tool_choice_needs_parser",
+            field="serving_profile.engine_options",
+            message=(
+                f"serving profile {serving_profile_display_name(serving_profile)!r} turns "
+                "auto tool choice on but sets no tool call parser -- vLLM needs a "
+                "--tool-call-parser to read the model's tool calls"
             ),
         )
     return None

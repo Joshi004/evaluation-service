@@ -4,6 +4,7 @@
 // so the two can never drift apart.
 import type { ServingProfileSummary } from '../api/client'
 import { servingProfileDisplayName } from './servingProfileDisplayName'
+import { readToolCalling } from './toolCalling'
 
 // The profile's own facts, without its name -- split out of
 // describeProfileGlance once the Profiles page's own table needed a
@@ -20,6 +21,10 @@ export function servingSummary(profile: ServingProfileSummary): string {
   }
   if (profile.reasoning_parser !== null) {
     parts.push(`reasoning_parser ${profile.reasoning_parser}`)
+  }
+  const { parser: toolCallParser } = readToolCalling(profile.engine_options)
+  if (toolCallParser !== null) {
+    parts.push(`tool_call_parser ${toolCallParser}`)
   }
   return parts.join(' \u00b7 ')
 }

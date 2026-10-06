@@ -15,11 +15,40 @@ profile picker reads; no route serves it until Phase 5's GET
 /serving-profiles.
 """
 
+import re
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.schemas.catalog import CatalogDocument
+
+# vLLM's own flag names, spelled the way `engine_options` stores them
+# (kebab-case, no leading dashes). Tool calling lives in `engine_options`
+# rather than in structured columns so existing profiles' hashes -- which
+# `catalog/serving-profiles/qwen3-tools.yaml` pins -- never change.
+TOOL_CALL_PARSER_OPTION = "tool-call-parser"
+AUTO_TOOL_CHOICE_OPTION = "enable-auto-tool-choice"
+
+# vLLM's parser names (`hermes`, `qwen3_xml`, `granite-20b-fc`, ...):
+# lowercase letters, digits, underscores and hyphens, never starting with
+# a hyphen so a value can't be read as another flag. A parser name is
+# joined unquoted into the serve script (`serve_job.render_serve_script`),
+# so anything else is rejected here rather than escaped later.
+_TOOL_CALL_PARSER_NAME_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
+
+
+def validate_tool_call_parser_name(value: str) -> str:
+    """Shared by `ServingProfileConfig` (a profile's `engine_options`) and
+    `ServingOverrides` (a submit-time override), so the two can never
+    accept a different set of names.
+    """
+    if not _TOOL_CALL_PARSER_NAME_PATTERN.fullmatch(value):
+        raise ValueError(
+            f"tool call parser {value!r} must be lowercase letters, digits, underscores "
+            "or hyphens, and must not start with a hyphen"
+        )
+    return value
+
 
 # Every key here either duplicates a structured column above or (
 # "generation-config") is unconditional and never overridable (R-D7).
@@ -86,6 +115,12 @@ class ServingProfileConfig(BaseModel):
             # union member Pydantic tried.
             if not isinstance(option_value, str | int | float | bool):
                 raise ValueError(f"engine_options[{key!r}] must be str, int, float, or bool")
+            if key == TOOL_CALL_PARSER_OPTION:
+                if not isinstance(option_value, str):
+                    raise ValueError(f"engine_options[{key!r}] must be a string")
+                validate_tool_call_parser_name(option_value)
+            if key == AUTO_TOOL_CHOICE_OPTION and not isinstance(option_value, bool):
+                raise ValueError(f"engine_options[{key!r}] must be true or false")
         return value
 
 
